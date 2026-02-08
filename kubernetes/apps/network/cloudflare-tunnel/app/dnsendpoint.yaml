@@ -10,14 +10,6 @@ spec:
       recordType: CNAME
       targets:
         - ${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com
-    - dnsName: external.480p.com
-      recordType: CNAME
-      targets:
-        - ${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com
-    - dnsName: external.brauni.dev
-      recordType: CNAME
-      targets:
-        - ${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com
     - dnsName: external.brauni.eu
       recordType: CNAME
       targets:
