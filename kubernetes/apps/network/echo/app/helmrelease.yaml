@@ -67,6 +67,8 @@ spec:
         hostnames:
           - "{{ .Release.Name }}.riki.boo"
           - "{{ .Release.Name }}.brauni.dev"
+          - "{{ .Release.Name }}.brauni.eu"
+          - "{{ .Release.Name }}.480p.com"
         parentRefs:
           - name: envoy-external
             namespace: network
