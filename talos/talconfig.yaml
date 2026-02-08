@@ -1,0 +1,142 @@
+---
+clusterName: ovh-ops
+
+talosVersion: "${talosVersion}"
+kubernetesVersion: "${kubernetesVersion}"
+
+endpoint: https://10.10.8.10:6443
+additionalApiServerCertSans: &sans
+  - "127.0.0.1"
+  - "10.10.8.10"
+additionalMachineCertSans: *sans
+
+clusterPodNets: ["10.42.0.0/16"]
+clusterSvcNets: ["10.43.0.0/16"]
+
+# Disable built-in CNI to use Cilium
+cniConfig:
+  name: none
+
+nodes:
+  - hostname: "c-ovhsbg1"
+    ipAddress: "10.10.8.104"
+    installDisk: "/dev/sda"
+    machineSpec:
+      secureboot: false
+    talosImageURL: factory.talos.dev/installer/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:a1:43:74"
+        dhcp: false
+        addresses:
+          - "10.10.8.104/24"
+        routes:
+          - gateway: "10.10.8.1"
+            network: 0.0.0.0/0
+#        mtu: 1500
+        vip:
+          ip: "10.10.8.10"
+  - hostname: "c-ovhsbg2"
+    ipAddress: "10.10.8.106"
+    installDisk: "/dev/sda"
+    machineSpec:
+      secureboot: false
+    talosImageURL: factory.talos.dev/installer/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:5f:f6:65"
+        dhcp: false
+        addresses:
+          - "10.10.8.106/24"
+        routes:
+          - gateway: "10.10.8.1"
+            network: 0.0.0.0/0
+#        mtu: 1500
+        vip:
+          ip: "10.10.8.10"
+  - hostname: "c-ovhsbg3"
+    ipAddress: "10.10.8.110"
+    installDisk: "/dev/sda"
+    machineSpec:
+      secureboot: false
+    talosImageURL: factory.talos.dev/installer/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:80:42:3c"
+        dhcp: false
+        addresses:
+          - "10.10.8.110/24"
+        routes:
+          - gateway: "10.10.8.1"
+            network: 0.0.0.0/0
+#        mtu: 1500
+        vip:
+          ip: "10.10.8.10"
+  - hostname: "w-ovhsbg1"
+    ipAddress: "10.10.8.105"
+    installDisk: "/dev/sda"
+    machineSpec:
+      secureboot: false
+    talosImageURL: factory.talos.dev/installer/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:5e:a2:fc"
+        dhcp: false
+        addresses:
+          - "10.10.8.105/24"
+        routes:
+          - gateway: "10.10.8.1"
+            network: 0.0.0.0/0
+#        mtu: 1500
+  - hostname: "w-ovhsbg2"
+    ipAddress: "10.10.8.107"
+    installDisk: "/dev/sda"
+    machineSpec:
+      secureboot: false
+    talosImageURL: factory.talos.dev/installer/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:5c:6b:b8"
+        dhcp: false
+        addresses:
+          - "10.10.8.107/24"
+        routes:
+          - gateway: "10.10.8.1"
+            network: 0.0.0.0/0
+#        mtu: 1500
+  - hostname: "w-ovhsbg3"
+    ipAddress: "10.10.8.111"
+    installDisk: "/dev/sda"
+    machineSpec:
+      secureboot: false
+    talosImageURL: factory.talos.dev/installer/ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515
+    controlPlane: false
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:80:19:ef"
+        dhcp: false
+        addresses:
+          - "10.10.8.111/24"
+        routes:
+          - gateway: "10.10.8.1"
+            network: 0.0.0.0/0
+#        mtu: 1500
+
+# Global patches
+patches:
+  - "@./patches/global/machine-files.yaml"
+  - "@./patches/global/machine-kubelet.yaml"
+  - "@./patches/global/machine-network.yaml"
+  - "@./patches/global/machine-sysctls.yaml"
+  - "@./patches/global/machine-time.yaml"
+
+# Controller patches
+controlPlane:
+  patches:
+    - "@./patches/controller/cluster.yaml"
+

@@ -1,0 +1,166 @@
+---
+version: '3'
+
+vars:
+  CONTROLLER:
+    sh: talosctl config info -o yaml | yq -e '.endpoints[0]'
+
+tasks:
+
+  full:
+    desc: Run full bootstrap sequence
+    cmds:
+      - task: talos
+      - task: kube
+      - task: kubeconfig
+        vars:
+          LB: node
+      - task: wait
+      - task: namespaces
+      - task: resources
+      - task: crds
+      - task: apps
+      - task: kubeconfig
+    preconditions:
+      - which talosctl yq kubectl kustomize helmfile minijinja-cli talhelper
+
+  talos:
+    desc: Apply Talos configuration to all nodes (insecure mode for initial bootstrap)
+    dir: '{{.TALOS_DIR}}'
+    cmds:
+      - |
+        echo "Running stage: talos"
+        if ! talhelper gencommand apply --extra-flags="--insecure" | bash 2>&1; then
+          echo "Note: Some nodes may already have certificates. This is expected."
+        fi
+    preconditions:
+      - which talhelper
+      - test -f {{.TALOS_DIR}}/talconfig.yaml
+
+  talos-apply:
+    desc: Apply Talos configuration to all nodes (secure mode)
+    dir: '{{.TALOS_DIR}}'
+    cmds:
+      - |
+        echo "Applying Talos configuration to all nodes"
+        if ! talhelper gencommand apply | bash; then
+          echo "Failed to apply Talos configuration"
+          exit 1
+        fi
+    preconditions:
+      - which talhelper
+      - test -f {{.TALOS_DIR}}/talconfig.yaml
+      - test -f {{.TALOSCONFIG}}
+
+  kube:
+    desc: Bootstrap Kubernetes cluster
+    dir: '{{.TALOS_DIR}}'
+    cmds:
+      - |
+        echo "Running stage: kube"
+        until talhelper gencommand bootstrap | bash 2>&1; do
+          echo "Kubernetes bootstrap in progress. Retrying in 5 seconds..."
+          sleep 5
+        done
+    preconditions:
+      - which talhelper
+      - test -f {{.TALOSCONFIG}}
+      - test -f {{.TALOS_DIR}}/talconfig.yaml
+
+  kubeconfig:
+    desc: Fetch kubeconfig from controller node
+    dir: '{{.TALOS_DIR}}'
+    vars:
+      LB: '{{.LB | default "cilium"}}'
+    cmds:
+      - |
+        echo "Running stage: kubeconfig"
+        if ! talhelper gencommand kubeconfig --extra-flags="{{.ROOT_DIR}} --force" | bash; then
+          echo "Failed to fetch kubeconfig"
+          exit 1
+        fi
+        if [[ "{{.LB}}" != "cilium" ]]; then
+          CONTROLLER=$(talosctl config info -o yaml | yq -e '.endpoints[0]')
+          if ! kubectl config set-cluster main --server "https://$CONTROLLER:6443"; then
+            echo "Failed to set kubectl cluster server address"
+            exit 1
+          fi
+        fi
+    preconditions:
+      - which talhelper kubectl
+      - test -f {{.TALOSCONFIG}}
+      - test -f {{.TALOS_DIR}}/talconfig.yaml
+
+  wait:
+    desc: Wait for nodes to be ready
+    cmds:
+      - |
+        echo "Running stage: wait"
+        if ! kubectl wait nodes --for=condition=Ready=True --all --timeout=10s &>/dev/null; then
+          until kubectl wait nodes --for=condition=Ready=False --all --timeout=10s &>/dev/null; do
+            echo "Nodes not available, waiting for nodes to be available. Retrying in 5 seconds..."
+            sleep 5
+          done
+        fi
+    preconditions:
+      - which kubectl
+      - test -f {{.KUBECONFIG}}
+
+  namespaces:
+    desc: Apply Kubernetes namespaces from kustomize
+    cmds:
+      - |
+        echo "Running stage: namespaces"
+        find "{{.KUBERNETES_DIR}}/apps" -mindepth 1 -maxdepth 1 -type d | while IFS= read -r dir; do
+          if ! kustomize build "$dir" | yq ea -e 'select(.kind == "Namespace")' | kubectl apply --server-side --field-manager bootstrap --force-conflicts -f -; then
+            echo "Failed to apply namespace: $(basename "$dir")"
+            exit 1
+          fi
+        done
+    preconditions:
+      - which kubectl kustomize yq
+      - test -f {{.KUBECONFIG}}
+      - test -d {{.KUBERNETES_DIR}}/apps
+
+  resources:
+    desc: Apply bootstrap resources (secrets, etc.)
+    cmds:
+      - |
+        echo "Running stage: resources"
+        if ! sops -d bootstrap/secrets.sops.yaml | yq -o json | jq -r 'to_entries | map("--define \(.key)=\(.value)") | .[]' | xargs minijinja-cli bootstrap/resources.yaml.j2 | kubectl apply --server-side --field-manager bootstrap --force-conflicts -f -; then
+          echo "Failed to apply resources"
+          exit 1
+        fi
+    preconditions:
+      - which kubectl minijinja-cli sops yq jq
+      - test -f {{.KUBECONFIG}}
+      - test -f {{.BOOTSTRAP_DIR}}/resources.yaml.j2
+      - test -f {{.BOOTSTRAP_DIR}}/secrets.sops.yaml
+
+  crds:
+    desc: Apply Helm Custom Resource Definitions
+    cmds:
+      - |
+        echo "Running stage: crds"
+        if ! helmfile -f "{{.BOOTSTRAP_DIR}}/helmfile.d/00-crds.yaml" template -q | yq ea -e 'select(.kind == "CustomResourceDefinition")' | kubectl apply --server-side --field-manager bootstrap --force-conflicts -f -; then
+          echo "Failed to apply crds"
+          exit 1
+        fi
+    preconditions:
+      - which kubectl helmfile yq
+      - test -f {{.KUBECONFIG}}
+      - test -f {{.BOOTSTRAP_DIR}}/helmfile.d/00-crds.yaml
+
+  apps:
+    desc: Sync Helm applications
+    cmds:
+      - |
+        echo "Running stage: apps"
+        if ! helmfile -f "{{.BOOTSTRAP_DIR}}/helmfile.d/01-apps.yaml" sync --hide-notes; then
+          echo "Failed to sync helmfile"
+          exit 1
+        fi
+    preconditions:
+      - which helmfile
+      - test -f {{.KUBECONFIG}}
+      - test -f {{.BOOTSTRAP_DIR}}/helmfile.d/01-apps.yaml

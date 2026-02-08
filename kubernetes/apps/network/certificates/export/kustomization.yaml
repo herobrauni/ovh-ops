@@ -1,0 +1,13 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./riki-boo-certificate.yaml
+  - ./480p-com-certificate.yaml
+  - ./brauni-dev-certificate.yaml
+  - ./brauni-eu-certificate.yaml
+  - ./riki-boo-pushsecret.yaml
+  - ./480p-com-pushsecret.yaml
+  - ./brauni-dev-pushsecret.yaml
+  - ./brauni-eu-pushsecret.yaml
