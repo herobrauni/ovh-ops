@@ -39,8 +39,6 @@ spec:
     txtPrefix: k8s.
     domainFilters:
       - riki.boo
-      - 480p.com
-      - brauni.dev
       - brauni.eu
     serviceMonitor:
       enabled: true

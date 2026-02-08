@@ -79,10 +79,6 @@ spec:
           - kind: Secret
             name: riki-boo-tls
           - kind: Secret
-            name: 480p-com-tls
-          - kind: Secret
-            name: brauni-dev-tls
-          - kind: Secret
             name: brauni-eu-tls
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/gateway_v1.json
@@ -121,10 +117,6 @@ spec:
         certificateRefs:
           - kind: Secret
             name: riki-boo-tls
-          - kind: Secret
-            name: 480p-com-tls
-          - kind: Secret
-            name: brauni-dev-tls
           - kind: Secret
             name: brauni-eu-tls
 ---
