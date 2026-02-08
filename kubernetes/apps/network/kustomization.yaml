@@ -9,7 +9,6 @@ components:
 
 resources:
   - ./namespace.yaml
-  - ./certificates/ks.yaml
   - ./cloudflare-tunnel/ks.yaml
   - ./cloudflare-dns/ks.yaml
   - ./echo/ks.yaml
