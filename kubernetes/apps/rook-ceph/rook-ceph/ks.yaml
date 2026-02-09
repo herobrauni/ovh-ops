@@ -38,8 +38,6 @@ spec:
   dependsOn:
     - name: rook-ceph
       namespace: *namespace
-    - name: rook-ceph-haproxy
-      namespace: *namespace
   healthChecks:
     - apiVersion: helm.toolkit.fluxcd.io/v2
       kind: HelmRelease
