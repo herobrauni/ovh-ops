@@ -1,0 +1,10 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rook-ceph-mon-endpoints
+  namespace: rook-ceph
+data:
+  data: ovhsbg1=172.24.0.1:3300,ovhsbg2=172.24.0.2:3300,ovhsbg3=172.24.0.3:3300
+  mapping: '{"node":{}}'
+  maxMonId: "3"
