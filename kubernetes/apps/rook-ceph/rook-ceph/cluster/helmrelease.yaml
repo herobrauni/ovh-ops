@@ -36,6 +36,12 @@ spec:
           mon:
             disabled: false
             interval: 45s
+      dashboard:
+        enabled: true
+        urlPrefix: /
+        ssl: false
+        prometheusEndpoint: http://prometheus-operated.observability.svc.cluster.local:9090
+
     monitoring:
       enabled: true
       # metricsDisabled: true
