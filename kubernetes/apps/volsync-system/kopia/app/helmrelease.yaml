@@ -22,7 +22,7 @@ spec:
             env:
               KOPIA_WEB_ENABLED: true
               KOPIA_WEB_PORT: &port 80
-              TZ: America/New_York
+              TZ: Europe/Berlin
             envFrom:
               - secretRef:
                   name: kopia-secret
@@ -69,35 +69,22 @@ spec:
         parentRefs:
           - name: envoy-internal
             namespace: network
-    configMaps:
-      config:
-        data:
-          repository.config: |-
-            {
-              "storage": {
-                "type": "filesystem",
-                "config": {
-                  "path": "/repository"
-                }
-              },
-              "hostname": "volsync.{{ .Release.Namespace }}.svc.cluster.local",
-              "username": "volsync",
-              "description": "volsync",
-              "enableActions": false
-            }
     persistence:
       config-file:
-        type: configMap
-        identifier: config
+        type: secret
+        name: kopia-secret
         globalMounts:
           - path: /config/repository.config
             subPath: repository.config
-      repository:
-        type: nfs
-        server: expanse.internal
-        path: /mnt/ceres/VolsyncKopia
-        globalMounts:
-          - path: /repository
+      sftp-key:
+        type: secret
+        name: kopia-secret
+        defaultMode: 0600
+        advancedMounts:
+          kopia:
+            app:
+              - path: /secrets/sftp-key
+                subPath: SFTP_KEY_FILE
       tmpfs:
         type: emptyDir
         advancedMounts:
