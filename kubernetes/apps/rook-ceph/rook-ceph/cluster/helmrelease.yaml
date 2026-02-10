@@ -38,14 +38,14 @@ spec:
             interval: 45s
     monitoring:
       enabled: true
-      # metricsDisabled: true
+      metricsDisabled: true
       createPrometheusRules: true
       externalMgrPrometheusPort: 9283 # IP doesn't need to be specified, operator will find it itself
       externalMgrEndpoints:
         - ip: 172.24.0.1
+        - ip: 172.24.0.2
+        - ip: 172.24.0.3
         #   externalMgrPrometheusPort: 9283
-        # - ip: 172.24.0.2
-        # - ip: 172.24.0.3
       # interval: 15s
 
     # -- Settings for the block pool snapshot class
