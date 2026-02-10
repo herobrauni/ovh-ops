@@ -52,7 +52,7 @@ spec:
     # @default -- See [RBD Snapshots](../Storage-Configuration/Ceph-CSI/ceph-csi-snapshot.md#rbd-snapshots)
     cephBlockPoolsVolumeSnapshotClass:
       enabled: true
-      name: ceph-rbd-snapshot
+      name: csi-ceph-blockpool
       isDefault: true
       deletionPolicy: Delete
       # see https://rook.io/docs/rook/v1.10/Storage-Configuration/Ceph-CSI/ceph-csi-snapshot/#rbd-snapshots for available configuration
@@ -60,7 +60,7 @@ spec:
         pool: kubeblock
     cephFileSystemVolumeSnapshotClass:
       enabled: true
-      name: cephfs-snapshot
+      name: csi-ceph-filesystem
       isDefault: false
       deletionPolicy: Delete
       # see https://rook.io/docs/rook/v1.10/Storage-Configuration/Ceph-CSI/ceph-csi-snapshot/#cephfs-snapshots for available configuration
