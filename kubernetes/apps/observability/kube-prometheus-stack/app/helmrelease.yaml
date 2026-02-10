@@ -53,6 +53,7 @@ spec:
         ruleSelectorNilUsesHelmValues: false
         scrapeConfigSelectorNilUsesHelmValues: false
         serviceMonitorSelectorNilUsesHelmValues: false
+        serviceDiscoveryRole: EndpointSlice
         retention: 14d
         retentionSize: 50GB
         resources:
