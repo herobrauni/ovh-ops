@@ -9,6 +9,8 @@ spec:
     kind: OCIRepository
     name: cloudflare-dns
   interval: 1h
+  driftDetection:
+    mode: enabled
   values:
     fullnameOverride: *app
     provider:
