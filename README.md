@@ -65,3 +65,41 @@ post-down iptables -t nat -D POSTROUTING -o ztdiyrsa75 -j MASQUERADE
 |---|---|
 | Local (same PVE host) | `tcp_l3mdev_accept=1` / `udp_l3mdev_accept=1` sysctl |
 | Remote (different PVE host) | `MASQUERADE -o ztdiyrsa75` iptables rule |
+
+## External Ceph Monitoring Configuration
+
+When using an external Ceph cluster with Rook, additional Ceph manager configuration is required to expose detailed metrics for Grafana dashboards (e.g., Write Throughput, Read Throughput, OSD Latency).
+
+### Enable Detailed OSD Metrics
+
+Run the following commands on your external Ceph cluster to enable detailed OSD operation metrics:
+
+```bash
+# Enable RBD stats for all pools
+sudo ceph config set mgr mgr/prometheus/rbd_stats_pools "*"
+
+# Enable perf counters for detailed metrics
+sudo ceph config set mgr mgr/prometheus/exclude_perf_counters false
+```
+
+### What This Enables
+
+These configuration changes enable the following metrics that are required by the Ceph Grafana dashboards:
+
+- `ceph_osd_op_w_in_bytes` - Write bytes per OSD (for Write Throughput)
+- `ceph_osd_op_r_out_bytes` - Read bytes per OSD (for Read Throughput)
+- `ceph_osd_op_w_latency_sum/count` - Write latency metrics
+- `ceph_osd_op_r_latency_sum/count` - Read latency metrics
+
+Without these settings, the Grafana dashboards will show missing or empty data for throughput and latency metrics.
+
+### Verification
+
+After applying the configuration, you can verify the metrics are being exposed by checking the Ceph manager Prometheus endpoint:
+
+```bash
+# Check if OSD operation metrics are available
+curl http://<ceph-mgr-ip>:9283/metrics | grep "ceph_osd_op_w_in_bytes"
+```
+
+The metrics should automatically appear in Prometheus and Grafana after the next scrape interval (default: 10s).

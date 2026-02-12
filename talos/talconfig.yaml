@@ -28,12 +28,15 @@ nodes:
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:a1:43:74"
+        dhcp: true
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:62:33:de"
         dhcp: false
-        addresses:
-          - "10.10.8.104/24"
-        routes:
-          - gateway: "10.10.8.1"
-            network: 0.0.0.0/0
+        # addresses:
+        #   - "10.10.8.104/24"
+        # routes:
+        #   - gateway: "10.10.8.1"
+        #     network: 0.0.0.0/0
 #        mtu: 1500
         vip:
           ip: "10.10.8.10"
@@ -47,12 +50,15 @@ nodes:
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:5f:f6:65"
+        dhcp: true
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:cd:d2:35"
         dhcp: false
-        addresses:
-          - "10.10.8.106/24"
-        routes:
-          - gateway: "10.10.8.1"
-            network: 0.0.0.0/0
+        # addresses:
+        #   - "10.10.8.106/24"
+        # routes:
+        #   - gateway: "10.10.8.1"
+        #     network: 0.0.0.0/0
 #        mtu: 1500
         vip:
           ip: "10.10.8.10"
@@ -66,12 +72,15 @@ nodes:
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:80:42:3c"
+        dhcp: true
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:68:53:7e"
         dhcp: false
-        addresses:
-          - "10.10.8.110/24"
-        routes:
-          - gateway: "10.10.8.1"
-            network: 0.0.0.0/0
+        # addresses:
+        #   - "10.10.8.110/24"
+        # routes:
+        #   - gateway: "10.10.8.1"
+        #     network: 0.0.0.0/0
 #        mtu: 1500
         vip:
           ip: "10.10.8.10"
@@ -85,12 +94,15 @@ nodes:
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:5e:a2:fc"
+        dhcp: true
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:ce:1c:83"
         dhcp: false
-        addresses:
-          - "10.10.8.105/24"
-        routes:
-          - gateway: "10.10.8.1"
-            network: 0.0.0.0/0
+        # addresses:
+        #   - "10.10.8.105/24"
+        # routes:
+        #   - gateway: "10.10.8.1"
+        #     network: 0.0.0.0/0
 #        mtu: 1500
   - hostname: "w-ovhsbg2"
     ipAddress: "10.10.8.107"
@@ -102,12 +114,15 @@ nodes:
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:5c:6b:b8"
+        dhcp: true
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:26:cb:15"
         dhcp: false
-        addresses:
-          - "10.10.8.107/24"
-        routes:
-          - gateway: "10.10.8.1"
-            network: 0.0.0.0/0
+        # addresses:
+        #   - "10.10.8.107/24"
+        # routes:
+        #   - gateway: "10.10.8.1"
+        #     network: 0.0.0.0/0
 #        mtu: 1500
   - hostname: "w-ovhsbg3"
     ipAddress: "10.10.8.111"
@@ -119,12 +134,15 @@ nodes:
     networkInterfaces:
       - deviceSelector:
           hardwareAddr: "bc:24:11:80:19:ef"
+        dhcp: true
+      - deviceSelector:
+          hardwareAddr: "bc:24:11:41:d1:31"
         dhcp: false
-        addresses:
-          - "10.10.8.111/24"
-        routes:
-          - gateway: "10.10.8.1"
-            network: 0.0.0.0/0
+        # addresses:
+        #   - "10.10.8.111/24"
+        # routes:
+        #   - gateway: "10.10.8.1"
+        #     network: 0.0.0.0/0
 #        mtu: 1500
 
 # Global patches
