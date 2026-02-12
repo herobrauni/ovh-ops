@@ -7,3 +7,4 @@ namespace: tailscale
 #   - ../../components/alerts
 resources:
   - ./tailscale-operator/ks.yaml
+  - ./namespace.yaml
