@@ -5,16 +5,12 @@ kind: HelmRelease
 metadata:
   name: tailscale-operator
 spec:
+  chartRef:
+    kind: OCIRepository
+    name: tailscale-operator
   driftDetection:
     mode: enabled
   interval: 30m
-  chart:
-    spec:
-      chart: tailscale-operator
-      version: 1.94.1
-      sourceRef:
-        kind: HelmRepository
-        name: tailscale
   install:
     remediation:
       retries: 3
