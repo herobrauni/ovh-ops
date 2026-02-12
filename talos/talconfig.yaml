@@ -29,6 +29,8 @@ nodes:
       - deviceSelector:
           hardwareAddr: "bc:24:11:a1:43:74"
         dhcp: true
+        vip:
+          ip: "10.10.8.10"
       - deviceSelector:
           hardwareAddr: "bc:24:11:62:33:de"
         dhcp: false
@@ -38,8 +40,6 @@ nodes:
         #   - gateway: "10.10.8.1"
         #     network: 0.0.0.0/0
 #        mtu: 1500
-        vip:
-          ip: "10.10.8.10"
   - hostname: "c-ovhsbg2"
     ipAddress: "10.10.8.106"
     installDisk: "/dev/sda"
@@ -51,6 +51,8 @@ nodes:
       - deviceSelector:
           hardwareAddr: "bc:24:11:5f:f6:65"
         dhcp: true
+        vip:
+          ip: "10.10.8.10"
       - deviceSelector:
           hardwareAddr: "bc:24:11:cd:d2:35"
         dhcp: false
@@ -60,8 +62,6 @@ nodes:
         #   - gateway: "10.10.8.1"
         #     network: 0.0.0.0/0
 #        mtu: 1500
-        vip:
-          ip: "10.10.8.10"
   - hostname: "c-ovhsbg3"
     ipAddress: "10.10.8.110"
     installDisk: "/dev/sda"
@@ -73,6 +73,8 @@ nodes:
       - deviceSelector:
           hardwareAddr: "bc:24:11:80:42:3c"
         dhcp: true
+        vip:
+          ip: "10.10.8.10"
       - deviceSelector:
           hardwareAddr: "bc:24:11:68:53:7e"
         dhcp: false
@@ -82,8 +84,6 @@ nodes:
         #   - gateway: "10.10.8.1"
         #     network: 0.0.0.0/0
 #        mtu: 1500
-        vip:
-          ip: "10.10.8.10"
   - hostname: "w-ovhsbg1"
     ipAddress: "10.10.8.105"
     installDisk: "/dev/sda"
