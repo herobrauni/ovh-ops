@@ -41,7 +41,7 @@ nodes:
         #     network: 0.0.0.0/0
 #        mtu: 1500
   - hostname: "c-ovhsbg2"
-    ipAddress: "10.10.8.182"
+    ipAddress: "10.10.8.183"
     installDisk: "/dev/sda"
     machineSpec:
       secureboot: false
@@ -63,7 +63,7 @@ nodes:
         #     network: 0.0.0.0/0
 #        mtu: 1500
   - hostname: "c-ovhsbg3"
-    ipAddress: "10.10.8.183"
+    ipAddress: "10.10.8.185"
     installDisk: "/dev/sda"
     machineSpec:
       secureboot: false
@@ -85,7 +85,7 @@ nodes:
         #     network: 0.0.0.0/0
 #        mtu: 1500
   - hostname: "w-ovhsbg1"
-    ipAddress: "10.10.8.184"
+    ipAddress: "10.10.8.182"
     installDisk: "/dev/sda"
     machineSpec:
       secureboot: false
@@ -105,7 +105,7 @@ nodes:
         #     network: 0.0.0.0/0
 #        mtu: 1500
   - hostname: "w-ovhsbg2"
-    ipAddress: "10.10.8.185"
+    ipAddress: "10.10.8.184"
     installDisk: "/dev/sda"
     machineSpec:
       secureboot: false
