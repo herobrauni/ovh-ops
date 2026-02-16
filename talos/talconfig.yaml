@@ -31,6 +31,7 @@ nodes:
         dhcp: true
         vip:
           ip: "10.10.8.10"
+        mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:62:33:de"
         dhcp: false
@@ -39,7 +40,6 @@ nodes:
         # routes:
         #   - gateway: "10.10.8.1"
         #     network: 0.0.0.0/0
-#        mtu: 1500
   - hostname: "c-ovhsbg2"
     ipAddress: "10.10.8.183"
     installDisk: "/dev/sda"
@@ -53,6 +53,7 @@ nodes:
         dhcp: true
         vip:
           ip: "10.10.8.10"
+        mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:cd:d2:35"
         dhcp: false
@@ -61,7 +62,6 @@ nodes:
         # routes:
         #   - gateway: "10.10.8.1"
         #     network: 0.0.0.0/0
-#        mtu: 1500
   - hostname: "c-ovhsbg3"
     ipAddress: "10.10.8.185"
     installDisk: "/dev/sda"
@@ -75,6 +75,7 @@ nodes:
         dhcp: true
         vip:
           ip: "10.10.8.10"
+        mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:68:53:7e"
         dhcp: false
@@ -83,7 +84,6 @@ nodes:
         # routes:
         #   - gateway: "10.10.8.1"
         #     network: 0.0.0.0/0
-#        mtu: 1500
   - hostname: "w-ovhsbg1"
     ipAddress: "10.10.8.182"
     installDisk: "/dev/sda"
@@ -95,6 +95,7 @@ nodes:
       - deviceSelector:
           hardwareAddr: "bc:24:11:5e:a2:fc"
         dhcp: true
+        mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:ce:1c:83"
         dhcp: false
@@ -103,7 +104,6 @@ nodes:
         # routes:
         #   - gateway: "10.10.8.1"
         #     network: 0.0.0.0/0
-#        mtu: 1500
   - hostname: "w-ovhsbg2"
     ipAddress: "10.10.8.184"
     installDisk: "/dev/sda"
@@ -115,6 +115,7 @@ nodes:
       - deviceSelector:
           hardwareAddr: "bc:24:11:5c:6b:b8"
         dhcp: true
+        mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:26:cb:15"
         dhcp: false
@@ -123,7 +124,6 @@ nodes:
         # routes:
         #   - gateway: "10.10.8.1"
         #     network: 0.0.0.0/0
-#        mtu: 1500
   - hostname: "w-ovhsbg3"
     ipAddress: "10.10.8.186"
     installDisk: "/dev/sda"
@@ -135,6 +135,7 @@ nodes:
       - deviceSelector:
           hardwareAddr: "bc:24:11:80:19:ef"
         dhcp: true
+        mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:41:d1:31"
         dhcp: false
@@ -143,7 +144,6 @@ nodes:
         # routes:
         #   - gateway: "10.10.8.1"
         #     network: 0.0.0.0/0
-#        mtu: 1500
 
 # Global patches
 patches:
