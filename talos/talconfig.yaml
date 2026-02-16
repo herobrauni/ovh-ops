@@ -27,7 +27,7 @@ nodes:
     controlPlane: true
     networkInterfaces:
       - deviceSelector:
-          hardwareAddr: "bc:24:11:a1:43:74"
+          hardwareAddr: "bc:24:11:2a:12:fb"
         dhcp: true
         vip:
           ip: "10.10.8.10"
