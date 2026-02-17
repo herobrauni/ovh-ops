@@ -70,5 +70,5 @@ spec:
           - "{{ .Release.Name }}.riki.boo"
           - "{{ .Release.Name }}.brauni.eu"
         parentRefs:
-          - name: envoy-external
+          - name: kgateway-external
             namespace: network
