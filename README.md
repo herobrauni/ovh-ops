@@ -45,8 +45,8 @@ net.ipv4.udp_l3mdev_accept=1
 Apply immediately:
 
 ```bash
-sysctl -w net.ipv4.tcp_l3mdev_accept=1
-sysctl -w net.ipv4.udp_l3mdev_accept=1
+sudo sysctl -w net.ipv4.tcp_l3mdev_accept=1
+sudo sysctl -w net.ipv4.udp_l3mdev_accept=1
 ```
 
 ### IPTables: MASQUERADE on ZeroTier Interface
