@@ -28,3 +28,5 @@ spec:
       enabled: true
     apiServerProxyConfig:
       mode: "true"
+    operatorConfig:
+      hostname: "tailscale-operator-ovh-ops"
