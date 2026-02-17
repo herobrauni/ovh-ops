@@ -1,0 +1,50 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: echo-server
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: echo-server
+  interval: 30m
+  values:
+    controllers:
+      echo-server:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/mendhak/http-https-echo
+              tag: 39
+            env:
+              HTTP_PORT: &port 8080
+              LOG_WITHOUT_NEWLINE: "true"
+              LOG_IGNORE_PATH: "/healthz"
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+              startup:
+                enabled: true
+            resources:
+              requests:
+                cpu: 5m
+                memory: 64M
+              limits:
+                memory: 64M
+    service:
+      app:
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        hostnames:
+          - echo-server.bjw-s.dev
+        parentRefs:
+          - name: kgateway-internal
+            namespace: network
