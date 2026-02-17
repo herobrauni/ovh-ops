@@ -50,7 +50,7 @@ kind: Gateway
 metadata:
   name: envoy-external
   annotations:
-    external-dns.alpha.kubernetes.io/target: &hostname external.riki.boo
+    # external-dns.alpha.kubernetes.io/target: &hostname external.riki.boo
     gatus.home-operations.com/endpoint: |-
       client:
         dns-resolver: tcp://1.1.1.1:53
@@ -60,7 +60,7 @@ spec:
   infrastructure:
     annotations:
       external-dns.alpha.kubernetes.io/hostname: *hostname
-      lbipam.cilium.io/ips: "10.10.8.13"
+      # lbipam.cilium.io/ips: "10.10.8.13"
   listeners:
     - name: http
       protocol: HTTP
@@ -80,45 +80,45 @@ spec:
             name: riki-boo-tls
           - kind: Secret
             name: brauni-eu-tls
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/gateway_v1.json
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: envoy-internal
-  annotations:
-    external-dns.alpha.kubernetes.io/target: &hostname internal.riki.boo
-    gatus.home-operations.com/endpoint: |-
-      group: internal
-      guarded: true
-      ui:
-        hide-hostname: true
-        hide-url: true
-spec:
-  gatewayClassName: envoy
-  infrastructure:
-    annotations:
-      external-dns.alpha.kubernetes.io/hostname: *hostname
-      lbipam.cilium.io/ips: "10.10.8.12"
-  listeners:
-    - name: http
-      protocol: HTTP
-      port: 80
-      allowedRoutes:
-        namespaces:
-          from: Same
-    - name: https
-      protocol: HTTPS
-      port: 443
-      allowedRoutes:
-        namespaces:
-          from: All
-      tls:
-        certificateRefs:
-          - kind: Secret
-            name: riki-boo-tls
-          - kind: Secret
-            name: brauni-eu-tls
+# ---
+# # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/gateway_v1.json
+# apiVersion: gateway.networking.k8s.io/v1
+# kind: Gateway
+# metadata:
+#   name: envoy-internal
+#   annotations:
+#     external-dns.alpha.kubernetes.io/target: &hostname internal.riki.boo
+#     gatus.home-operations.com/endpoint: |-
+#       group: internal
+#       guarded: true
+#       ui:
+#         hide-hostname: true
+#         hide-url: true
+# spec:
+#   gatewayClassName: envoy
+#   infrastructure:
+#     annotations:
+#       external-dns.alpha.kubernetes.io/hostname: *hostname
+#       lbipam.cilium.io/ips: "10.10.8.12"
+#   listeners:
+#     - name: http
+#       protocol: HTTP
+#       port: 80
+#       allowedRoutes:
+#         namespaces:
+#           from: Same
+#     - name: https
+#       protocol: HTTPS
+#       port: 443
+#       allowedRoutes:
+#         namespaces:
+#           from: All
+#       tls:
+#         certificateRefs:
+#           - kind: Secret
+#             name: riki-boo-tls
+#           - kind: Secret
+#             name: brauni-eu-tls
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/backendtrafficpolicy_v1alpha1.json
 apiVersion: gateway.envoyproxy.io/v1alpha1
