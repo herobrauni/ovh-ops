@@ -48,7 +48,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: envoy-external
+  name: kgateway-external
   annotations:
     # external-dns.alpha.kubernetes.io/target: &hostname external.riki.boo
     gatus.home-operations.com/endpoint: |-
@@ -85,7 +85,7 @@ spec:
 # apiVersion: gateway.networking.k8s.io/v1
 # kind: Gateway
 # metadata:
-#   name: envoy-internal
+#   name: kgateway-internal
 #   annotations:
 #     external-dns.alpha.kubernetes.io/target: &hostname internal.riki.boo
 #     gatus.home-operations.com/endpoint: |-
@@ -178,10 +178,10 @@ metadata:
     external-dns.alpha.kubernetes.io/controller: none
 spec:
   parentRefs:
-    - name: envoy-external
+    - name: kgateway-external
       namespace: network
       sectionName: http
-    - name: envoy-internal
+    - name: kgateway-internal
       namespace: network
       sectionName: http
   rules:
