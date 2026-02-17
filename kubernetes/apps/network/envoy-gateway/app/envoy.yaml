@@ -57,9 +57,9 @@ metadata:
       group: external
 spec:
   gatewayClassName: envoy
-  infrastructure:
-    annotations:
-      external-dns.alpha.kubernetes.io/hostname: *hostname
+  # infrastructure:
+    # annotations:
+    #   external-dns.alpha.kubernetes.io/hostname: *hostname
       # lbipam.cilium.io/ips: "10.10.8.13"
   listeners:
     - name: http
