@@ -44,7 +44,7 @@ spec:
     route:
       app:
         hostnames:
-          - echo-server.bjw-s.dev
+          - echo-server.riki.boo
         parentRefs:
-          - name: kgateway-internal
+          - name: kgateway-external
             namespace: network
