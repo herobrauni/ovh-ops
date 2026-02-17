@@ -31,7 +31,7 @@ nodes:
         dhcp: true
         vip:
           ip: "10.10.8.10"
-        mtu: 1370
+        # mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:62:33:de"
         dhcp: false
@@ -53,7 +53,7 @@ nodes:
         dhcp: true
         vip:
           ip: "10.10.8.10"
-        mtu: 1370
+        # mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:cd:d2:35"
         dhcp: false
@@ -75,7 +75,7 @@ nodes:
         dhcp: true
         vip:
           ip: "10.10.8.10"
-        mtu: 1370
+        # mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:68:53:7e"
         dhcp: false
@@ -95,7 +95,7 @@ nodes:
       - deviceSelector:
           hardwareAddr: "bc:24:11:5e:a2:fc"
         dhcp: true
-        mtu: 1370
+        # mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:ce:1c:83"
         dhcp: false
@@ -115,7 +115,7 @@ nodes:
       - deviceSelector:
           hardwareAddr: "bc:24:11:5c:6b:b8"
         dhcp: true
-        mtu: 1370
+        # mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:26:cb:15"
         dhcp: false
@@ -135,7 +135,7 @@ nodes:
       - deviceSelector:
           hardwareAddr: "bc:24:11:80:19:ef"
         dhcp: true
-        mtu: 1370
+        # mtu: 1370
       - deviceSelector:
           hardwareAddr: "bc:24:11:41:d1:31"
         dhcp: false
