@@ -16,14 +16,14 @@ spec:
           app:
             image:
               repository: ghcr.io/steveiliop56/tinyauth
-              tag: v4-distroless
+              tag: v5.0.0-alpha.1@sha256:9cf889b8dceb6ea85c69e1b42a6dc33ce1ca7b4aae1a3807ce3ddf6e494cca74
             envFrom:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
             env:
               TZ: Europe/Berlin
-              APP_URL: https://auth.riki.boo
-              TRUSTED_PROXIES: 10.42.0.0/16
+              TINYAUTH_APPURL: https://auth.riki.boo
+              TINYAUTH_SERVER_TRUSTEDPROXIES: 10.42.0.0/16
             probes:
               liveness: &probes
                 enabled: true
