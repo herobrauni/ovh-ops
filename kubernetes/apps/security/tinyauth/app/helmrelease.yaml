@@ -21,7 +21,6 @@ spec:
               - secretRef:
                   name: "{{ .Release.Name }}-secret"
             env:
-              TZ: Europe/Berlin
               TINYAUTH_APPURL: https://auth.riki.boo
               TINYAUTH_SERVER_TRUSTEDPROXIES: 10.42.0.0/16
               TINYAUTH_RESOURCESDIR: /data/resources
