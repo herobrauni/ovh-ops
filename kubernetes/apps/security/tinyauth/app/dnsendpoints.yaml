@@ -7,7 +7,7 @@ metadata:
     external-dns.custom/type: public
 spec:
   endpoints:
-    - dnsName: auth.riki.boo
+    - dnsName: tinyauth.riki.boo
       recordType: CNAME
       targets:
         - external.riki.boo
