@@ -24,6 +24,9 @@ spec:
               TZ: Europe/Berlin
               TINYAUTH_APPURL: https://auth.riki.boo
               TINYAUTH_SERVER_TRUSTEDPROXIES: 10.42.0.0/16
+              TINYAUTH_RESOURCESDIR: /data/resources
+              TINYAUTH_DATABASEPATH: /data/tinyauth.db
+
             probes:
               liveness: &probes
                 enabled: true
@@ -64,3 +67,11 @@ spec:
         parentRefs:
           - name: envoy-external
             namespace: network
+    persistence:
+      tmpfs:
+        type: emptyDir
+        advancedMounts:
+          tinyauth:
+            app:
+              - path: /data
+                subPath: data
