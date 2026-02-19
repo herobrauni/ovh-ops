@@ -25,6 +25,8 @@ spec:
               TINYAUTH_RESOURCESDIR: /data/resources
               TINYAUTH_DATABASEPATH: /data/tinyauth.db
               TINYAUTH_SERVER_TRUSTEDPROXIES: 10.42.0.0/16
+              TINYAUTH_AUTH_SECURECOOKIE: true
+              TINYAUTH_AUTH_SESSIONEXPIRY: 604800
             envFrom:
               - secretRef:
                   name: tinyauth-secret
@@ -43,7 +45,7 @@ spec:
               readiness: *probes
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false
+              readOnlyRootFilesystem: true
               capabilities: { drop: ["ALL"] }
             resources:
               requests:
@@ -53,11 +55,9 @@ spec:
                 memory: 256Mi
     defaultPodOptions:
       securityContext:
-        fsGroup: 1000
-        fsGroupChangePolicy: "Always"
-        runAsGroup: 1000
-        runAsNonRoot: false
+        runAsNonRoot: true
         runAsUser: 1000
+        runAsGroup: 1000
     service:
       app:
         ports:
