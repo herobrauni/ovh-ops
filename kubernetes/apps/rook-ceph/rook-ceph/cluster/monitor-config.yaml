@@ -5,6 +5,6 @@ metadata:
   name: rook-ceph-mon-endpoints
   namespace: rook-ceph
 data:
-  data: ovhsbg1=172.24.0.1:3300,ovhsbg2=172.24.0.2:3300,ovhsbg3=172.24.0.3:3300
+  data: ovhsbg1=54.38.92.92:3300,ovhsbg2=54.38.94.158:3300,ovhsbg3=54.38.94.150:3300
   mapping: '{"node":{}}'
   maxMonId: "3"
