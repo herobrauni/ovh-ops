@@ -56,7 +56,7 @@ spec:
         fsGroup: 1000
         fsGroupChangePolicy: "Always"
         runAsGroup: 1000
-        runAsNonRoot: true
+        runAsNonRoot: false
         runAsUser: 1000
     service:
       app:
