@@ -9,4 +9,4 @@ components:
 
 resources:
   - ./namespace.yaml
-  - ./tinyauth/ks.yaml
+  # - ./tinyauth/ks.yaml
