@@ -3,7 +3,6 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: tinyauth
-  namespace: security
 spec:
   interval: 1h
   chartRef:
@@ -12,20 +11,23 @@ spec:
   values:
     controllers:
       tinyauth:
+        annotations:
+          reloader.stakater.com/auto: "true"
         containers:
           app:
             image:
               repository: ghcr.io/steveiliop56/tinyauth
               tag: v5.0.0-alpha.1@sha256:9cf889b8dceb6ea85c69e1b42a6dc33ce1ca7b4aae1a3807ce3ddf6e494cca74
-            envFrom:
-              - secretRef:
-                  name: "{{ .Release.Name }}-secret"
+              # tag: v4.1.0@sha256:402ee231204757a3e01b4aaba9e4aa09a3c7c4680a82bc47135632ec8864b8c8
             env:
-              TINYAUTH_APPURL: https://auth.riki.boo
-              TINYAUTH_SERVER_TRUSTEDPROXIES: 10.42.0.0/16
+              TINYAUTH_APPURL: https://tinyauth.riki.boo
+              TINYAUTH_DISABLEANALYTICS: true
               TINYAUTH_RESOURCESDIR: /data/resources
               TINYAUTH_DATABASEPATH: /data/tinyauth.db
-
+              TINYAUTH_SERVER_TRUSTEDPROXIES: 10.42.0.0/16
+            envFrom:
+              - secretRef:
+                  name: tinyauth-secret
             probes:
               liveness: &probes
                 enabled: true
@@ -33,7 +35,7 @@ spec:
                 spec:
                   httpGet:
                     path: /api/healthz
-                    port: 3000
+                    port: &port 3000
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1
@@ -43,31 +45,31 @@ spec:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
               capabilities: { drop: ["ALL"] }
-            # resources:
-            #   requests:
-            #     cpu: 10m
-            #     memory: 64Mi
-            #   limits:
-            #     memory: 256Mi
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
     defaultPodOptions:
       securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: "OnRootMismatch"
+        runAsGroup: 1000
         runAsNonRoot: true
         runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-        fsGroupChangePolicy: Always
     service:
       app:
         ports:
           http:
-            port: 3000
+            port: *port
     route:
       app:
         hostnames:
-          - auth.riki.boo
+          - "{{ .Release.Name }}.riki.boo"
         parentRefs:
           - name: envoy-external
-            namespace: network
+            namespace: networking
     persistence:
       tmpfs:
         type: emptyDir
