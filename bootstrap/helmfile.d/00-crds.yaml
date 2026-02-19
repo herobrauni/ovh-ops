@@ -18,7 +18,7 @@ releases:
     chart: oci://mirror.gcr.io/envoyproxy/gateway-helm
     version: 1.7.0
 
-  - name: external-dns
+  - name: cloudflare-dns
     namespace: network
     chart: oci://ghcr.io/home-operations/charts-mirror/external-dns
     version: 1.20.0
