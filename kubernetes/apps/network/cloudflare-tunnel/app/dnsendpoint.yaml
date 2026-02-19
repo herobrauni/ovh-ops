@@ -14,6 +14,3 @@ spec:
       recordType: CNAME
       targets:
         - ${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com
-    - dnsName: ingress-ext.riki.boo
-      targets:
-        - ${CLOUDFLARE_TUNNEL_ID}.cfargotunnel.com
