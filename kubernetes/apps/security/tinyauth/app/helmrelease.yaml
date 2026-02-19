@@ -22,8 +22,8 @@ spec:
                   name: "{{ .Release.Name }}-secret"
             env:
               TZ: Europe/Berlin
-              TINYAUTH_APPURL: https://auth.riki.boo
-              TINYAUTH_TRUSTEDPROXIES: 10.42.0.0/16
+              APP_URL: https://auth.riki.boo
+              TRUSTED_PROXIES: 10.42.0.0/16
             probes:
               liveness: &probes
                 enabled: true
