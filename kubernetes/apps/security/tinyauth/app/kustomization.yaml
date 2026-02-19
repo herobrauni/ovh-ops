@@ -6,3 +6,4 @@ resources:
   - externalsecret.yaml
   - referencegrant.yaml
   - dnsendpoints.yaml
+  - ocirepository.yaml
