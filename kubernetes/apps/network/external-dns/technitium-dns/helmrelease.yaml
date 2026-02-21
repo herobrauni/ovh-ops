@@ -23,7 +23,7 @@ spec:
             key: *name
     extraArgs:
       # --- Technitium RFC2136 Specifics ---
-      - --rfc2136-host=10.10.15.12
+      - --rfc2136-host=10.100.15.11
       - --rfc2136-port=53
       - --rfc2136-zone=riki.boo
       - --rfc2136-tsig-secret-alg=hmac-sha256
