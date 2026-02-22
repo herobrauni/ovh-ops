@@ -2,7 +2,7 @@
 apiVersion: externaldns.k8s.io/v1alpha1
 kind: DNSEndpoint
 metadata:
-  name: echo
+  name: echo-public
   annotations:
     external-dns.custom/type: public
 spec:
@@ -15,3 +15,16 @@ spec:
       recordType: CNAME
       targets:
         - external.brauni.eu
+---
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: echo-internal
+  annotations:
+    external-dns.custom/type: internal
+spec:
+  endpoints:
+    - dnsName: echo.riki.boo
+      recordType: CNAME
+      targets:
+        - external.riki.boo
