@@ -9,10 +9,10 @@ metadata:
 spec:
   endpoints:
     - dnsName: external.riki.boo
-      recordType: CNAME
+      recordType: A
       targets:
         - 10.10.8.13
     - dnsName: internal.riki.boo
-      recordType: CNAME
+      recordType: A
       targets:
         - 10.10.8.12
