@@ -4,7 +4,7 @@ kind: DNSEndpoint
 metadata:
   name: github-webhook
   annotations:
-    external-dns.custom/type: public
+    external-dns.custom/type: cloudflare
 spec:
   endpoints:
     - dnsName: flux-webhook.riki.boo
