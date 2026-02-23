@@ -5,7 +5,7 @@ kind: DNSEndpoint
 metadata:
   name: local-gateways
   annotations:
-    external-dns.custom/type: internal
+    external-dns.custom/type: technitium
 spec:
   endpoints:
     - dnsName: external.riki.boo
@@ -13,6 +13,14 @@ spec:
       targets:
         - 10.10.8.13
     - dnsName: internal.riki.boo
+      recordType: A
+      targets:
+        - 10.10.8.12
+    - dnsName: external.brauni.eu
+      recordType: A
+      targets:
+        - 10.10.8.13
+    - dnsName: internal.brauni.eu
       recordType: A
       targets:
         - 10.10.8.12

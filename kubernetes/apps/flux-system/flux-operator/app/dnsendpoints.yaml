@@ -4,7 +4,7 @@ kind: DNSEndpoint
 metadata:
   name: flux-operator
   annotations:
-    external-dns.custom/type: internal
+    external-dns.custom/type: technitium
 spec:
   endpoints:
     - dnsName: flux-operator.riki.boo
