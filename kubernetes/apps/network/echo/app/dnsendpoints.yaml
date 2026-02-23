@@ -27,4 +27,4 @@ spec:
     - dnsName: echo.riki.boo
       recordType: CNAME
       targets:
-        - external.riki.boo
+        - internal.riki.boo
