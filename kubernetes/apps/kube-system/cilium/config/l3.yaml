@@ -56,7 +56,7 @@ kind: Service
 metadata:
   name: kube-api
   annotations:
-    lbipam.cilium.io/ips: 10.10.8.50
+    lbipam.cilium.io/ips: 10.10.8.10
 spec:
   type: LoadBalancer
   externalTrafficPolicy: Local
