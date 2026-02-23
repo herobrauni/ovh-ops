@@ -26,6 +26,7 @@ spec:
       - --rfc2136-host=10.100.15.11
       - --rfc2136-port=53
       - --rfc2136-zone=riki.boo
+      - --rfc2136-zone=brauni.eu
       - --rfc2136-tsig-secret-alg=hmac-sha256
       - --rfc2136-tsig-keyname=envoy-internal-dns
       - --rfc2136-tsig-axfr # Required to allow deletions
