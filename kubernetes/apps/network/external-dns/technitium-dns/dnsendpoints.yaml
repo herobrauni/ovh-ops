@@ -8,7 +8,7 @@ metadata:
     external-dns.custom/type: technitium
 spec:
   endpoints:
-    - dnsName: external.riki.boo
+    - dnsName: public.riki.boo
       recordType: A
       targets:
         - 10.10.8.13
@@ -16,7 +16,7 @@ spec:
       recordType: A
       targets:
         - 10.10.8.12
-    - dnsName: external.brauni.eu
+    - dnsName: public.brauni.eu
       recordType: A
       targets:
         - 10.10.8.14

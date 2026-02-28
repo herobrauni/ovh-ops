@@ -10,4 +10,4 @@ spec:
     - dnsName: flux-webhook.riki.boo
       recordType: CNAME
       targets:
-        - external.riki.boo
+        - public.riki.boo

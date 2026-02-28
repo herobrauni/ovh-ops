@@ -77,7 +77,7 @@ spec:
                 originRequest:
                   http2Origin: true
                   keepAliveTimeout: 3600s
-                  originServerName: external.riki.boo
+                  originServerName: public.riki.boo
                   tcpKeepAlive: 7200s
                 service: https://envoy-riki-boo-public.{{ .Release.Namespace }}.svc.cluster.local:443
               - service: http_status:404
