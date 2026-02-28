@@ -1,0 +1,14 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/externaldns.k8s.io/dnsendpoint_v1alpha1.json
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: grafana
+  annotations:
+    dns.scope: all
+spec:
+  endpoints:
+    - dnsName: grafana.riki.boo
+      recordType: CNAME
+      targets:
+        - secure.riki.boo
