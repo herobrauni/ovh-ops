@@ -1,0 +1,31 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: echo-tinyauth
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: echo
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - Cookie
+      - X-Forwarded-For
+      - X-Forwarded-Host
+      - X-Forwarded-Method
+      - X-Forwarded-Proto
+      - X-Forwarded-Uri
+      - User-Agent
+    http:
+      backendRefs:
+        - name: tinyauth
+          port: 3000
+      path: /api/auth/traefik
+      headersToBackend:
+        - Remote-Email
+        - Remote-Groups
+        - Remote-Name
+        - Remote-User

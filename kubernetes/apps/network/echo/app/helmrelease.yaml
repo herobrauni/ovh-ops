@@ -61,21 +61,3 @@ spec:
       app:
         endpoints:
           - port: http
-    route:
-      riki-boo:
-        annotations:
-          gatus.home-operations.com/endpoint: |-
-            conditions: ["[STATUS] == 200"]
-        hostnames:
-          - "{{ .Release.Name }}.riki.boo"
-        parentRefs:
-          - name: envoy-riki-boo-external
-            namespace: network
-            sectionName: https
-      brauni-eu:
-        hostnames:
-          - "{{ .Release.Name }}.brauni.eu"
-        parentRefs:
-          - name: envoy-brauni-eu-external
-            namespace: network
-            sectionName: https
