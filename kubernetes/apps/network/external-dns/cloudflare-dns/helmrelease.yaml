@@ -26,8 +26,7 @@ spec:
       - --cloudflare-proxied
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
-      # Exclude only resources explicitly marked for technitium.
-      - "--annotation-filter=dns.scope notin (technitium)"
+      - "--annotation-filter=dns.scope in (cloudflare,all)"
       # - --gateway-name=kgateway-external
     triggerLoopOnEvent: true
     policy: sync
