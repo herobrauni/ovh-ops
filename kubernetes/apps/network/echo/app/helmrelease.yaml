@@ -61,3 +61,26 @@ spec:
       app:
         endpoints:
           - port: http
+    route:
+      riki:
+        annotations:
+          dns.scope: all
+          external-dns.alpha.kubernetes.io/target: secure.riki.boo
+          gatus.home-operations.com/endpoint: |-
+            conditions: ["[STATUS] == 200"]
+        hostnames:
+          - echo.riki.boo
+        parentRefs:
+          - name: envoy-riki-boo-secure
+            namespace: network
+            sectionName: https
+      brauni:
+        annotations:
+          dns.scope: all
+          external-dns.alpha.kubernetes.io/target: secure.brauni.eu
+        hostnames:
+          - echo.brauni.eu
+        parentRefs:
+          - name: envoy-brauni-eu-secure
+            namespace: network
+            sectionName: https
