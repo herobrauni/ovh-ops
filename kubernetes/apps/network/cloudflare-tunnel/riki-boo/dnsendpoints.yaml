@@ -12,3 +12,7 @@ spec:
       recordType: CNAME
       targets:
         - ${CLOUDFLARE_TUNNEL_RIKI_BOO_ID}.cfargotunnel.com
+    - dnsName: secure.riki.boo
+      recordType: CNAME
+      targets:
+        - ${CLOUDFLARE_TUNNEL_RIKI_BOO_ID}.cfargotunnel.com

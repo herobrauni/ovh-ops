@@ -38,11 +38,11 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: envoy-riki-boo-internal
+  name: envoy-riki-boo-secure
   annotations:
-    # external-dns.alpha.kubernetes.io/target: &hostname internal.riki.boo
+    # external-dns.alpha.kubernetes.io/target: &hostname secure.riki.boo
     gatus.home-operations.com/endpoint: |-
-      group: internal
+      group: secure
       guarded: true
       ui:
         hide-hostname: true
@@ -83,7 +83,7 @@ spec:
     - name: envoy-riki-boo-external
       namespace: network
       sectionName: http
-    - name: envoy-riki-boo-internal
+    - name: envoy-riki-boo-secure
       namespace: network
       sectionName: http
   rules:

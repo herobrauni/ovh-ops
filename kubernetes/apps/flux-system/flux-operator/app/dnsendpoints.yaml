@@ -10,4 +10,4 @@ spec:
     - dnsName: flux-operator.riki.boo
       recordType: CNAME
       targets:
-        - internal.riki.boo
+        - secure.riki.boo
