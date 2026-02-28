@@ -5,9 +5,6 @@ kind: Kustomization
 metadata:
   name: tinyauth
 spec:
-  dependsOn:
-    - name: bitwarden
-    - name: envoy-gateway-common
   interval: 1h
   path: ./kubernetes/apps/network/tinyauth/app
   prune: true
