@@ -35,14 +35,11 @@ spec:
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
 
-      # 'internal' so this instance only processes internal routes
-      - "--annotation-filter=external-dns.custom/type in (technitium)"
-
     triggerLoopOnEvent: true
     policy: sync
     sources:
       - crd
-      # - gateway-httproute
+      - gateway-httproute
     txtOwnerId: internal-dns
     txtPrefix: k8s.
     domainFilters:

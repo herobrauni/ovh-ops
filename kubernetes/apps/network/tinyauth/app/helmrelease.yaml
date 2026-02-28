@@ -20,13 +20,16 @@ spec:
           app:
             image:
               repository: ghcr.io/steveiliop56/tinyauth
-              tag: v4.1.0@sha256:402ee231204757a3e01b4aaba9e4aa09a3c7c4680a82bc47135632ec8864b8c8
+              tag: v5.0.0-alpha.5@sha256:89454e2145c5385a9c9a5bfe6daa62491998314f826c6fe2dc136936e40899be
             env:
               TZ: Europe/Berlin
-              APP_URL: https://auth.riki.boo
-              DISABLE_ANALYTICS: true
-              SECURE_COOKIE: true
-              SESSION_EXPIRY: 604800
+              TINYAUTH_APPURL: https://auth.riki.boo
+              TINYAUTH_DISABLEANALYTICS: true
+              TINYAUTH_AUTH_SECURECOOKIE: true
+              TINYAUTH_AUTH_SESSIONEXPIRY: 604800
+              TINYAUTH_RESOURCESDIR: /data/resources
+              TINYAUTH_DATABASEPATH: /data/tinyauth.db
+              TINYAUTH_SERVER_TRUSTEDPROXIES: 10.42.0.0/16
             envFrom:
               - secretRef:
                   name: tinyauth-secret
@@ -45,7 +48,7 @@ spec:
               readiness: *probes
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false
+              readOnlyRootFilesystem: true
               capabilities: {drop: ["ALL"]}
             resources:
               requests:
@@ -84,3 +87,7 @@ spec:
     persistence:
       data:
         type: emptyDir
+        advancedMounts:
+          tinyauth:
+            app:
+              - path: /data
