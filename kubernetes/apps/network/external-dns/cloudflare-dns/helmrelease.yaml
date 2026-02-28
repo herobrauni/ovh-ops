@@ -26,13 +26,14 @@ spec:
       - --cloudflare-proxied
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
-      - "--annotation-filter=external-dns.custom/type in (cloudflare)"
+      # Exclude only resources explicitly marked for technitium.
+      - "--annotation-filter=dns.scope notin (technitium)"
       # - --gateway-name=kgateway-external
     triggerLoopOnEvent: true
     policy: sync
     sources:
       - crd
-      # - gateway-httproute
+      - gateway-httproute
     txtOwnerId: default
     txtPrefix: k8s.
     domainFilters:
