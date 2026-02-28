@@ -40,7 +40,6 @@ spec:
     policy: sync
     sources:
       - crd
-      - gateway-httproute
     txtOwnerId: internal-dns
     txtPrefix: k8s.
     domainFilters:

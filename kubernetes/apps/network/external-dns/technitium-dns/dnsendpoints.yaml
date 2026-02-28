@@ -6,7 +6,6 @@ metadata:
   name: local-gateways
   annotations:
     dns.scope: technitium
-    external-dns.custom/type: technitium
 spec:
   endpoints:
     - dnsName: public.riki.boo

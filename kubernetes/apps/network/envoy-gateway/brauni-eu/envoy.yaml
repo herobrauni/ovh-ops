@@ -5,8 +5,6 @@ kind: Gateway
 metadata:
   name: envoy-brauni-eu-public
   annotations:
-    dns.scope: technitium
-    # external-dns.alpha.kubernetes.io/target: &hostname public.brauni.eu
     gatus.home-operations.com/endpoint: |-
       client:
         dns-resolver: tcp://1.1.1.1:53
@@ -15,7 +13,6 @@ spec:
   gatewayClassName: envoy
   infrastructure:
     annotations:
-      # external-dns.alpha.kubernetes.io/hostname: *hostname
       lbipam.cilium.io/ips: "10.10.8.14"
   listeners:
     - name: http
@@ -41,8 +38,6 @@ kind: Gateway
 metadata:
   name: envoy-brauni-eu-secure
   annotations:
-    dns.scope: technitium
-    # external-dns.alpha.kubernetes.io/target: &hostname secure.brauni.eu
     gatus.home-operations.com/endpoint: |-
       group: secure
       guarded: true
@@ -53,7 +48,6 @@ spec:
   gatewayClassName: envoy
   infrastructure:
     annotations:
-      # external-dns.alpha.kubernetes.io/hostname: *hostname
       lbipam.cilium.io/ips: "10.10.8.15"
   listeners:
     - name: http
@@ -78,9 +72,6 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: https-redirect-brauni-eu
-  annotations:
-    dns.scope: technitium
-    # external-dns.alpha.kubernetes.io/controller: none
 spec:
   parentRefs:
     - name: envoy-brauni-eu-public

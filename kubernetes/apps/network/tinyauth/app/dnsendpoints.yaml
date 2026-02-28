@@ -3,16 +3,16 @@
 apiVersion: externaldns.k8s.io/v1alpha1
 kind: DNSEndpoint
 metadata:
-  name: cloudflare-tunnel-riki-boo
+  name: tinyauth
   annotations:
-    dns.scope: cloudflare
+    dns.scope: all
 spec:
   endpoints:
-    - dnsName: public.riki.boo
+    - dnsName: auth.riki.boo
       recordType: CNAME
       targets:
-        - ${CLOUDFLARE_TUNNEL_RIKI_BOO_ID}.cfargotunnel.com
-    - dnsName: secure.riki.boo
+        - public.riki.boo
+    - dnsName: auth.brauni.eu
       recordType: CNAME
       targets:
-        - ${CLOUDFLARE_TUNNEL_RIKI_BOO_ID}.cfargotunnel.com
+        - public.brauni.eu

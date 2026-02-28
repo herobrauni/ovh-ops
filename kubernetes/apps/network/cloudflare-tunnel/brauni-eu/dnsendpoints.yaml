@@ -5,7 +5,6 @@ kind: DNSEndpoint
 metadata:
   name: cloudflare-tunnel-brauni-eu
   annotations:
-    external-dns.custom/type: cloudflare
     dns.scope: cloudflare
 spec:
   endpoints:
