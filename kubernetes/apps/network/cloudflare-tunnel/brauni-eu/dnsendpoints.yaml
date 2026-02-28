@@ -12,3 +12,7 @@ spec:
       recordType: CNAME
       targets:
         - ${CLOUDFLARE_TUNNEL_BRAUNI_EU_ID}.cfargotunnel.com
+    - dnsName: secure.brauni.eu
+      recordType: CNAME
+      targets:
+        - ${CLOUDFLARE_TUNNEL_BRAUNI_EU_ID}.cfargotunnel.com

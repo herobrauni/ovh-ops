@@ -63,7 +63,7 @@ spec:
       hostnames:
         - grafana.riki.boo
       parentRefs:
-        - name: envoy-riki-boo-internal
+        - name: envoy-riki-boo-secure
           namespace: network
       rules:
         - backendRefs:

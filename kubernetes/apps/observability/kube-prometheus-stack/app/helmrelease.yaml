@@ -20,7 +20,7 @@ spec:
           hostnames:
             - alertmanager.riki.boo
           parentRefs:
-            - name: envoy-riki-boo-internal
+            - name: envoy-riki-boo-secure
               namespace: network
       alertmanagerSpec:
         alertmanagerConfiguration:
@@ -46,7 +46,7 @@ spec:
           hostnames:
             - prometheus.riki.boo
           parentRefs:
-            - name: envoy-riki-boo-internal
+            - name: envoy-riki-boo-secure
               namespace: network
       prometheusSpec:
         externalUrl: https://prometheus.riki.boo

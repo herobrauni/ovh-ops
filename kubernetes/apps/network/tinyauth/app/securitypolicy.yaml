@@ -3,12 +3,15 @@
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
-  name: echo-tinyauth
+  name: tinyauth-secure-auth
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      name: echo
+      kind: Gateway
+      name: envoy-riki-boo-secure
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: envoy-brauni-eu-secure
   extAuth:
     failOpen: false
     headersToExtAuth:

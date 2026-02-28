@@ -38,11 +38,11 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: envoy-brauni-eu-internal
+  name: envoy-brauni-eu-secure
   annotations:
-    # external-dns.alpha.kubernetes.io/target: &hostname internal.brauni.eu
+    # external-dns.alpha.kubernetes.io/target: &hostname secure.brauni.eu
     gatus.home-operations.com/endpoint: |-
-      group: internal
+      group: secure
       guarded: true
       ui:
         hide-hostname: true
@@ -83,7 +83,7 @@ spec:
     - name: envoy-brauni-eu-external
       namespace: network
       sectionName: http
-    - name: envoy-brauni-eu-internal
+    - name: envoy-brauni-eu-secure
       namespace: network
       sectionName: http
   rules:
