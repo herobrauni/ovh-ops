@@ -79,7 +79,7 @@ spec:
                   keepAliveTimeout: 3600s
                   originServerName: external.brauni.eu
                   tcpKeepAlive: 7200s
-                service: https://envoy-brauni-eu-external.{{ .Release.Namespace }}.svc.cluster.local:443
+                service: https://envoy-brauni-eu-public.{{ .Release.Namespace }}.svc.cluster.local:443
               - service: http_status:404
     persistence:
       config-file:
