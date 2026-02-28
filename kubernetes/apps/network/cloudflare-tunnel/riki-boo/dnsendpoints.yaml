@@ -6,7 +6,6 @@ metadata:
   name: cloudflare-tunnel-riki-boo
   annotations:
     dns.scope: cloudflare
-    external-dns.custom/type: cloudflare
 spec:
   endpoints:
     - dnsName: public.riki.boo

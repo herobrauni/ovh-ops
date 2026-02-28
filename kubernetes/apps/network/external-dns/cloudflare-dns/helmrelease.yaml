@@ -32,7 +32,6 @@ spec:
     policy: sync
     sources:
       - crd
-      - gateway-httproute
     txtOwnerId: default
     txtPrefix: k8s.
     domainFilters:
