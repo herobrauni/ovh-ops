@@ -20,7 +20,7 @@ spec:
           app:
             image:
               repository: ghcr.io/steveiliop56/tinyauth
-              tag: v5.0.0-alpha.5@sha256:89454e2145c5385a9c9a5bfe6daa62491998314f826c6fe2dc136936e40899be
+              tag: v5.0.0-beta.3-distroless@sha256:2de072fead288ec42daa6df48895fc62e17e09c695903121ea15ee60eb61f3eb
             env:
               TZ: Europe/Berlin
               TINYAUTH_APPURL: https://auth.riki.boo
