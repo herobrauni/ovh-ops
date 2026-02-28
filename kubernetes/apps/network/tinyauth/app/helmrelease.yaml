@@ -71,6 +71,9 @@ spec:
             port: *port
     route:
       riki-boo:
+        annotations:
+          dns.scope: all
+          external-dns.alpha.kubernetes.io/target: public.riki.boo
         hostnames:
           - auth.riki.boo
         parentRefs:
@@ -78,6 +81,9 @@ spec:
             namespace: network
             sectionName: https
       brauni-eu:
+        annotations:
+          dns.scope: all
+          external-dns.alpha.kubernetes.io/target: public.brauni.eu
         hostnames:
           - auth.brauni.eu
         parentRefs:
