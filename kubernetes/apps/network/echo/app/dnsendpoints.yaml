@@ -15,20 +15,3 @@ spec:
       recordType: CNAME
       targets:
         - secure.brauni.eu
----
-apiVersion: externaldns.k8s.io/v1alpha1
-kind: DNSEndpoint
-metadata:
-  name: echo-technitium
-  annotations:
-    external-dns.custom/type: technitium
-spec:
-  endpoints:
-    - dnsName: echo.riki.boo
-      recordType: CNAME
-      targets:
-        - secure.riki.boo
-    - dnsName: echo.brauni.eu
-      recordType: CNAME
-      targets:
-        - secure.brauni.eu

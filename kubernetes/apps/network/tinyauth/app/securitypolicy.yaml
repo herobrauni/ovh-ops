@@ -15,20 +15,17 @@ spec:
   extAuth:
     failOpen: false
     headersToExtAuth:
-      - Cookie
       - X-Forwarded-For
       - X-Forwarded-Host
-      - X-Forwarded-Method
       - X-Forwarded-Proto
       - X-Forwarded-Uri
-      - User-Agent
+      - accept
+      - cookie
     http:
       backendRefs:
         - name: tinyauth
           port: 3000
-      path: /api/auth/traefik
+      path: /api/auth/envoy?path=
       headersToBackend:
-        - Remote-Email
-        - Remote-Groups
-        - Remote-Name
-        - Remote-User
+        - Location
+        - Set-Cookie
