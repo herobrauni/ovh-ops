@@ -5,6 +5,7 @@ metadata:
   name: github-webhook
   annotations:
     external-dns.custom/type: cloudflare
+    dns.scope: cloudflare
 spec:
   endpoints:
     - dnsName: flux-webhook.riki.boo

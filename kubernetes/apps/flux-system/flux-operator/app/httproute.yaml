@@ -5,7 +5,7 @@ kind: HTTPRoute
 metadata:
   name: flux-operator
   annotations:
-    dns.scope: all
+    dns.scope: technitium
 spec:
   hostnames:
     - flux-operator.riki.boo

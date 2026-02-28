@@ -5,6 +5,7 @@ metadata:
   name: echo-cloudflare
   annotations:
     external-dns.custom/type: cloudflare
+    dns.scope: cloudflare
 spec:
   endpoints:
     - dnsName: echo.riki.boo

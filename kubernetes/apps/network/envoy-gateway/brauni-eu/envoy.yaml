@@ -5,7 +5,7 @@ kind: Gateway
 metadata:
   name: envoy-brauni-eu-public
   annotations:
-    dns.scope: all
+    dns.scope: technitium
     # external-dns.alpha.kubernetes.io/target: &hostname public.brauni.eu
     gatus.home-operations.com/endpoint: |-
       client:
@@ -41,7 +41,7 @@ kind: Gateway
 metadata:
   name: envoy-brauni-eu-secure
   annotations:
-    dns.scope: all
+    dns.scope: technitium
     # external-dns.alpha.kubernetes.io/target: &hostname secure.brauni.eu
     gatus.home-operations.com/endpoint: |-
       group: secure
@@ -79,7 +79,7 @@ kind: HTTPRoute
 metadata:
   name: https-redirect-brauni-eu
   annotations:
-    dns.scope: all
+    dns.scope: technitium
     # external-dns.alpha.kubernetes.io/controller: none
 spec:
   parentRefs:
