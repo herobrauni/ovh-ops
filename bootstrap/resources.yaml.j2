@@ -10,7 +10,15 @@ stringData:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: cloudflare-tunnel-id-secret
+  name: cloudflare-tunnel-riki-boo-id-secret
   namespace: network
 stringData:
-  CLOUDFLARE_TUNNEL_ID: {{ cloudflare_tunnel_id }}
+  CLOUDFLARE_TUNNEL_RIKI_BOO_ID: {{ cloudflare_tunnel_riki_boo_id }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-tunnel-brauni-eu-id-secret
+  namespace: network
+stringData:
+  CLOUDFLARE_TUNNEL_BRAUNI_EU_ID: {{ cloudflare_tunnel_brauni_eu_id }}
