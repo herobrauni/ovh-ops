@@ -3,17 +3,17 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: cloudflare-tunnel
+  name: cloudflare-tunnel-brauni-eu
 spec:
   chartRef:
     kind: OCIRepository
-    name: cloudflare-tunnel
+    name: cloudflare-tunnel-brauni-eu
   interval: 1h
   driftDetection:
     mode: enabled
   values:
     controllers:
-      cloudflare-tunnel:
+      cloudflare-tunnel-brauni-eu:
         replicas: 2
         strategy: RollingUpdate
         annotations:
@@ -73,20 +73,13 @@ spec:
         data:
           config.yaml: |-
             ingress:
-              - hostname: "*.riki.boo"
-                originRequest:
-                  http2Origin: true
-                  keepAliveTimeout: 3600s
-                  originServerName: external.riki.boo
-                  tcpKeepAlive: 7200s
-                service: https://envoy-external.{{ .Release.Namespace }}.svc.cluster.local:443
               - hostname: "*.brauni.eu"
                 originRequest:
                   http2Origin: true
                   keepAliveTimeout: 3600s
-                  originServerName: external.riki.boo
+                  originServerName: external.brauni.eu
                   tcpKeepAlive: 7200s
-                service: https://envoy-external.{{ .Release.Namespace }}.svc.cluster.local:443
+                service: https://envoy-brauni-eu-external.{{ .Release.Namespace }}.svc.cluster.local:443
               - service: http_status:404
     persistence:
       config-file:

@@ -26,3 +26,4 @@ Thumbs.db
 .decrypted~*
 Brewfile.lock.json
 tmp/
+plans

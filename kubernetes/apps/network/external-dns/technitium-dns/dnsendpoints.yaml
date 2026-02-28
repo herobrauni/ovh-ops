@@ -19,8 +19,8 @@ spec:
     - dnsName: external.brauni.eu
       recordType: A
       targets:
-        - 10.10.8.13
+        - 10.10.8.14
     - dnsName: internal.brauni.eu
       recordType: A
       targets:
-        - 10.10.8.12
+        - 10.10.8.15
