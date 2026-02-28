@@ -71,9 +71,11 @@ spec:
         parentRefs:
           - name: envoy-riki-boo-external
             namespace: network
+            sectionName: https
       brauni-eu:
         hostnames:
           - "{{ .Release.Name }}.brauni.eu"
         parentRefs:
           - name: envoy-brauni-eu-external
             namespace: network
+            sectionName: https
