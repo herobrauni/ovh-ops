@@ -5,7 +5,7 @@ kind: Gateway
 metadata:
   name: envoy-riki-boo-public
   annotations:
-    dns.scope: all
+    dns.scope: technitium
     # external-dns.alpha.kubernetes.io/target: &hostname public.riki.boo
     gatus.home-operations.com/endpoint: |-
       client:
@@ -41,7 +41,7 @@ kind: Gateway
 metadata:
   name: envoy-riki-boo-secure
   annotations:
-    dns.scope: all
+    dns.scope: technitium
     # external-dns.alpha.kubernetes.io/target: &hostname secure.riki.boo
     gatus.home-operations.com/endpoint: |-
       group: secure
@@ -79,7 +79,7 @@ kind: HTTPRoute
 metadata:
   name: https-redirect-riki-boo
   annotations:
-    dns.scope: all
+    dns.scope: technitium
     # external-dns.alpha.kubernetes.io/controller: none
 spec:
   parentRefs:

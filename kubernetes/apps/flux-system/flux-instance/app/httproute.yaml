@@ -5,7 +5,7 @@ kind: HTTPRoute
 metadata:
   name: github-webhook
   annotations:
-    dns.scope: all
+    dns.scope: technitium
     gatus.home-operations.com/endpoint: |-
       conditions: ["[STATUS] == 404"]
 spec:
