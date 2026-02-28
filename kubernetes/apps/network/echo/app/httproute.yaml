@@ -12,10 +12,10 @@ spec:
     - echo.riki.boo
     - echo.brauni.eu
   parentRefs:
-    - name: envoy-riki-boo-external
+    - name: envoy-riki-boo-secure
       namespace: network
       sectionName: https
-    - name: envoy-brauni-eu-external
+    - name: envoy-brauni-eu-secure
       namespace: network
       sectionName: https
   rules:

@@ -10,11 +10,11 @@ spec:
     - dnsName: echo.riki.boo
       recordType: CNAME
       targets:
-        - external.riki.boo
+        - secure.riki.boo
     - dnsName: echo.brauni.eu
       recordType: CNAME
       targets:
-        - external.brauni.eu
+        - secure.brauni.eu
 ---
 apiVersion: externaldns.k8s.io/v1alpha1
 kind: DNSEndpoint
@@ -27,8 +27,8 @@ spec:
     - dnsName: echo.riki.boo
       recordType: CNAME
       targets:
-        - external.riki.boo
+        - secure.riki.boo
     - dnsName: echo.brauni.eu
       recordType: CNAME
       targets:
-        - external.brauni.eu
+        - secure.brauni.eu
