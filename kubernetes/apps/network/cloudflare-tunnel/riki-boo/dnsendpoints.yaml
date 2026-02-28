@@ -8,7 +8,7 @@ metadata:
     external-dns.custom/type: cloudflare
 spec:
   endpoints:
-    - dnsName: external.riki.boo
+    - dnsName: public.riki.boo
       recordType: CNAME
       targets:
         - ${CLOUDFLARE_TUNNEL_RIKI_BOO_ID}.cfargotunnel.com

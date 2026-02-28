@@ -77,7 +77,7 @@ spec:
                 originRequest:
                   http2Origin: true
                   keepAliveTimeout: 3600s
-                  originServerName: external.brauni.eu
+                  originServerName: public.brauni.eu
                   tcpKeepAlive: 7200s
                 service: https://envoy-brauni-eu-public.{{ .Release.Namespace }}.svc.cluster.local:443
               - service: http_status:404

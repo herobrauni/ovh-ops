@@ -8,7 +8,7 @@ metadata:
     external-dns.custom/type: cloudflare
 spec:
   endpoints:
-    - dnsName: external.brauni.eu
+    - dnsName: public.brauni.eu
       recordType: CNAME
       targets:
         - ${CLOUDFLARE_TUNNEL_BRAUNI_EU_ID}.cfargotunnel.com
