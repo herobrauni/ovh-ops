@@ -80,6 +80,16 @@ spec:
     xForwardedFor:
       trustedCIDRs:
         - 10.42.0.0/16
+  headers:
+    earlyRequestHeaders:
+      # Populate headers that tinyauth reads when constructing redirect_uri.
+      set:
+        - name: X-Forwarded-Host
+          value: "%REQ(:AUTHORITY)%"
+        - name: X-Forwarded-Uri
+          value: "%REQ(:PATH)%"
+        - name: X-Forwarded-Proto
+          value: "%REQ(:SCHEME)%"
   http2:
     onInvalidMessage: TerminateStream
   http3: {}
