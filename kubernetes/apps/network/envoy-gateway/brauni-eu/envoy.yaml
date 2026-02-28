@@ -3,13 +3,13 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: envoy-brauni-eu-external
+  name: envoy-brauni-eu-public
   annotations:
     # external-dns.alpha.kubernetes.io/target: &hostname external.brauni.eu
     gatus.home-operations.com/endpoint: |-
       client:
         dns-resolver: tcp://1.1.1.1:53
-      group: external
+      group: public
 spec:
   gatewayClassName: envoy
   infrastructure:
@@ -80,7 +80,7 @@ metadata:
     external-dns.alpha.kubernetes.io/controller: none
 spec:
   parentRefs:
-    - name: envoy-brauni-eu-external
+    - name: envoy-brauni-eu-public
       namespace: network
       sectionName: http
     - name: envoy-brauni-eu-secure

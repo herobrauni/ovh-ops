@@ -11,7 +11,7 @@ spec:
   hostnames:
     - flux-webhook.riki.boo
   parentRefs:
-    - name: envoy-riki-boo-external
+    - name: envoy-riki-boo-public
       namespace: network
   rules:
     - backendRefs:

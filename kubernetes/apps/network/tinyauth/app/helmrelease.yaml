@@ -71,14 +71,14 @@ spec:
         hostnames:
           - auth.riki.boo
         parentRefs:
-          - name: envoy-riki-boo-external
+          - name: envoy-riki-boo-public
             namespace: network
             sectionName: https
       brauni-eu:
         hostnames:
           - auth.brauni.eu
         parentRefs:
-          - name: envoy-brauni-eu-external
+          - name: envoy-brauni-eu-public
             namespace: network
             sectionName: https
     persistence:
