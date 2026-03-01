@@ -521,7 +521,7 @@ spec:
           annotations:
             description: "The Prometheus job that scrapes Ceph MGR is missing, which means Ceph metrics and alerts may not be available. Ensure the rook-ceph-mgr ServiceMonitor is being discovered by Prometheus."
             summary: "The scrape job for Ceph MGR is missing from Prometheus"
-          expr: "absent(up{job=\"rook-ceph-mgr\"})"
+          expr: "absent(up{namespace=\"rook-ceph\",service=\"rook-ceph-mgr-external\"})"
           for: "30s"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.12.1"
