@@ -8,4 +8,4 @@ resources:
   - ./externalsecret.yaml
   - ./storageclass.yaml
   - ./ocirepository.yaml
-  # - ./prometheusrule.yaml
+  - ./prometheusrule.yaml
