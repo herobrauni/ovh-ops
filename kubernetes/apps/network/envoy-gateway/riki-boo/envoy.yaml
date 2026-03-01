@@ -42,7 +42,6 @@ metadata:
       headers:
         Authorization: Basic ${GATUS_TINYAUTH_BASIC_AUTH}
       group: secure
-      guarded: true
       ui:
         hide-hostname: true
         hide-url: true
