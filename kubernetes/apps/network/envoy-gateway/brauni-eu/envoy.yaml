@@ -39,6 +39,9 @@ metadata:
   name: envoy-brauni-eu-secure
   annotations:
     gatus.home-operations.com/endpoint: |-
+      client:
+        headers:
+          Authorization: Basic ${GATUS_TINYAUTH_BASIC_AUTH}
       group: secure
       guarded: true
       ui:

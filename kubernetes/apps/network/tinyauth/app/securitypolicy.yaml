@@ -20,6 +20,7 @@ spec:
       - X-Forwarded-Proto
       - X-Forwarded-Uri
       - accept
+      - authorization
       - cookie
     http:
       backendRefs:
