@@ -1,0 +1,140 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: idlers
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: idlers
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    controllers:
+      idlers:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          mariadb:
+            image:
+              repository: docker.io/library/mariadb
+              tag: 11.8.2
+            command:
+              - /bin/sh
+              - -c
+              - |
+                exec mariadbd --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+            envFrom: &envFrom
+              - secretRef:
+                  name: idlers-secret
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD}
+                  initialDelaySeconds: 10
+                  periodSeconds: 10
+                  timeoutSeconds: 3
+                  failureThreshold: 6
+            restartPolicy: Always
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: { drop: ["ALL"] }
+          wait-for-mariadb:
+            image:
+              repository: docker.io/library/mariadb
+              tag: 11.8.2
+            command:
+              - /bin/sh
+              - -c
+              - |
+                until mariadb-admin ping -h 127.0.0.1 -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}"; do sleep 2; done
+            envFrom: *envFrom
+        containers:
+          app:
+            image:
+              repository: ghcr.io/herobrauni/my-idlers
+              tag: latest@sha256:d341c6d456b5c830271256822c2b5aad543d9c19e543b39352af985d6a564df7
+            env:
+              DB_HOST: 127.0.0.1
+            envFrom: *envFrom
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /
+                    port: &port 8000
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: { drop: ["ALL"] }
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        controller: idlers
+        ports:
+          http:
+            port: *port
+    route:
+      riki-boo:
+        annotations:
+          gatus.home-operations.com/endpoint: |-
+            conditions: ["[STATUS] == 200"]
+            url: https://idlers.riki.boo
+        hostnames:
+          - idlers.riki.boo
+        parentRefs:
+          - name: envoy-riki-boo-public
+            namespace: network
+            sectionName: https
+    persistence:
+      db:
+        existingClaim: "{{ .Release.Name }}"
+        advancedMounts:
+          idlers:
+            mariadb:
+              - path: /var/lib/mysql
+                subPath: mariadb
+      mysqld-run:
+        type: emptyDir
+        medium: Memory
+        sizeLimit: 1Mi
+        advancedMounts:
+          idlers:
+            mariadb:
+              - path: /run/mysqld
+      tmp:
+        type: emptyDir
+        advancedMounts:
+          idlers:
+            app:
+              - path: /tmp
+            mariadb:
+              - path: /tmp
