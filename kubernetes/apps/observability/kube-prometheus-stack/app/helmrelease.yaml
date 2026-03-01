@@ -50,6 +50,7 @@ spec:
               namespace: network
       prometheusSpec:
         externalUrl: https://prometheus.riki.boo
+        serviceDiscoveryRole: EndpointSlice
         podMonitorSelectorNilUsesHelmValues: false
         probeSelectorNilUsesHelmValues: false
         ruleSelectorNilUsesHelmValues: false
