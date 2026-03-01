@@ -9,6 +9,7 @@ spec:
     kind: OCIRepository
     name: volsync
   interval: 1h
+  timeout: 15m
   driftDetection:
     mode: enabled
   values:
