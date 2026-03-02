@@ -26,6 +26,47 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
 
+  - name: Proxmox API pve1
+    group: proxmox
+    url: https://pve1.riki.boo:8006/api2/json/version
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Proxmox API pve2
+    group: proxmox
+    url: https://pve2.riki.boo:8006/api2/json/version
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Proxmox node ICMP pve1
+    group: proxmox
+    url: icmp://pve1.riki.boo
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Proxmox node ICMP pve2
+    group: proxmox
+    url: icmp://pve2.riki.boo
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Proxmox backup endpoint
+    group: proxmox
+    url: tcp://pbs.riki.boo:8007
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[CONNECTED] == true"
+
 metrics: true
 
 storage:

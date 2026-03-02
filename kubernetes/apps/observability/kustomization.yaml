@@ -10,5 +10,8 @@ components:
 resources:
   - ./namespace.yaml
   - ./kube-prometheus-stack/ks.yaml
+  - ./victoria-logs/ks.yaml
+  - ./fluent-bit/ks.yaml
+  - ./proxmox-exporter/ks.yaml
   - ./gatus/ks.yaml
   - ./grafana/ks.yaml

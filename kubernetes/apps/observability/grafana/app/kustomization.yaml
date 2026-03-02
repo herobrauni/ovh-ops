@@ -5,5 +5,17 @@ kind: Kustomization
 resources:
   - ./externalsecret.yaml
   - ./grafanadashboard.yaml
+  - ./proxmox-grafanadashboard.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
+configMapGenerator:
+  - name: proxmox-observability-dashboard
+    files:
+      - proxmox-observability.json=./resources/proxmox-observability.json
+  - name: proxmox-logs-dashboard
+    files:
+      - proxmox-logs.json=./resources/proxmox-logs.json
+generatorOptions:
+  disableNameSuffixHash: true
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled

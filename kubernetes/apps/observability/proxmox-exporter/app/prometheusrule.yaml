@@ -1,0 +1,109 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: proxmox-exporter-rules
+spec:
+  groups:
+    - name: proxmox-exporter.rules
+      rules:
+        - alert: ProxmoxExporterDown
+          expr: |-
+            absent(up{job="proxmox-exporter"}) or up{job="proxmox-exporter"} == 0
+          for: 5m
+          annotations:
+            summary: >-
+              Proxmox exporter target {{ $labels.instance }} is down
+          labels:
+            severity: critical
+
+        - alert: ProxmoxHostUnreachable
+          expr: |-
+            proxmox_node_up == 0
+          for: 5m
+          annotations:
+            summary: >-
+              Proxmox node {{ $labels.node }} is unreachable
+          labels:
+            severity: critical
+
+        - alert: ProxmoxHostCpuHigh
+          expr: |-
+            proxmox_node_cpu_usage_ratio > 0.9
+          for: 15m
+          annotations:
+            summary: >-
+              Proxmox node {{ $labels.node }} has sustained high CPU usage ({{ $value | humanizePercentage }})
+          labels:
+            severity: warning
+
+        - alert: ProxmoxHostMemoryPressure
+          expr: |-
+            (proxmox_node_memory_usage_bytes / proxmox_node_memory_size_bytes) > 0.9
+          for: 15m
+          annotations:
+            summary: >-
+              Proxmox node {{ $labels.node }} has high memory pressure ({{ $value | humanizePercentage }})
+          labels:
+            severity: warning
+
+        - alert: ProxmoxStoragePoolLowFreeSpace
+          expr: |-
+            (proxmox_node_storage_avail_bytes / proxmox_node_storage_size_bytes) < 0.1
+          for: 15m
+          annotations:
+            summary: >-
+              Proxmox storage {{ $labels.storage }} on node {{ $labels.node }} is low on free space ({{ $value | humanizePercentage }})
+          labels:
+            severity: warning
+
+        - alert: ProxmoxStoragePoolCriticalFreeSpace
+          expr: |-
+            (proxmox_node_storage_avail_bytes / proxmox_node_storage_size_bytes) < 0.05
+          for: 10m
+          annotations:
+            summary: >-
+              Proxmox storage {{ $labels.storage }} on node {{ $labels.node }} is critically low on free space ({{ $value | humanizePercentage }})
+          labels:
+            severity: critical
+
+        - alert: ProxmoxZfsPoolDegraded
+          expr: |-
+            max by (instance, pool, role, site) (zfs_pool_state{state=~"DEGRADED|FAULTED"}) > 0
+          for: 5m
+          annotations:
+            summary: >-
+              ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is degraded
+          labels:
+            severity: warning
+
+        - alert: ProxmoxZfsPoolOffline
+          expr: |-
+            max by (instance, pool, role, site) (zfs_pool_state{state=~"OFFLINE|UNAVAIL|REMOVED|SUSPENDED"}) > 0
+          for: 2m
+          annotations:
+            summary: >-
+              ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is offline or unavailable
+          labels:
+            severity: critical
+
+        - alert: ProxmoxZfsPoolLowFreeSpace
+          expr: |-
+            (zfs_pool_free_bytes / zfs_pool_size_bytes) < 0.1
+          for: 15m
+          annotations:
+            summary: >-
+              ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is low on free space ({{ $value | humanizePercentage }})
+          labels:
+            severity: warning
+
+        - alert: ProxmoxSmartCritical
+          expr: |-
+            (smartctl_device_smart_healthy == 0) or (smartctl_device_critical_warning > 0)
+          for: 10m
+          annotations:
+            summary: >-
+              SMART reports critical health for device {{ $labels.device }} on {{ $labels.instance }}
+          labels:
+            severity: critical
