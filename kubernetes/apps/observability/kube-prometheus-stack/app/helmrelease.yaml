@@ -56,6 +56,63 @@ spec:
         ruleSelectorNilUsesHelmValues: false
         scrapeConfigSelectorNilUsesHelmValues: false
         serviceMonitorSelectorNilUsesHelmValues: false
+        additionalScrapeConfigs:
+          - job_name: proxmox-node-exporter
+            scrape_interval: 30s
+            metrics_path: /metrics
+            static_configs:
+              - targets:
+                  - pve1.riki.boo:9100
+                labels:
+                  node: pve1
+                  role: proxmox
+                  site: riki
+              - targets:
+                  - pve2.riki.boo:9100
+                labels:
+                  node: pve2
+                  role: proxmox
+                  site: riki
+            relabel_configs:
+              - source_labels:
+                  - node
+                target_label: instance
+          - job_name: proxmox-storage-exporters
+            scrape_interval: 1m
+            metrics_path: /metrics
+            static_configs:
+              - targets:
+                  - pve1.riki.boo:9134
+                labels:
+                  exporter: zfs
+                  node: pve1
+                  role: proxmox
+                  site: riki
+              - targets:
+                  - pve2.riki.boo:9134
+                labels:
+                  exporter: zfs
+                  node: pve2
+                  role: proxmox
+                  site: riki
+              - targets:
+                  - pve1.riki.boo:9633
+                labels:
+                  exporter: smartctl
+                  node: pve1
+                  role: proxmox
+                  site: riki
+              - targets:
+                  - pve2.riki.boo:9633
+                labels:
+                  exporter: smartctl
+                  node: pve2
+                  role: proxmox
+                  site: riki
+            relabel_configs:
+              - source_labels:
+                  - node
+                target_label: instance
         retention: 14d
         retentionSize: 50GB
         resources:

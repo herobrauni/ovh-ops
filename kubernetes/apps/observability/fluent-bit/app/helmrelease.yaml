@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: fluent-bit
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: fluent-bit
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    kind: DaemonSet
+    service:
+      type: ClusterIP
+      port: 2020
+      labels:
+        app.kubernetes.io/name: fluent-bit
+    metrics:
+      enabled: true
+    config:
+      outputs: |
+        [OUTPUT]
+            Name            es
+            Match           kube.*
+            Host            victoria-logs.observability.svc.cluster.local
+            Port            9428
+            Path            /insert/elasticsearch/
+            Logstash_Format On
+            Logstash_Prefix kubernetes
+            Retry_Limit     False
