@@ -142,12 +142,32 @@ spec:
         data:
           proxy.yaml: |-
             additional_policies:
-              - name: "calendar"
+              - name: default
                 routes:
-                  - endpoint: "/dav/spaces/[^/]+/calendars"
+                  - endpoint: /caldav/
                     backend: "http://127.0.0.1:5232"
-                  - endpoint: "/dav/spaces/[^/]+/addressbooks"
+                    remote_user_header: X-Remote-User
+                    skip_x_access_token: true
+                    additional_headers:
+                      - X-Script-Name: /caldav
+                  - endpoint: /.well-known/caldav
                     backend: "http://127.0.0.1:5232"
+                    remote_user_header: X-Remote-User
+                    skip_x_access_token: true
+                    additional_headers:
+                      - X-Script-Name: /caldav
+                  - endpoint: /carddav/
+                    backend: "http://127.0.0.1:5232"
+                    remote_user_header: X-Remote-User
+                    skip_x_access_token: true
+                    additional_headers:
+                      - X-Script-Name: /carddav
+                  - endpoint: /.well-known/carddav
+                    backend: "http://127.0.0.1:5232"
+                    remote_user_header: X-Remote-User
+                    skip_x_access_token: true
+                    additional_headers:
+                      - X-Script-Name: /carddav
           radicale.config: |-
             [server]
             hosts = 0.0.0.0:5232
@@ -157,3 +177,14 @@ spec:
 
             [storage]
             filesystem_folder = /var/lib/radicale/collections
+            predefined_collections = {
+                "def-addressbook": {
+                   "D:displayname": "Personal Address Book",
+                   "tag": "VADDRESSBOOK"
+                },
+                "def-calendar": {
+                   "C:supported-calendar-component-set": "VEVENT,VJOURNAL,VTODO",
+                   "D:displayname": "Personal Calendar",
+                   "tag": "VCALENDAR"
+                }
+            }
