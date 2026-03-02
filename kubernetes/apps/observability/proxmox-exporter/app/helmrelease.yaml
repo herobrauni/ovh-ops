@@ -29,7 +29,7 @@ spec:
               repository: docker.io/prompve/prometheus-pve-exporter
               tag: 3.5.5
             env:
-              PVE_VERIFY_SSL: "false"
+              PVE_VERIFY_SSL: "true"
               TZ: Europe/Berlin
             envFrom:
               - secretRef:
