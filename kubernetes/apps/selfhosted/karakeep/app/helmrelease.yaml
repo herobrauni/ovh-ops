@@ -55,7 +55,7 @@ spec:
               DATA_DIR: /data
               DISABLE_SIGNUPS: true
               MEILI_ADDR: http://karakeep-meilisearch.selfhosted.svc.cluster.local:7700
-              NEXTAUTH_URL: https://karakeep.brauni.eu
+              NEXTAUTH_URL: https://hoarder.brauni.eu
               DISABLE_NEW_RELEASE_CHECK: true
               COREPACK_INTEGRITY_KEYS: 0
             envFrom:
@@ -181,6 +181,7 @@ spec:
     route:
       app:
         hostnames:
+          - hoarder.brauni.eu
           - karakeep.brauni.eu
         parentRefs:
           - name: envoy-brauni-eu-public
