@@ -58,7 +58,7 @@ spec:
               NEXTAUTH_URL: https://hoarder.brauni.eu
               DISABLE_NEW_RELEASE_CHECK: true
               COREPACK_INTEGRITY_KEYS: 0
-            envFrom:
+            envFrom: &envFrom
               - secretRef:
                   name: karakeep-secret
             probes:
@@ -135,11 +135,7 @@ spec:
               - --experimental-dumpless-upgrade
             env:
               MEILI_NO_ANALYTICS: true
-              MEILI_MASTER_KEY:
-                valueFrom:
-                  secretKeyRef:
-                    name: karakeep-secret
-                    key: meilisearch_master_key
+            envFrom: *envFrom
             resources:
               requests:
                 cpu: 10m
