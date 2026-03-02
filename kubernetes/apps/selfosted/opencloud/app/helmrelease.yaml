@@ -80,8 +80,8 @@ spec:
                   - ALL
           radicale:
             image:
-              repository: docker.io/tomsquest/docker-radicale
-              tag: latest@sha256:5d2c623f2cb306f8cc8d7d95d96f95e7eebf40b7ae366307f95c67df80be1e33
+              repository: docker.io/opencloudeu/radicale
+              tag: latest@sha256:38f824a38414e320b4469a614a98c2e13612158148225c4189e500553eeb78ae
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
