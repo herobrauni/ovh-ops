@@ -26,34 +26,50 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
 
-  - name: Proxmox API pve1
+  - name: Proxmox API ovhsbg1
     group: proxmox
-    url: https://pve1.riki.boo:8006/api2/json/version
+    url: https://54.38.92.92:8006/api2/json/version
     interval: 1m
     client:
       timeout: 10s
     conditions:
       - "[STATUS] == 200"
 
-  - name: Proxmox API pve2
+  - name: Proxmox API ovhsbg2
     group: proxmox
-    url: https://pve2.riki.boo:8006/api2/json/version
+    url: https://54.38.94.158:8006/api2/json/version
     interval: 1m
     client:
       timeout: 10s
     conditions:
       - "[STATUS] == 200"
 
-  - name: Proxmox node ICMP pve1
+  - name: Proxmox API ovhsbg3
     group: proxmox
-    url: icmp://pve1.riki.boo
+    url: https://54.38.94.150:8006/api2/json/version
+    interval: 1m
+    client:
+      timeout: 10s
+    conditions:
+      - "[STATUS] == 200"
+
+  - name: Proxmox node ICMP ovhsbg1
+    group: proxmox
+    url: icmp://54.38.92.92
     interval: 1m
     conditions:
       - "[CONNECTED] == true"
 
-  - name: Proxmox node ICMP pve2
+  - name: Proxmox node ICMP ovhsbg2
     group: proxmox
-    url: icmp://pve2.riki.boo
+    url: icmp://54.38.94.158
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+
+  - name: Proxmox node ICMP ovhsbg3
+    group: proxmox
+    url: icmp://54.38.94.150
     interval: 1m
     conditions:
       - "[CONNECTED] == true"

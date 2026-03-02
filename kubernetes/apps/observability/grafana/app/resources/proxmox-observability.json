@@ -304,7 +304,7 @@
             },
             "targets": [
                 {
-                    "expr": "up{job=~\"proxmox-exporter|proxmox-node-exporter|proxmox-storage-exporters\", role=~\"proxmox|\"}",
+                    "expr": "up{job=~\"proxmox-exporter|proxmox-node-exporter\", role=~\"proxmox|\"}",
                     "legendFormat": "{{job}} {{instance}}",
                     "refId": "A"
                 }
