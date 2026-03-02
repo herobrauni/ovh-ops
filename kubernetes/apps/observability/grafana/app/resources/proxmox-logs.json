@@ -36,7 +36,7 @@
                         "type": "victoriametrics-logs-datasource",
                         "uid": "${DS_VICTORIALOGS}"
                     },
-                    "expr": "kubernetes_host=~\"pve.*\" OR kubernetes_node_name=~\"pve.*\"",
+                    "expr": "kubernetes_host=~\"ovhsbg.*\" OR kubernetes_node_name=~\"ovhsbg.*\"",
                     "queryType": "stats",
                     "refId": "A"
                 }

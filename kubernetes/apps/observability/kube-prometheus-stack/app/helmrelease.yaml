@@ -62,51 +62,21 @@ spec:
             metrics_path: /metrics
             static_configs:
               - targets:
-                  - pve1.riki.boo:9100
+                  - 54.38.92.92:9100
                 labels:
-                  node: pve1
+                  node: ovhsbg1
                   role: proxmox
                   site: riki
               - targets:
-                  - pve2.riki.boo:9100
+                  - 54.38.94.158:9100
                 labels:
-                  node: pve2
-                  role: proxmox
-                  site: riki
-            relabel_configs:
-              - source_labels:
-                  - node
-                target_label: instance
-          - job_name: proxmox-storage-exporters
-            scrape_interval: 1m
-            metrics_path: /metrics
-            static_configs:
-              - targets:
-                  - pve1.riki.boo:9134
-                labels:
-                  exporter: zfs
-                  node: pve1
+                  node: ovhsbg2
                   role: proxmox
                   site: riki
               - targets:
-                  - pve2.riki.boo:9134
+                  - 54.38.94.150:9100
                 labels:
-                  exporter: zfs
-                  node: pve2
-                  role: proxmox
-                  site: riki
-              - targets:
-                  - pve1.riki.boo:9633
-                labels:
-                  exporter: smartctl
-                  node: pve1
-                  role: proxmox
-                  site: riki
-              - targets:
-                  - pve2.riki.boo:9633
-                labels:
-                  exporter: smartctl
-                  node: pve2
+                  node: ovhsbg3
                   role: proxmox
                   site: riki
             relabel_configs:
