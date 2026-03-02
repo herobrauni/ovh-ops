@@ -58,11 +58,6 @@ spec:
               OC_INSECURE: false
               OC_LOG_LEVEL: info
               OC_URL: https://opencloud.brauni.eu
-              COLLABORA_DOMAIN: collabora.brauni.eu
-              GATEWAY_GRPC_ADDR: 0.0.0.0:9142
-              NATS_NATS_HOST: 0.0.0.0
-              FRONTEND_APP_HANDLER_SECURE_VIEW_APP_ADDR: eu.opencloud.api.collaboration
-              GRAPH_AVAILABLE_ROLES: OpenCloud Admin,Space Admin,User,Guest,OpenCloud Editor
               PROXY_TLS: false
             probes:
               liveness:
@@ -83,34 +78,6 @@ spec:
               capabilities:
                 drop:
                   - ALL
-          collaboration:
-            image:
-              repository: docker.io/opencloudeu/opencloud-rolling
-              tag: 5.1.0@sha256:6229e937e32e5e114ddac81af7e851fb9346a818c58a36b784529d5503530f93
-            command:
-              - opencloud
-              - collaboration
-              - server
-            env:
-              COLLABORATION_APP_ADDR: https://collabora.brauni.eu
-              COLLABORATION_APP_ICON: https://opencloud.brauni.eu/apps/files/img/app.svg
-              COLLABORATION_APP_INSECURE: false
-              COLLABORATION_APP_NAME: CollaboraOnline
-              COLLABORATION_CS3API_DATAGATEWAY_INSECURE: false
-              COLLABORATION_GRPC_ADDR: 0.0.0.0:9301
-              COLLABORATION_HTTP_ADDR: 0.0.0.0:9300
-              COLLABORATION_LOG_LEVEL: info
-              COLLABORATION_WOPI_SRC: https://wopiserver.brauni.eu
-              MICRO_REGISTRY: nats-js-kv
-              MICRO_REGISTRY_ADDRESS: 127.0.0.1:9233
-              OC_URL: https://opencloud.brauni.eu
-              PRODUCT: Collabora
-            securityContext:
-              allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
-              capabilities:
-                drop:
-                  - ALL
           radicale:
             image:
               repository: docker.io/tomsquest/docker-radicale
@@ -121,50 +88,12 @@ spec:
               capabilities:
                 drop:
                   - ALL
-          collabora:
-            image:
-              repository: docker.io/collabora/code
-              tag: 24.04.13.2.1@sha256:f4e34e4ee70f4462a37f7f97fd7f44fe4b8d8f4845de32a22ce0ff58832277ff
-            env:
-              DONT_GEN_SSL_CERT: "YES"
-              domain: collabora\\.brauni\\.eu
-              extra_params: --o:ssl.enable=false --o:ssl.termination=true --o:logging.level=warning --o:net.frame_ancestors=https://*.brauni.eu
-              username:
-                valueFrom:
-                  secretKeyRef:
-                    name: opencloud-secret
-                    key: collabora-username
-              password:
-                valueFrom:
-                  secretKeyRef:
-                    name: opencloud-secret
-                    key: collabora-password
-            securityContext:
-              allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false
-              runAsNonRoot: false
-              capabilities:
-                add:
-                  - MKNOD
-                  - SYS_CHROOT
-                  - FOWNER
-                  - CHOWN
     service:
       app:
         controller: opencloud
         ports:
           http:
             port: 9200
-      wopiserver:
-        controller: opencloud
-        ports:
-          http:
-            port: 9300
-      collabora:
-        controller: opencloud
-        ports:
-          http:
-            port: 9980
     persistence:
       data:
         existingClaim: opencloud
@@ -205,20 +134,6 @@ spec:
           - name: envoy-brauni-eu-public
             namespace: network
             sectionName: https
-      collabora:
-        hostnames:
-          - collabora.brauni.eu
-        parentRefs:
-          - name: envoy-brauni-eu-public
-            namespace: network
-            sectionName: https
-      wopiserver:
-        hostnames:
-          - wopiserver.brauni.eu
-        parentRefs:
-          - name: envoy-brauni-eu-public
-            namespace: network
-            sectionName: https
     configMaps:
       config:
         data:
@@ -230,14 +145,6 @@ spec:
                     backend: "http://127.0.0.1:5232"
                   - endpoint: "/dav/spaces/[^/]+/addressbooks"
                     backend: "http://127.0.0.1:5232"
-              - name: "collaboration"
-                routes:
-                  - endpoint: "/cool"
-                    backend: "http://127.0.0.1:9300"
-                  - endpoint: "/browser"
-                    backend: "http://127.0.0.1:9300"
-                  - endpoint: "/hosting/discovery"
-                    backend: "http://127.0.0.1:9300"
           radicale.config: |-
             [server]
             hosts = 0.0.0.0:5232

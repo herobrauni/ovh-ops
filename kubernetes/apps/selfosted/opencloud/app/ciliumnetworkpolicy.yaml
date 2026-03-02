@@ -18,7 +18,3 @@ spec:
         - ports:
             - port: "9200"
               protocol: TCP
-            - port: "9300"
-              protocol: TCP
-            - port: "9980"
-              protocol: TCP
