@@ -26,27 +26,9 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
 
-  - name: Proxmox API ovhsbg1
+  - name: proxmox webui
     group: proxmox
-    url: https://54.38.92.92:8006/api2/json/version
-    interval: 1m
-    client:
-      timeout: 10s
-    conditions:
-      - "[STATUS] == 200"
-
-  - name: Proxmox API ovhsbg2
-    group: proxmox
-    url: https://54.38.94.158:8006/api2/json/version
-    interval: 1m
-    client:
-      timeout: 10s
-    conditions:
-      - "[STATUS] == 200"
-
-  - name: Proxmox API ovhsbg3
-    group: proxmox
-    url: https://54.38.94.150:8006/api2/json/version
+    url: https://ovhsbg.brauni.dev
     interval: 1m
     client:
       timeout: 10s
@@ -71,15 +53,6 @@ endpoints:
     group: proxmox
     url: icmp://54.38.94.150
     interval: 1m
-    conditions:
-      - "[CONNECTED] == true"
-
-  - name: Proxmox backup endpoint
-    group: proxmox
-    url: tcp://pbs.riki.boo:8007
-    interval: 1m
-    client:
-      timeout: 10s
     conditions:
       - "[CONNECTED] == true"
 
