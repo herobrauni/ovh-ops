@@ -26,6 +26,9 @@ The repo is YAML-heavy and declarative.
 - Keep file names lowercase and hyphenated; use common manifest names like `kustomization.yaml`, `helmrelease.yaml`, and `externalsecret.yaml`.
 - Preserve `.yamlfmt.yaml` conventions when formatting YAML documents.
 
+## App Exposure Rule
+- If an app has a URL and a web UI, always create a `DNSEndpoint` manifest and include it in that app's `kustomization.yaml`.
+
 ## Testing Guidelines
 Primary validation is CI-based:
 - `.github/workflows/flux-local.yaml` runs Flux Local `test` and `diff` for PRs touching `kubernetes/**`.
