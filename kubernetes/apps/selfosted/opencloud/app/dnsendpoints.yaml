@@ -16,3 +16,11 @@ spec:
       recordType: CNAME
       targets:
         - public.brauni.eu
+    - dnsName: collabora.brauni.eu
+      recordType: CNAME
+      targets:
+        - public.brauni.eu
+    - dnsName: wopiserver.brauni.eu
+      recordType: CNAME
+      targets:
+        - public.brauni.eu
