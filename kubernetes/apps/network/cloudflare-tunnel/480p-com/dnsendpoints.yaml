@@ -1,0 +1,14 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/externaldns.k8s.io/dnsendpoint_v1alpha1.json
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: cloudflare-tunnel-480p-com
+  annotations:
+    dns.scope: cloudflare
+spec:
+  endpoints:
+    - dnsName: public.480p.com
+      recordType: CNAME
+      targets:
+        - ${CLOUDFLARE_TUNNEL_480P_COM_ID}.cfargotunnel.com

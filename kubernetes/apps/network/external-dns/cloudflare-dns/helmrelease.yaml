@@ -37,6 +37,8 @@ spec:
     domainFilters:
       - riki.boo
       - brauni.eu
+      - 480p.com
+      - brauni.dev
     serviceMonitor:
       enabled: true
     podAnnotations:

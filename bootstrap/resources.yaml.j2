@@ -22,3 +22,19 @@ metadata:
   namespace: network
 stringData:
   CLOUDFLARE_TUNNEL_BRAUNI_EU_ID: {{ cloudflare_tunnel_brauni_eu_id }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-tunnel-480p-com-id-secret
+  namespace: network
+stringData:
+  CLOUDFLARE_TUNNEL_480P_COM_ID: {{ cloudflare_tunnel_480p_com_id }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-tunnel-brauni-dev-id-secret
+  namespace: network
+stringData:
+  CLOUDFLARE_TUNNEL_BRAUNI_DEV_ID: {{ cloudflare_tunnel_brauni_dev_id }}

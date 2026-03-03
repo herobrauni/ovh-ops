@@ -20,6 +20,8 @@ spec:
           dnsZones:
             - riki.boo
             - brauni.eu
+            - 480p.com
+            - brauni.dev
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cert-manager.io/clusterissuer_v1.json
 apiVersion: cert-manager.io/v1
@@ -42,6 +44,8 @@ spec:
           dnsZones:
             - riki.boo
             - brauni.eu
+            - 480p.com
+            - brauni.dev
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
