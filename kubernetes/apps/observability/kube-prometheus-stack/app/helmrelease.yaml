@@ -14,14 +14,6 @@ spec:
   values:
     cleanPrometheusOperatorObjectNames: true
     alertmanager:
-      route:
-        main:
-          enabled: true
-          hostnames:
-            - alertmanager.riki.boo
-          parentRefs:
-            - name: envoy-riki-boo-secure
-              namespace: network
       alertmanagerSpec:
         alertmanagerConfiguration:
           name: alertmanager
@@ -40,14 +32,6 @@ spec:
     kubeProxy:
       enabled: false
     prometheus:
-      route:
-        main:
-          enabled: true
-          hostnames:
-            - prometheus.riki.boo
-          parentRefs:
-            - name: envoy-riki-boo-secure
-              namespace: network
       prometheusSpec:
         externalUrl: https://prometheus.riki.boo
         serviceDiscoveryRole: EndpointSlice

@@ -32,42 +32,6 @@ spec:
           - kind: Secret
             name: brauni-eu-tls
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/gateway_v1.json
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: envoy-brauni-eu-secure
-  annotations:
-    gatus.home-operations.com/endpoint: |-
-      headers:
-        Authorization: Basic ${GATUS_TINYAUTH_BASIC_AUTH}
-      group: secure
-      ui:
-        hide-hostname: true
-        hide-url: true
-spec:
-  gatewayClassName: envoy
-  infrastructure:
-    annotations:
-      lbipam.cilium.io/ips: "10.10.8.15"
-  listeners:
-    - name: http
-      protocol: HTTP
-      port: 80
-      allowedRoutes:
-        namespaces:
-          from: Same
-    - name: https
-      protocol: HTTPS
-      port: 443
-      allowedRoutes:
-        namespaces:
-          from: All
-      tls:
-        certificateRefs:
-          - kind: Secret
-            name: brauni-eu-tls
----
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -76,9 +40,6 @@ metadata:
 spec:
   parentRefs:
     - name: envoy-brauni-eu-public
-      namespace: network
-      sectionName: http
-    - name: envoy-brauni-eu-secure
       namespace: network
       sectionName: http
   rules:

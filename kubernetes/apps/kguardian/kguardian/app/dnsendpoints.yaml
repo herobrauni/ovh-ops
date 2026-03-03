@@ -11,4 +11,4 @@ spec:
     - dnsName: kguardian.riki.boo
       recordType: CNAME
       targets:
-        - secure.riki.boo
+        - public.riki.boo

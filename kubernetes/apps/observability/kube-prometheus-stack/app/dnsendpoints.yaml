@@ -11,8 +11,8 @@ spec:
     - dnsName: alertmanager.riki.boo
       recordType: CNAME
       targets:
-        - secure.riki.boo
+        - public.riki.boo
     - dnsName: prometheus.riki.boo
       recordType: CNAME
       targets:
-        - secure.riki.boo
+        - public.riki.boo

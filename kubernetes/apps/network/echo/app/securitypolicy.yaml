@@ -1,0 +1,60 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: echo-riki-boo-auth
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: echo-riki-boo
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - X-Forwarded-For
+      - X-Forwarded-Host
+      - X-Forwarded-Proto
+      - X-Forwarded-Uri
+      - accept
+      - authorization
+      - cookie
+    http:
+      backendRefs:
+        - name: tinyauth
+          namespace: network
+          port: 3000
+      path: /api/auth/envoy?path=
+      headersToBackend:
+        - Location
+        - Set-Cookie
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: echo-brauni-eu-auth
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: echo-brauni-eu
+  extAuth:
+    failOpen: false
+    headersToExtAuth:
+      - X-Forwarded-For
+      - X-Forwarded-Host
+      - X-Forwarded-Proto
+      - X-Forwarded-Uri
+      - accept
+      - authorization
+      - cookie
+    http:
+      backendRefs:
+        - name: tinyauth
+          namespace: network
+          port: 3000
+      path: /api/auth/envoy?path=
+      headersToBackend:
+        - Location
+        - Set-Cookie

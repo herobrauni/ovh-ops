@@ -6,7 +6,8 @@ metadata:
   name: victoria-logs
 spec:
   dependsOn:
-    - name: kube-prometheus-stack
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
   interval: 1h
   path: ./kubernetes/apps/observability/victoria-logs/app
   prune: true
@@ -16,4 +17,3 @@ spec:
     namespace: flux-system
   targetNamespace: observability
   wait: false
-
