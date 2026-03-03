@@ -6,6 +6,8 @@ metadata:
   name: envoy-riki-boo-public
   annotations:
     gatus.home-operations.com/endpoint: |-
+      headers:
+        Authorization: Basic ${GATUS_TINYAUTH_BASIC_AUTH}
       client:
         dns-resolver: tcp://1.1.1.1:53
       group: public
