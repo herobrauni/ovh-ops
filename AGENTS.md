@@ -30,6 +30,14 @@ The repo is YAML-heavy and declarative.
 ## App Exposure Rule
 - If an app has a URL and a web UI, always create a `DNSEndpoint` manifest and include it in that app's `kustomization.yaml`.
 
+## Upstream Template Preference
+- Prefer implementations that stay as close as possible to upstream patterns used in local template repos `./tmp/bjw-s` and `./tmp/onedr0p`.
+- When adding or changing apps/features in this repo, use those two repos as primary structural and naming references unless this repository has an explicit conflicting requirement.
+- Common expected adaptations from those upstream templates in this repo:
+    - URLs and domains.
+    - Password/secret source: use Bitwarden resources instead of 1Password equivalents.
+    - Envoy names.
+
 ## Testing Guidelines
 Primary validation is CI-based:
 - `.github/workflows/flux-local.yaml` runs Flux Local `test` and `diff` for PRs touching `kubernetes/**`.
