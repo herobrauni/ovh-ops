@@ -85,6 +85,15 @@ spec:
       fullnameOverride: node-exporter
     kube-state-metrics:
       fullnameOverride: kube-state-metrics
+      prometheus:
+        monitor:
+          honorLabels: false
+          metricRelabelings:
+            # kube_pod_tolerations is known to be high-cardinality and has shown
+            # intermittent duplicate-sample ingestion issues in this cluster.
+            - sourceLabels: [__name__]
+              regex: kube_pod_tolerations
+              action: drop
     grafana:
       enabled: false
       forceDeployDashboards: true
