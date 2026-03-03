@@ -25,7 +25,7 @@ spec:
           app:
             image:
               repository: docker.io/victoriametrics/victoria-logs
-              tag: v1.22.0-victorialogs
+              tag: v1.24.0-victorialogs
             args:
               - -httpListenAddr=:9428
               - -retentionPeriod=14d
