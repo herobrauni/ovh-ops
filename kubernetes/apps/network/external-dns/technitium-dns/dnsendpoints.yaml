@@ -16,3 +16,7 @@ spec:
       recordType: A
       targets:
         - 10.10.8.14
+    - dnsName: public.brauni.dev
+      recordType: A
+      targets:
+        - 10.10.8.16

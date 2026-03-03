@@ -8,7 +8,7 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: idlers.riki.boo
+    - dnsName: idlers.brauni.dev
       recordType: CNAME
       targets:
-        - public.riki.boo
+        - public.brauni.dev

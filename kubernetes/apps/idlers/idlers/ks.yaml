@@ -18,7 +18,7 @@ spec:
       namespace: external-secrets
     - name: volsync
       namespace: volsync-system
-    - name: envoy-gateway-riki-boo
+    - name: envoy-gateway-brauni-dev
       namespace: network
   path: ./kubernetes/apps/idlers/idlers/app
   prune: true
