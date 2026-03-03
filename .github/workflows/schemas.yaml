@@ -21,7 +21,7 @@ permissions:
 jobs:
   main:
     name: Schemas
-    runs-on: home-ops-runner
+    runs-on: ovh-ops-runner
     permissions:
       contents: read
       packages: write
