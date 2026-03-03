@@ -6,4 +6,6 @@ resources:
   - ./dnsendpoints.yaml
   - ./grafanadatasource.yaml
   - ./grafana.yaml
+  - ./httproute.yaml
+  - ./securitypolicy.yaml
   - ./servicemonitor.yaml

@@ -6,5 +6,5 @@ resources:
   - ./dnsendpoints.yaml
   - ./helmrelease.yaml
   - ./externalsecret.yaml
-  - ./securitypolicy.yaml
+  - ./referencegrant.yaml
   - ./ocirepository.yaml

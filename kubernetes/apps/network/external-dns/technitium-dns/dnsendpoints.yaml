@@ -12,15 +12,7 @@ spec:
       recordType: A
       targets:
         - 10.10.8.13
-    - dnsName: secure.riki.boo
-      recordType: A
-      targets:
-        - 10.10.8.12
     - dnsName: public.brauni.eu
       recordType: A
       targets:
         - 10.10.8.14
-    - dnsName: secure.brauni.eu
-      recordType: A
-      targets:
-        - 10.10.8.15

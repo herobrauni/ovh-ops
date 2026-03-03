@@ -8,8 +8,9 @@ spec:
   hostnames:
     - flux-operator.riki.boo
   parentRefs:
-    - name: envoy-riki-boo-secure
+    - name: envoy-riki-boo-public
       namespace: network
+      sectionName: https
   rules:
     - backendRefs:
         - name: flux-operator

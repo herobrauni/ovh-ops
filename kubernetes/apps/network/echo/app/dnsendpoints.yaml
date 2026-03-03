@@ -11,8 +11,8 @@ spec:
     - dnsName: echo.riki.boo
       recordType: CNAME
       targets:
-        - secure.riki.boo
+        - public.riki.boo
     - dnsName: echo.brauni.eu
       recordType: CNAME
       targets:
-        - secure.brauni.eu
+        - public.brauni.eu

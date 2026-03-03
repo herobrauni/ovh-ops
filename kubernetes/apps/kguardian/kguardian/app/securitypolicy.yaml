@@ -3,15 +3,12 @@
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
-  name: tinyauth-secure-auth
+  name: kguardian-auth
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io
-      kind: Gateway
-      name: envoy-riki-boo-secure
-    - group: gateway.networking.k8s.io
-      kind: Gateway
-      name: envoy-brauni-eu-secure
+      kind: HTTPRoute
+      name: kguardian
   extAuth:
     failOpen: false
     headersToExtAuth:
@@ -25,6 +22,7 @@ spec:
     http:
       backendRefs:
         - name: tinyauth
+          namespace: network
           port: 3000
       path: /api/auth/envoy?path=
       headersToBackend:

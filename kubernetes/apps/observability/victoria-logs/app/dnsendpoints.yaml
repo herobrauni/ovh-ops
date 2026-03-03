@@ -3,12 +3,12 @@
 apiVersion: externaldns.k8s.io/v1alpha1
 kind: DNSEndpoint
 metadata:
-  name: grafana
+  name: victoria-logs
   annotations:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: grafana.riki.boo
+    - dnsName: victoria-logs.riki.boo
       recordType: CNAME
       targets:
         - public.riki.boo
