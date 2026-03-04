@@ -9,5 +9,6 @@ components:
 
 resources:
   - ./namespace.yaml
+  - ./homepage/ks.yaml
   - ./opencloud/ks.yaml
   - ./karakeep/ks.yaml
