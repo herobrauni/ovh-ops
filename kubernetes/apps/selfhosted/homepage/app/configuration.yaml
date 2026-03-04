@@ -105,6 +105,10 @@ data:
             href: https://flux-operator.riki.boo
             siteMonitor: https://flux-operator.riki.boo
             icon: flux-cd.png
+        - Kopia:
+            href: https://kopia.riki.boo
+            siteMonitor: https://kopia.riki.boo
+            icon: mdi-folder-sync
 
     - Development:
         - ovh-ops Pull Requests:
