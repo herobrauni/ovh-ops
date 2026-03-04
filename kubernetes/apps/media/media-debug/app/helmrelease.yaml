@@ -60,11 +60,11 @@ spec:
             readOnly: true
             volumeAttributes:
               remote: 
-              remotePath: "/"
+              remotePath: "/__all__"
               configData: |
                 []
                 type = webdav
-                url = http://.media.svc.cluster.local:8282/webdav/realdebrid
+                url = http://.media.svc.cluster.local:8282/webdav
                 vendor = other
         globalMounts:
           - path: /aio/
