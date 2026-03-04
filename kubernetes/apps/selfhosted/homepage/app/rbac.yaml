@@ -25,6 +25,14 @@ rules:
       - get
       - list
   - apiGroups:
+      - extensions
+      - networking.k8s.io
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+  - apiGroups:
       - metrics.k8s.io
     resources:
       - nodes

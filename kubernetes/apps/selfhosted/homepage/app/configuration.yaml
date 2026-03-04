@@ -5,7 +5,7 @@ metadata:
   name: homepage-config
 data:
   settings.yaml: |
-    title: Home Ops
+    title: ovh-ops
     theme: dark
     color: slate
     headerStyle: clean
@@ -27,6 +27,9 @@ data:
       Platform:
         style: column
         icon: mdi-kubernetes
+      Development:
+        style: column
+        icon: mdi-source-pull
       Network:
         style: column
         icon: mdi-router-network
@@ -53,11 +56,11 @@ data:
         - OpenCloud:
             href: https://opencloud.brauni.dev
             siteMonitor: https://opencloud.brauni.dev
-            icon: opencloud.png
+            icon: https://opencloud.brauni.dev/themes/opencloud/assets/logo.svg
         - Files:
             href: https://files.brauni.dev
             siteMonitor: https://files.brauni.dev
-            icon: opencloud.png
+            icon: https://opencloud.brauni.dev/themes/opencloud/assets/logo.svg
         - Karakeep:
             href: https://karakeep.brauni.dev
             siteMonitor: https://karakeep.brauni.dev
@@ -107,6 +110,25 @@ data:
             siteMonitor: https://flux-operator.riki.boo
             icon: flux-cd.png
 
+    - Development:
+        - ovh-ops Pull Requests:
+            href: https://github.com/herobrauni/ovh-ops/pulls
+            icon: github-light.png
+            description: Open pull requests
+            widget:
+              type: customapi
+              url: https://api.github.com/repos/herobrauni/ovh-ops/pulls?state=open&sort=updated&direction=desc&per_page=5
+              headers:
+                User-Agent: homepage-dashboard
+                Accept: application/vnd.github+json
+              refreshInterval: 300000
+              display: dynamic-list
+              mappings:
+                name: title
+                label: updated_at
+                format: relativeDate
+                target: https://github.com/herobrauni/ovh-ops/pull/{number}
+
     - Network:
         - TinyAuth:
             href: https://auth.riki.boo
@@ -119,7 +141,13 @@ data:
             - icon: github.png
               href: https://github.com/herobrauni/ovh-ops
 
+  custom.css: |
+
+  custom.js: |
+
   docker.yaml: ""
+
+  proxmox.yaml: ""
 
   kubernetes.yaml: |
     mode: cluster
