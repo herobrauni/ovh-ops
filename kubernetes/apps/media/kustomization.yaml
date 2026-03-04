@@ -11,3 +11,4 @@ resources:
   - ./namespace.yaml
   - ./aio/ks.yaml
   - .//ks.yaml
+  - ./media-debug/ks.yaml
