@@ -16,6 +16,8 @@ spec:
       namespace: rook-ceph
     - name: aio-symlinks
       namespace: media
+    - name: csi-rclone
+      namespace: csi-rclone
   interval: 1h
   path: ./kubernetes/apps/media/decypharr/app
   postBuild:
