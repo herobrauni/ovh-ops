@@ -6,9 +6,9 @@ metadata:
   name: decypharr
 spec:
   hostnames:
-    - decypharr.brauni.dev
+    - decypharr.riki.boo
   parentRefs:
-    - name: envoy-brauni-dev-public
+    - name: envoy-riki-boo-public
       namespace: network
       sectionName: https
   rules:

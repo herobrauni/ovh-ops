@@ -8,7 +8,7 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: decypharr.brauni.dev
+    - dnsName: decypharr.riki.boo
       recordType: CNAME
       targets:
-        - public.brauni.dev
+        - public.riki.boo
