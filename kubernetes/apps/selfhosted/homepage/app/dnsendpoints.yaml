@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/externaldns.k8s.io/dnsendpoint_v1alpha1.json
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: homepage
+  annotations:
+    dns.scope: all
+spec:
+  endpoints:
+    - dnsName: homepage.brauni.dev
+      recordType: CNAME
+      targets:
+        - public.brauni.dev
+    - dnsName: home.brauni.dev
+      recordType: CNAME
+      targets:
+        - public.brauni.dev
+    - dnsName: homepage.riki.boo
+      recordType: CNAME
+      targets:
+        - public.riki.boo
+    - dnsName: home.riki.boo
+      recordType: CNAME
+      targets:
+        - public.riki.boo

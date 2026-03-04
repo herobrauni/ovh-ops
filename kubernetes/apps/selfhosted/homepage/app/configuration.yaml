@@ -1,0 +1,125 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+data:
+  settings.yaml: |
+    title: Home Ops
+    theme: dark
+    color: slate
+    headerStyle: clean
+    statusStyle: dot
+    useEqualHeights: false
+    fiveColumns: true
+    quicklaunch:
+      searchDescriptions: true
+      hideInternetSearch: true
+      showSearchSuggestions: true
+      hideVisitURL: true
+    layout:
+      Selfhosted:
+        style: column
+        icon: mdi-home
+      Observability:
+        style: column
+        icon: mdi-chart-areaspline
+      Platform:
+        style: column
+        icon: mdi-kubernetes
+      Network:
+        style: column
+        icon: mdi-router-network
+
+  widgets.yaml: |
+    - search:
+        provider: [google]
+        focus: false
+        target: _blank
+    - kubernetes:
+        cluster:
+          cpu: true
+          memory: true
+          show: true
+          showLabel: true
+        nodes:
+          cpu: true
+          memory: true
+          show: true
+          showLabel: true
+
+  services.yaml: |
+    - Selfhosted:
+        - OpenCloud:
+            href: https://opencloud.brauni.dev
+            siteMonitor: https://opencloud.brauni.dev
+            icon: opencloud.png
+        - Files:
+            href: https://files.brauni.dev
+            siteMonitor: https://files.brauni.dev
+            icon: opencloud.png
+        - Karakeep:
+            href: https://karakeep.brauni.dev
+            siteMonitor: https://karakeep.brauni.dev
+            icon: karakeep.png
+        - Hoarder:
+            href: https://hoarder.brauni.dev
+            siteMonitor: https://hoarder.brauni.dev
+            icon: hoarder.png
+        - Idlers:
+            href: https://idlers.brauni.dev
+            siteMonitor: https://idlers.brauni.dev
+            icon: mdi-application-cog
+
+    - Observability:
+        - Grafana:
+            href: https://grafana.riki.boo
+            siteMonitor: https://grafana.riki.boo
+            icon: grafana.png
+        - Alertmanager:
+            href: https://alertmanager.riki.boo
+            siteMonitor: https://alertmanager.riki.boo
+            icon: alertmanager.png
+        - Prometheus:
+            href: https://prometheus.riki.boo
+            siteMonitor: https://prometheus.riki.boo
+            icon: prometheus.png
+        - Victoria Logs:
+            href: https://victoria-logs.riki.boo
+            siteMonitor: https://victoria-logs.riki.boo
+            icon: victoriametrics.png
+        - Gatus:
+            href: https://gatus.riki.boo
+            siteMonitor: https://gatus.riki.boo
+            icon: gatus.png
+        - Status:
+            href: https://status.riki.boo
+            siteMonitor: https://status.riki.boo
+            icon: gatus.png
+
+    - Platform:
+        - KGuardian:
+            href: https://kguardian.riki.boo
+            siteMonitor: https://kguardian.riki.boo
+            icon: mdi-shield-check
+        - Flux Operator:
+            href: https://flux-operator.riki.boo
+            siteMonitor: https://flux-operator.riki.boo
+            icon: flux-cd.png
+
+    - Network:
+        - TinyAuth:
+            href: https://auth.riki.boo
+            siteMonitor: https://auth.riki.boo
+            icon: mdi-lock-check
+
+  bookmarks.yaml: |
+    - Ops:
+        - GitHub:
+            - icon: github.png
+              href: https://github.com/herobrauni/ovh-ops
+
+  docker.yaml: ""
+
+  kubernetes.yaml: |
+    mode: cluster

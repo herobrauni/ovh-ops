@@ -29,6 +29,7 @@ The repo is YAML-heavy and declarative.
 
 ## App Exposure Rule
 - If an app has a URL and a web UI, always create a `DNSEndpoint` manifest and include it in that app's `kustomization.yaml`.
+- If an app has a URL and a web UI, always add or update its entry in `kubernetes/apps/selfhosted/homepage/app/configuration.yaml`.
 
 ## Upstream Template Preference
 - Prefer implementations that stay as close as possible to upstream patterns used in local template repos `./tmp/bjw-s` and `./tmp/onedr0p`.
