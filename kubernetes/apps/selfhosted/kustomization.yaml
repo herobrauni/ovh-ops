@@ -12,3 +12,4 @@ resources:
   - ./homepage/ks.yaml
   - ./opencloud/ks.yaml
   - ./karakeep/ks.yaml
+  - ./idlers/ks.yaml
