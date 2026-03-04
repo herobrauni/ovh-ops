@@ -69,6 +69,10 @@ data:
             href: https://idlers.brauni.dev
             siteMonitor: https://idlers.brauni.dev
             icon: mdi-application-cog
+        - Decypharr:
+            href: https://.brauni.dev
+            siteMonitor: https://.brauni.dev
+            icon: mdi-magnet
 
     - Observability:
         - Grafana:
