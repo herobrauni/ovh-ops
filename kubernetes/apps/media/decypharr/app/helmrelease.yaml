@@ -56,3 +56,8 @@ spec:
         existingClaim: aio
         globalMounts:
           - path: /aio
+      tmp:
+        type: emptyDir
+        medium: Memory
+        globalMounts:
+          - path: /tmp
