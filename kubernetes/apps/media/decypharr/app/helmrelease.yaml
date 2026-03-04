@@ -98,8 +98,3 @@ spec:
         medium: Memory
         globalMounts:
           - path: /tmp
-      mnt:
-        type: emptyDir
-        medium: Memory
-        globalMounts:
-          - path: /mnt
