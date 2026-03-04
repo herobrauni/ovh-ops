@@ -26,16 +26,27 @@ spec:
               - -c
               - |
                 if [ ! -f /config/repository.config ]; then
-                  kopia repository connect sftp \
+                  set -- kopia repository connect sftp \
                     --host "$${SFTP_HOST}" \
                     --port "$${SFTP_PORT}" \
                     --path "$${SFTP_PATH}" \
                     --username "$${SFTP_USERNAME}" \
-                    --key-data "$${SFTP_KEY_FILE}" \
-                    --known-hosts-data "$${SFTP_KNOWN_HOSTS_DATA}" \
-                    --password "$${KOPIA_PASSWORD}" \
                     --config-file /config/repository.config \
                     --persist-credentials
+
+                  if [ -n "$${SFTP_KEY_FILE:-}" ]; then
+                    set -- "$@" --key-data "$${SFTP_KEY_FILE}"
+                  fi
+
+                  if [ -n "$${SFTP_KNOWN_HOSTS_DATA:-}" ]; then
+                    set -- "$@" --known-hosts-data "$${SFTP_KNOWN_HOSTS_DATA}"
+                  fi
+
+                  if [ -n "$${KOPIA_PASSWORD:-}" ]; then
+                    set -- "$@" --password "$${KOPIA_PASSWORD}"
+                  fi
+
+                  "$@"
                 fi
             envFrom: &envFrom
               - secretRef:
