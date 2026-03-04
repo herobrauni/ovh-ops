@@ -73,10 +73,10 @@ spec:
         existingClaim: decypharr
         globalMounts:
           - path: /app
-      aio:
-        existingClaim: aio
+      symlinks:
+        existingClaim: symlinks
         globalMounts:
-          - path: /aio
+          - path: /aio/symlinks
       etc-userdb:
         type: emptyDir
         advancedMounts:

@@ -3,22 +3,17 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: &app media-debug
+  name: aio-symlinks
 spec:
-  targetNamespace: media
-  commonMetadata:
-    labels:
-      app.kubernetes.io/name: *app
-  dependsOn:
-    - name: aio-symlinks
-    - name: decypharr
-    - name: csi-rclone
-      namespace: csi-rclone
   interval: 1h
-  path: ./kubernetes/apps/media/media-debug/app
+  path: ./kubernetes/apps/media/aio/symlinks/app
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
+  targetNamespace: media
+  dependsOn:
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
   wait: false

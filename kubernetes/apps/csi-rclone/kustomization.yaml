@@ -2,14 +2,8 @@
 # yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: media
-
-components:
-  - ../../components/alerts
+namespace: csi-rclone
 
 resources:
   - ./namespace.yaml
-  - ./aio/symlinks/ks.yaml
-  # - ./aio/rclone/ks.yaml
-  - ./decypharr/ks.yaml
-  - ./media-debug/ks.yaml
+  - ./csi-rclone/ks.yaml

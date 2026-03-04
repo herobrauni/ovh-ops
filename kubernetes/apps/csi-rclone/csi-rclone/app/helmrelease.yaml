@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: csi-rclone
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: csi-rclone
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    feature:
+      enableInlineVolume: true
+    node:
+      metrics:
+        enabled: true
+        service:
+          enabled: true
+        serviceMonitor:
+          enabled: true
+        dashboard:
+          enabled: true
+          namespace: observability

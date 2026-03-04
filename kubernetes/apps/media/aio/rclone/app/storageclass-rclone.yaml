@@ -1,0 +1,17 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: rclone-decypharr-webdav
+provisioner: rclone.csi.veloxpack.io
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+allowVolumeExpansion: false
+parameters:
+  remote: decypharr
+  remotePath: "/"
+  configData: |
+    [decypharr]
+    type = webdav
+    url = http://decypharr.media.svc.cluster.local:8282/webdav/realdebrid
+    vendor = other
