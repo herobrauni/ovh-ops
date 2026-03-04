@@ -33,7 +33,7 @@ spec:
     sources:
       - crd
     txtOwnerId: default
-    txtPrefix: k8s.
+    txtPrefix: ovh-ops.
     domainFilters:
       - riki.boo
       - brauni.eu
