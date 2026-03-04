@@ -60,7 +60,7 @@ spec:
             readOnly: true
             volumeAttributes:
               remote: decypharr
-              remotePath: "/__all__"
+              remotePath: "/"
               configData: |
                 [decypharr]
                 type = webdav

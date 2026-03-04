@@ -11,6 +11,25 @@ All cluster or platform changes must be made through code in this repository; av
 - `.taskfiles/` + `Taskfile.yaml`: operational tasks for Talos/bootstrap/reconcile flows.
 - `util/`: small operational checks (for example drift detection).
 
+## How `kubernetes/apps` Kustomizations Work
+- Flux starts from `kubernetes/flux/cluster/ks.yaml` (`Kustomization/cluster-apps`) with `spec.path: ./kubernetes/apps`.
+- `cluster-apps` applies defaults to every child Flux `Kustomization` via `spec.patches` (notably `deletionPolicy: WaitForTermination` and HelmRelease install/upgrade/rollback remediation defaults).
+- Each namespace/domain folder (`kubernetes/apps/<namespace>/kustomization.yaml`) is a **Kustomize config** that:
+    - sets `namespace: <namespace>`
+    - includes shared `../../components/alerts`
+    - includes `./namespace.yaml` and one or more app `./<app>/ks.yaml` entries
+- Each app `ks.yaml` is a **Flux Kustomization CR** (or multiple CRs) that points to a concrete manifest path such as `./kubernetes/apps/<namespace>/<app>/app` and usually sets:
+    - `sourceRef: GitRepository/flux-system`
+    - `targetNamespace: <namespace>`
+    - optional `dependsOn`, `healthChecks`, `healthCheckExprs`, and `wait`
+- Each app manifest path (`app/`, `instance/`, `cluster/`, `common/`, etc.) contains a `kustomization.yaml` that is standard Kustomize resource composition (`helmrelease.yaml`, `ocirepository.yaml`, `externalsecret.yaml`, routes, policies, etc.).
+- `namespace.yaml` files use `metadata.name: _`; the parent namespace Kustomize layer sets the real namespace name.
+
+When adding or changing apps under `kubernetes/apps`, preserve this three-layer model:
+1. Namespace-level `kustomization.yaml` wires namespace + app `ks.yaml` entries.
+2. App-level `ks.yaml` defines Flux reconciliation behavior and ordering.
+3. App subdirectory `kustomization.yaml` defines the actual Kubernetes manifests.
+
 ## Build, Test, and Development Commands
 Use `mise` to install pinned tooling from `.mise.toml`, then run:
 - `task --list`: list all available tasks.
