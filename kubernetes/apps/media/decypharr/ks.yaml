@@ -14,7 +14,7 @@ spec:
   dependsOn:
     - name: rook-ceph-cluster
       namespace: rook-ceph
-    - name: aio
+    - name: aio-symlinks
       namespace: media
   interval: 1h
   path: ./kubernetes/apps/media//app

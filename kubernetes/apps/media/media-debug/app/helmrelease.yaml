@@ -48,7 +48,24 @@ spec:
                 drop:
                   - ALL
     persistence:
-      aio:
-        existingClaim: aio
+      symlinks:
+        existingClaim: symlinks
         globalMounts:
-          - path: /aio
+          - path: /aio/symlinks
+      :
+        type: custom
+        volumeSpec:
+          csi:
+            driver: rclone.csi.veloxpack.io
+            readOnly: true
+            volumeAttributes:
+              remote: 
+              remotePath: "/"
+              configData: |
+                []
+                type = webdav
+                url = http://.media.svc.cluster.local:8282/webdav/realdebrid
+                vendor = other
+        globalMounts:
+          - path: /aio/
+            readOnly: true

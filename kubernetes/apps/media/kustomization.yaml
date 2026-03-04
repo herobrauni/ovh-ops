@@ -9,6 +9,7 @@ components:
 
 resources:
   - ./namespace.yaml
-  - ./aio/ks.yaml
+  - ./aio/symlinks/ks.yaml
+  # - ./aio/rclone/ks.yaml
   - .//ks.yaml
   - ./media-debug/ks.yaml

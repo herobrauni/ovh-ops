@@ -10,7 +10,10 @@ spec:
     labels:
       app.kubernetes.io/name: *app
   dependsOn:
-    - name: aio
+    - name: aio-symlinks
+    - name: 
+    - name: csi-rclone
+      namespace: csi-rclone
   interval: 1h
   path: ./kubernetes/apps/media/media-debug/app
   prune: true
