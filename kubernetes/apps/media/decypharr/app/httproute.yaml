@@ -6,9 +6,9 @@ metadata:
   name: 
 spec:
   hostnames:
-    - .brauni.dev
+    - .riki.boo
   parentRefs:
-    - name: envoy-brauni-dev-public
+    - name: envoy-riki-boo-public
       namespace: network
       sectionName: https
   rules:

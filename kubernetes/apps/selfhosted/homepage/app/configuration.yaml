@@ -70,8 +70,8 @@ data:
             siteMonitor: https://idlers.brauni.dev
             icon: mdi-application-cog
         - Decypharr:
-            href: https://.brauni.dev
-            siteMonitor: https://.brauni.dev
+            href: https://.riki.boo
+            siteMonitor: https://.riki.boo
             icon: mdi-magnet
 
     - Observability:
