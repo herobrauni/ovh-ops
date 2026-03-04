@@ -73,6 +73,10 @@ spec:
         existingClaim: decypharr
         globalMounts:
           - path: /app
+      aio:
+        type: emptyDir
+        globalMounts:
+          - path: /aio
       symlinks:
         existingClaim: symlinks
         globalMounts:
