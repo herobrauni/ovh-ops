@@ -5,7 +5,7 @@ kind: Kustomization
 metadata:
   name: &app idlers
 spec:
-  targetNamespace: &namespace idlers
+  targetNamespace: &namespace selfhosted
   commonMetadata:
     labels:
       app.kubernetes.io/name: *app
@@ -20,7 +20,7 @@ spec:
       namespace: volsync-system
     - name: envoy-gateway-brauni-dev
       namespace: network
-  path: ./kubernetes/apps/idlers/idlers/app
+  path: ./kubernetes/apps/selfhosted/idlers/app
   prune: true
   sourceRef:
     kind: GitRepository
