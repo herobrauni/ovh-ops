@@ -8,11 +8,11 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: karakeep.brauni.eu
+    - dnsName: karakeep.brauni.dev
       recordType: CNAME
       targets:
-        - public.brauni.eu
-    - dnsName: hoarder.brauni.eu
+        - public.brauni.dev
+    - dnsName: hoarder.brauni.dev
       recordType: CNAME
       targets:
-        - public.brauni.eu
+        - public.brauni.dev

@@ -57,7 +57,7 @@ spec:
               OC_ENABLE_OCM: false
               OC_INSECURE: false
               OC_LOG_LEVEL: info
-              OC_URL: https://opencloud.brauni.eu
+              OC_URL: https://opencloud.brauni.dev
               PROXY_TLS: false
             probes:
               liveness:
@@ -131,10 +131,10 @@ spec:
     route:
       app:
         hostnames:
-          - files.brauni.eu
-          - opencloud.brauni.eu
+          - files.brauni.dev
+          - opencloud.brauni.dev
         parentRefs:
-          - name: envoy-brauni-eu-public
+          - name: envoy-brauni-dev-public
             namespace: network
             sectionName: https
     configMaps:
