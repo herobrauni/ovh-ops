@@ -24,6 +24,24 @@ spec:
         forceRename: decypharr
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          setup-user:
+            image:
+              repository: cy01/blackhole
+              tag: fenrir@sha256:a745746768a150f78dcf4495459ad634b5cc5c5e93eb1ddfb26db7002ebd8bcb
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                cp -a /etc/. /mnt/etc/
+                grep -q '^decypharr:x:1000:1000:' /mnt/etc/passwd || echo 'decypharr:x:1000:1000:decypharr:/app:/sbin/nologin' >> /mnt/etc/passwd
+                grep -q '^decypharr:x:1000:' /mnt/etc/group || echo 'decypharr:x:1000:' >> /mnt/etc/group
+            securityContext:
+              allowPrivilegeEscalation: false
+              runAsGroup: 0
+              runAsNonRoot: false
+              runAsUser: 0
+              capabilities: { drop: ["ALL"] }
         containers:
           app:
             image:
@@ -35,11 +53,14 @@ spec:
               readiness:
                 enabled: true
             securityContext:
-              allowPrivilegeEscalation: false
+              allowPrivilegeEscalation: true
+              privileged: true
               runAsGroup: 1000
               runAsNonRoot: true
               runAsUser: 1000
-              capabilities: { drop: ["ALL"] }
+              capabilities:
+                drop: ["ALL"]
+                add: ["SYS_ADMIN", "MKNOD"]
     service:
       app:
         forceRename: decypharr
@@ -56,6 +77,22 @@ spec:
         existingClaim: aio
         globalMounts:
           - path: /aio
+      etc-userdb:
+        type: emptyDir
+        advancedMounts:
+          decypharr:
+            setup-user:
+              - path: /mnt/etc
+            app:
+              - path: /etc
+      fuse:
+        type: custom
+        volumeSpec:
+          hostPath:
+            path: /dev/fuse
+            type: CharDevice
+        globalMounts:
+          - path: /dev/fuse
       tmp:
         type: emptyDir
         medium: Memory
