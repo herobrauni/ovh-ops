@@ -12,6 +12,9 @@ spec:
   driftDetection:
     mode: enabled
   values:
+    image:
+      rclone:
+        tag: v0.4.9
     feature:
       enableInlineVolume: true
     node:
