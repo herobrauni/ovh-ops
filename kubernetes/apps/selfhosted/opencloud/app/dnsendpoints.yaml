@@ -8,11 +8,11 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: files.brauni.eu
+    - dnsName: files.brauni.dev
       recordType: CNAME
       targets:
-        - public.brauni.eu
-    - dnsName: opencloud.brauni.eu
+        - public.brauni.dev
+    - dnsName: opencloud.brauni.dev
       recordType: CNAME
       targets:
-        - public.brauni.eu
+        - public.brauni.dev
