@@ -1,0 +1,54 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: media-debug
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: media-debug
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+    controllers:
+      media-debug:
+        forceRename: media-debug
+        replicas: 1
+        pod:
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  podAffinityTerm:
+                    labelSelector:
+                      matchLabels:
+                        app.kubernetes.io/name: decypharr
+                    topologyKey: kubernetes.io/hostname
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/busybox
+              tag: 1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc
+            command:
+              - /bin/sh
+              - -c
+              - sleep infinity
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+    persistence:
+      aio:
+        existingClaim: aio
+        globalMounts:
+          - path: /aio
