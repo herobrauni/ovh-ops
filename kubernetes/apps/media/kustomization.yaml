@@ -12,4 +12,5 @@ resources:
   - ./aio/symlinks/ks.yaml
   # - ./aio/rclone/ks.yaml
   - ./decypharr/ks.yaml
+  - ./booklore/ks.yaml
   - ./media-debug/ks.yaml
