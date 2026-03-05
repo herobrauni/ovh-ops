@@ -13,4 +13,3 @@ resources:
   - ./opencloud/ks.yaml
   - ./karakeep/ks.yaml
   - ./idlers/ks.yaml
-  - ./booklore/ks.yaml
