@@ -65,6 +65,10 @@ data:
             href: https://hoarder.brauni.dev
             siteMonitor: https://hoarder.brauni.dev
             icon: hoarder.png
+        - BookLore:
+            href: https://booklore.brauni.dev
+            siteMonitor: https://booklore.brauni.dev
+            icon: mdi-book-open-variant
         - Idlers:
             href: https://idlers.brauni.dev
             siteMonitor: https://idlers.brauni.dev
