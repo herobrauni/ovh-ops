@@ -13,4 +13,5 @@ resources:
   # - ./aio/rclone/ks.yaml
   - ./decypharr/ks.yaml
   - ./booklore/ks.yaml
+  - ./shelfmark/ks.yaml
   - ./media-debug/ks.yaml

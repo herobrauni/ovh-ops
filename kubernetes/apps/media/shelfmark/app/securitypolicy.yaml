@@ -3,12 +3,12 @@
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
-  name: grafana-auth
+  name: shelfmark-auth
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
-      name: grafana
+      name: shelfmark
   extAuth:
     failOpen: false
     headersToExtAuth:
@@ -21,7 +21,7 @@ spec:
       - cookie
     http:
       backendRefs:
-        - name: tinyauth-riki-boo
+        - name: tinyauth-brauni-dev
           namespace: network
           port: 3000
       path: /api/auth/envoy?path=

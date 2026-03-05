@@ -1,0 +1,14 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/externaldns.k8s.io/dnsendpoint_v1alpha1.json
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: tinyauth-brauni-dev
+  annotations:
+    dns.scope: all
+spec:
+  endpoints:
+    - dnsName: auth.brauni.dev
+      recordType: CNAME
+      targets:
+        - public.brauni.dev

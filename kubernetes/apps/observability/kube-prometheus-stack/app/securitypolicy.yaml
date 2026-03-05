@@ -21,7 +21,7 @@ spec:
       - cookie
     http:
       backendRefs:
-        - name: tinyauth
+        - name: tinyauth-riki-boo
           namespace: network
           port: 3000
       path: /api/auth/envoy?path=
@@ -51,7 +51,7 @@ spec:
       - cookie
     http:
       backendRefs:
-        - name: tinyauth
+        - name: tinyauth-riki-boo
           namespace: network
           port: 3000
       path: /api/auth/envoy?path=
