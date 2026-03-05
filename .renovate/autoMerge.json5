@@ -67,6 +67,18 @@
       ignoreTests: true,
     },
     {
+      description: "Auto-merge mise tool versions",
+      matchManagers: [
+        "mise"
+      ],
+      matchFileNames: [
+        ".mise.toml"
+      ],
+      automerge: true,
+      automergeType: "branch",
+      ignoreTests: true,
+    },
+    {
       description: "Auto-merge GitHub Releases",
       matchDatasources: [
         "github-releases"
