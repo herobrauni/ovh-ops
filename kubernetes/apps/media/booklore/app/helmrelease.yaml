@@ -145,13 +145,17 @@ spec:
                 subPath: app
               - path: /books
                 subPath: books
-              - path: /bookdrop
-                subPath: bookdrop
               - path: /libraries
                 subPath: libraries
             mariadb:
               - path: /var/lib/mysql
                 subPath: mysql
+      bookdrop:
+        existingClaim: bookdrop
+        advancedMounts:
+          booklore:
+            booklore:
+              - path: /bookdrop
       mysqld:
         type: emptyDir
         medium: Memory

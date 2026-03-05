@@ -14,6 +14,9 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: network
             gateway.networking.k8s.io/gateway-name: envoy-brauni-dev-public
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: shelfmark
       toPorts:
         - ports:
             - port: "6060"
