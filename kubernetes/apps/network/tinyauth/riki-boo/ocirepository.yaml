@@ -3,7 +3,7 @@
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: OCIRepository
 metadata:
-  name: tinyauth
+  name: tinyauth-riki-boo
 spec:
   interval: 15m
   layerSelector:

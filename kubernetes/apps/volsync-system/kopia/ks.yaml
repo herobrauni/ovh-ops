@@ -10,7 +10,7 @@ spec:
       namespace: volsync-system
     - name: bitwarden
       namespace: external-secrets
-    - name: tinyauth
+    - name: tinyauth-riki-boo
       namespace: network
     - name: envoy-gateway-riki-boo
       namespace: network

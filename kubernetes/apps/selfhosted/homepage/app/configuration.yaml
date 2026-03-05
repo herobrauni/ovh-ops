@@ -69,6 +69,10 @@ data:
             href: https://booklore.brauni.dev
             siteMonitor: https://booklore.brauni.dev
             icon: mdi-book-open-variant
+        - Shelfmark:
+            href: https://shelfmark.brauni.dev
+            siteMonitor: https://shelfmark.brauni.dev
+            icon: mdi-bookshelf
         - Idlers:
             href: https://idlers.brauni.dev
             siteMonitor: https://idlers.brauni.dev
@@ -134,9 +138,17 @@ data:
                 target: https://github.com/herobrauni/ovh-ops/pull/{number}
 
     - Network:
-        - TinyAuth:
+        - TinyAuth (riki.boo):
             href: https://auth.riki.boo
             siteMonitor: https://auth.riki.boo
+            icon: mdi-lock-check
+        - TinyAuth (brauni.eu):
+            href: https://auth.brauni.eu
+            siteMonitor: https://auth.brauni.eu
+            icon: mdi-lock-check
+        - TinyAuth (brauni.dev):
+            href: https://auth.brauni.dev
+            siteMonitor: https://auth.brauni.dev
             icon: mdi-lock-check
 
   bookmarks.yaml: |

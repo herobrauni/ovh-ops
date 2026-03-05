@@ -6,7 +6,8 @@ metadata:
   name: echo
 spec:
   dependsOn:
-    - name: tinyauth
+    - name: tinyauth-riki-boo
+    - name: tinyauth-brauni-eu
   interval: 1h
   path: ./kubernetes/apps/network/echo/app
   prune: true

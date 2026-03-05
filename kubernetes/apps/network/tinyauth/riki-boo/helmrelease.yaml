@@ -3,17 +3,17 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: tinyauth
+  name: tinyauth-riki-boo
 spec:
   chartRef:
     kind: OCIRepository
-    name: tinyauth
+    name: tinyauth-riki-boo
   interval: 1h
   driftDetection:
     mode: enabled
   values:
     controllers:
-      tinyauth:
+      tinyauth-riki-boo:
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
@@ -32,7 +32,7 @@ spec:
               TINYAUTH_AUTH_TRUSTEDPROXIES: 10.42.0.0/16
             envFrom:
               - secretRef:
-                  name: tinyauth-secret
+                  name: tinyauth-riki-boo-secret
             probes:
               liveness: &probes
                 enabled: true
@@ -65,7 +65,7 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     service:
       app:
-        controller: tinyauth
+        controller: tinyauth-riki-boo
         ports:
           http:
             port: *port
@@ -77,17 +77,10 @@ spec:
           - name: envoy-riki-boo-public
             namespace: network
             sectionName: https
-      brauni-eu:
-        hostnames:
-          - auth.brauni.eu
-        parentRefs:
-          - name: envoy-brauni-eu-public
-            namespace: network
-            sectionName: https
     persistence:
       data:
         type: emptyDir
         advancedMounts:
-          tinyauth:
+          tinyauth-riki-boo:
             app:
               - path: /data

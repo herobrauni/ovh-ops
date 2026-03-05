@@ -3,10 +3,42 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: tinyauth
+  name: tinyauth-riki-boo
 spec:
   interval: 1h
-  path: ./kubernetes/apps/network/tinyauth/app
+  path: ./kubernetes/apps/network/tinyauth/riki-boo
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: network
+  wait: false
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tinyauth-brauni-eu
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/network/tinyauth/brauni-eu
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: network
+  wait: false
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: tinyauth-brauni-dev
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/network/tinyauth/brauni-dev
   prune: true
   sourceRef:
     kind: GitRepository
