@@ -8,7 +8,7 @@ spec:
     repository: kopia-secret
   enabled: true
   trigger:
-    schedule: "*/20 * * * *"
+    schedule: "30 * * * *"
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
   resources:
