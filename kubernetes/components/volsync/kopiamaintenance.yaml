@@ -8,7 +8,8 @@ spec:
     repository: ${APP}-volsync-secret
   enabled: true
   trigger:
-    schedule: "0 * * * *"
+    # schedule: "0 * * * *"
+    manual: "trigger-1"
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
   resources:
