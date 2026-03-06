@@ -8,6 +8,5 @@
         "serve"
       ]
     }
-  },
-  "plugin": ["@slkiser/opencode-quota"]
+  }
 }
