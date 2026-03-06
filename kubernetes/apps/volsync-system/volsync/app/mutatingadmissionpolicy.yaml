@@ -27,8 +27,7 @@ spec:
   matchConditions:
     - name: has-volsync-job-name-prefix
       expression: >-
-        object.metadata.name.startsWith("volsync-src-") ||
-        object.metadata.name.startsWith("kopia-maint-")
+        object.metadata.name.startsWith("volsync-src-")
     - name: has-volsync-created-by-labels
       expression: >-
         object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync"
@@ -52,9 +51,7 @@ spec:
                 command: [
                   "sh",
                   "-c",
-                  object.metadata.name.startsWith("kopia-maint-")
-                    ? "sleep $(shuf -i 0-1800 -n 1)"
-                    : "sleep $(shuf -i 0-600 -n 1)"
+                  "sleep $(shuf -i 0-600 -n 1)"
                 ]
               }
             }
