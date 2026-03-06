@@ -12,6 +12,9 @@ spec:
   driftDetection:
     mode: enabled
   values:
+    manager:
+      extraArgs:
+        - --metrics-bind-address=0.0.0.0:8080
     serviceMonitor:
       enabled: true
     grafanaDashboard:
