@@ -6,6 +6,8 @@ metadata:
   name: snapshot-controller
 spec:
   interval: 1h
+  retryInterval: 2m
+  timeout: 2m
   path: ./kubernetes/apps/kube-system/snapshot-controller/app
   prune: true
   sourceRef:
