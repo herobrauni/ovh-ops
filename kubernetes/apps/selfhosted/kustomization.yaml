@@ -13,3 +13,4 @@ resources:
   - ./opencloud/ks.yaml
   - ./karakeep/ks.yaml
   - ./idlers/ks.yaml
+  - ./atuin/ks.yaml
