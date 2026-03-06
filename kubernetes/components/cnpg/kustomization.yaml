@@ -5,3 +5,7 @@ kind: Component
 resources:
   - ./cronjob.yaml
   - ./externalsecret.yaml
+  - ./volsync-externalsecret.yaml
+  - ./volsync-pvc.yaml
+  - ./volsync-replicationdestination.yaml
+  - ./volsync-replicationsource.yaml
