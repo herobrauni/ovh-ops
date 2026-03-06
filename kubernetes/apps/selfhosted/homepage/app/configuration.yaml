@@ -57,10 +57,6 @@ data:
             href: https://opencloud.brauni.dev
             siteMonitor: https://opencloud.brauni.dev
             icon: https://opencloud.brauni.dev/themes/opencloud/assets/logo.svg
-        - Karakeep:
-            href: https://karakeep.brauni.dev
-            siteMonitor: https://karakeep.brauni.dev
-            icon: karakeep.png
         - Hoarder:
             href: https://hoarder.brauni.dev
             siteMonitor: https://hoarder.brauni.dev
