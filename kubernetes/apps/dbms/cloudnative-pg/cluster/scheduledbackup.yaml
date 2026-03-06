@@ -11,3 +11,16 @@ spec:
   method: volumeSnapshot
   cluster:
     name: postgres18
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/postgresql.cnpg.io/scheduledbackup_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: immich
+spec:
+  schedule: "@daily"
+  immediate: true
+  backupOwnerReference: self
+  method: volumeSnapshot
+  cluster:
+    name: immich
