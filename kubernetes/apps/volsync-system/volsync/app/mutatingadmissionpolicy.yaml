@@ -88,6 +88,15 @@ spec:
     - name: has-kopia-maint-label
       expression: >-
         object.metadata.?labels["volsync.backube/kopia-maintenance"].orValue("") == "true"
+    - name: missing-kopia-ssh-volume
+      expression: >-
+        object.spec.template.spec.?volumes.orValue([]).all(v, v.name != "kopia-ssh-key")
+    - name: missing-kopia-ssh-mount
+      expression: >-
+        object.spec.template.spec.containers[0].?volumeMounts.orValue([]).all(m, m.mountPath != "/tmp/kopia-ssh")
+    - name: missing-kopia-keyfile-env
+      expression: >-
+        object.spec.template.spec.containers[0].?env.orValue([]).all(e, e.name != "SFTP_KEY_FILE")
   failurePolicy: Fail
   reinvocationPolicy: IfNeeded
   mutations:
