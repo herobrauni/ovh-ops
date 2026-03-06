@@ -55,6 +55,44 @@ jobs:
       - name: Run crd-extractor
         run: curl -fsSL https://raw.githubusercontent.com/datreeio/CRDs-catalog/43e4407642d4c37683c88711f37caa6c9c20ca40/Utilities/crd-extractor.sh | bash
 
+      - name: Generate schema index
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          
+          schemas_dir = Path('/home/runner/.datree/crdSchemas')
+          
+          groups = []
+          total_schemas = 0
+          
+          for schema_file in sorted(schemas_dir.rglob('*.json')):
+              path_parts = schema_file.relative_to(schemas_dir).parts
+              if len(path_parts) >= 2:
+                  group = path_parts[-2]
+                  schema_name = path_parts[-1]
+                  groups.append({
+                      'name': group,
+                      'files': [schema_name]
+                  })
+                  total_schemas += 1
+          
+          index_data = {
+              'groups': groups,
+              'total_schemas': total_schemas,
+              'last_updated': os.environ.get('GITHUB_SHA', 'unknown')
+          }
+          
+          with open(schemas_dir / '_schema_index.json', 'w') as f:
+              json.dump(index_data, f, indent=2)
+          
+          print(f"Generated index with {len(groups)} groups and {total_schemas} schemas")
+          PY
+
+      - name: Copy index HTML
+        run: cp .github/schemas-index.html /home/runner/.datree/crdSchemas/index.html
+
       - name: Publish Schemas
         uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
         with:
