@@ -27,7 +27,8 @@ spec:
   matchConditions:
     - name: has-volsync-job-name-prefix
       expression: >-
-        object.metadata.name.startsWith("volsync-src-")
+        object.metadata.name.startsWith("volsync-src-") ||
+        object.metadata.name.startsWith("kopia-maint-")
     - name: has-volsync-created-by-labels
       expression: >-
         object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync"
@@ -48,8 +49,13 @@ spec:
                 name: "jitter",
                 image: "ghcr.io/home-operations/busybox:1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc",
                 imagePullPolicy: "IfNotPresent",
-                command: ["sh", "-c", "sleep $(shuf -i 0-30 -n 1)"]
+                command: [
+                  "sh",
+                  "-c",
+                  object.metadata.name.startsWith("kopia-maint-")
+                    ? "sleep $(shuf -i 0-1800 -n 1)"
+                    : "sleep $(shuf -i 0-600 -n 1)"
+                ]
               }
             }
           ]
-
