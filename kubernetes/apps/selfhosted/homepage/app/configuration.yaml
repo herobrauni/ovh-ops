@@ -57,6 +57,10 @@ data:
             href: https://opencloud.brauni.dev
             siteMonitor: https://opencloud.brauni.dev
             icon: https://opencloud.brauni.dev/themes/opencloud/assets/logo.svg
+        - Immich:
+            href: https://immich.brauni.dev
+            siteMonitor: https://immich.brauni.dev
+            icon: immich.png
         - Hoarder:
             href: https://hoarder.brauni.dev
             siteMonitor: https://hoarder.brauni.dev
