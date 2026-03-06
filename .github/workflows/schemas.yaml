@@ -11,6 +11,7 @@ on:
       - main
     paths:
       - .github/workflows/schemas.yaml
+      - .github/schemas-index.html
 
 env:
   UV_SYSTEM_PYTHON: "1"
@@ -58,30 +59,28 @@ jobs:
       - name: Generate index.html
         run: |
           cd /home/runner/.datree/crdSchemas
-          
+
           # Count stats
           group_count=$(find . -maxdepth 1 -type d | wc -l)
+          group_count=$((group_count - 1))
           schema_count=$(find . -name "*.json" | wc -l)
           updated=$(date -u +"%Y-%m-%d")
-          
+
           # Generate schema cards HTML
           schemas_html=""
-          
           for dir in */; do
             dir_name="${dir%/}"
             file_count=$(find "$dir" -maxdepth 1 -name "*.json" | wc -l)
-            
             files_html=""
             for file in "$dir"*.json; do
               if [ -f "$file" ]; then
                 filename=$(basename "$file")
-                files_html="${files_html}<a href=\"${filename}\" class=\"file-link\">${filename}</a>"
+                files_html="${files_html}<a href=\"${file}\" class=\"file-link\">${filename}</a>"
               fi
             done
-          
-            schemas_html="${schemas_html}<div class=\"group-card\"><div class=\"group-header\" onclick=\"this.closest('.group-card').classList.toggle('open')\"><span class=\"group-name\">${dir_name}</span><span class=\"group-count\">${file_count}</span><svg class=\"chevron\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"currentColor\"><path d=\"M4.427 5.427l3.396 3.396a.25.25 0 00.354 0l3.396 3.396A.25.25 0 0011.396 5H4.604a.25.25 0 00-.177.427z\"/></svg></div><div class=\"group-files\">${files_html}</div></div>"
+            schemas_html="${schemas_html}<div class=\"group-card\"><div class=\"group-header\"><span class=\"group-name\">${dir_name}</span><span class=\"group-count\">${file_count}</span><svg class=\"chevron\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"currentColor\"><path d=\"M4.427 5.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 5H4.604a.25.25 0 00-.177.427z\"/></svg></div><div class=\"group-files\">${files_html}</div></div>"
           done
-          
+
           # Copy template and inject data
           cp "$GITHUB_WORKSPACE/.github/schemas-index.html" index.html
           sed -i "s|<!-- SCHEMAS_PLACEHOLDER -->|${schemas_html}|g" index.html
