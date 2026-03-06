@@ -1,4 +1,5 @@
 ---
+# yaml-language-server: $schema=https://json.schemastore.org/kube-1.31/jsonschema/k8s.io/kubernetes/storageclass_v1.json
 allowVolumeExpansion: true
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
