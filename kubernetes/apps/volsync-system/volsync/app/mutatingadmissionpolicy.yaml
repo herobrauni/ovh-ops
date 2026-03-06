@@ -7,6 +7,14 @@ metadata:
 spec:
   policyName: volsync-mover-jitter
 ---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicybinding-admissionregistration-v1beta1.json
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: volsync-kopia-maint-keyfile
+spec:
+  policyName: volsync-kopia-maint-keyfile
+---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicy-admissionregistration-v1beta1.json
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingAdmissionPolicy
@@ -53,6 +61,68 @@ spec:
                   "-c",
                   "sleep $(shuf -i 0-600 -n 1)"
                 ]
+              }
+            }
+          ]
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicy-admissionregistration-v1beta1.json
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: volsync-kopia-maint-keyfile
+spec:
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - batch
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+        resources:
+          - jobs
+  matchConditions:
+    - name: has-kopia-maint-job-name-prefix
+      expression: >-
+        object.metadata.name.startsWith("kopia-maint-")
+    - name: has-kopia-maint-label
+      expression: >-
+        object.metadata.?labels["volsync.backube/kopia-maintenance"].orValue("") == "true"
+  failurePolicy: Fail
+  reinvocationPolicy: IfNeeded
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          [
+            JSONPatch{
+              op: "add", path: "/spec/template/spec/volumes/-",
+              value: {
+                "name": "kopia-ssh-key",
+                "secret": {
+                  "secretName": "kopia-secret",
+                  "items": [
+                    {
+                      "key": "SFTP_KEY_FILE",
+                      "path": "id_ed25519"
+                    }
+                  ]
+                }
+              }
+            },
+            JSONPatch{
+              op: "add", path: "/spec/template/spec/containers/0/volumeMounts/-",
+              value: {
+                "name": "kopia-ssh-key",
+                "mountPath": "/tmp/kopia-ssh",
+                "readOnly": true
+              }
+            },
+            JSONPatch{
+              op: "add", path: "/spec/template/spec/containers/0/env/-",
+              value: {
+                "name": "SFTP_KEY_FILE",
+                "value": "/tmp/kopia-ssh/id_ed25519"
               }
             }
           ]
