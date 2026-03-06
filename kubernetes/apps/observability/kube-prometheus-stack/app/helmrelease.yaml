@@ -94,6 +94,12 @@ spec:
             - sourceLabels: [__name__]
               regex: kube_pod_tolerations
               action: drop
+            # Rook currently recreates rook-ceph-mgr-external with a duplicated
+            # address, so drop only that broken EndpointSlice metric series.
+            - sourceLabels: [__name__, namespace, endpointslice]
+              separator: ;
+              regex: kube_endpointslice_endpoints;rook-ceph;rook-ceph-mgr-external
+              action: drop
     grafana:
       enabled: false
       forceDeployDashboards: true
