@@ -97,14 +97,14 @@ spec:
           [
             JSONPatch{
               op: "add", path: "/spec/template/spec/volumes/-",
-              value: {
-                "name": "kopia-ssh-key",
-                "secret": {
-                  "secretName": "kopia-secret",
-                  "items": [
-                    {
-                      "key": "SFTP_KEY_FILE",
-                      "path": "id_ed25519"
+              value: Object.spec.template.spec.volumes{
+                name: "kopia-ssh-key",
+                secret: Object.spec.template.spec.volumes.secret{
+                  secretName: "kopia-secret",
+                  items: [
+                    Object.spec.template.spec.volumes.secret.items{
+                      key: "SFTP_KEY_FILE",
+                      path: "id_ed25519"
                     }
                   ]
                 }
@@ -112,17 +112,17 @@ spec:
             },
             JSONPatch{
               op: "add", path: "/spec/template/spec/containers/0/volumeMounts/-",
-              value: {
-                "name": "kopia-ssh-key",
-                "mountPath": "/tmp/kopia-ssh",
-                "readOnly": true
+              value: Object.spec.template.spec.containers.volumeMounts{
+                name: "kopia-ssh-key",
+                mountPath: "/tmp/kopia-ssh",
+                readOnly: true
               }
             },
             JSONPatch{
               op: "add", path: "/spec/template/spec/containers/0/env/-",
-              value: {
-                "name": "SFTP_KEY_FILE",
-                "value": "/tmp/kopia-ssh/id_ed25519"
+              value: Object.spec.template.spec.containers.env{
+                name: "SFTP_KEY_FILE",
+                value: "/tmp/kopia-ssh/id_ed25519"
               }
             }
           ]
