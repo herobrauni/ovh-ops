@@ -16,10 +16,6 @@ spec:
     initdb:
       postInitSQL:
         - CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
-        - CREATE EXTENSION IF NOT EXISTS vector CASCADE;
-      postInitApplicationSQL:
-        - CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
-        - CREATE EXTENSION IF NOT EXISTS vector CASCADE;
   superuserSecret:
     name: cloudnative-pg-secret
   enableSuperuserAccess: true
