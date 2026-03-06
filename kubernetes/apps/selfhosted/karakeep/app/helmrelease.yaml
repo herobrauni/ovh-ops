@@ -25,6 +25,7 @@ spec:
         forceRename: karakeep
         annotations:
           reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: karakeep-secret
         pod:
           labels:
             app.kubernetes.io/component: application
@@ -122,6 +123,7 @@ spec:
       meilisearch:
         annotations:
           reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: karakeep-secret
         pod:
           labels:
             app.kubernetes.io/component: meilisearch
