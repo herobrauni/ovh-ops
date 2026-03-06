@@ -6,7 +6,7 @@ metadata:
   name: immich
 spec:
   instances: 3
-  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:18.0-0.5.3
+  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:18.3-1.1.1
   primaryUpdateStrategy: unsupervised
   primaryUpdateMethod: switchover
   storage:
@@ -14,8 +14,11 @@ spec:
     storageClass: ceph-block
   bootstrap:
     initdb:
-      postInitSQL:
-        - CREATE EXTENSION IF NOT EXISTS vchord CASCADE;
+      # TODO: Use managed extensions (pg 18)
+      postInitApplicationSQL:
+        # Commands based on: https://immich.app/docs/administration/postgres-standalone/#without-superuser-permission
+        - CREATE EXTENSION vchord CASCADE;
+        - CREATE EXTENSION earthdistance CASCADE;
   superuserSecret:
     name: cloudnative-pg-secret
   enableSuperuserAccess: true
