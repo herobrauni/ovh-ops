@@ -95,6 +95,9 @@ spec:
             image:
               repository: ghcr.io/immich-app/immich-machine-learning
               tag: v2.5.6
+            env:
+              MACHINE_LEARNING_CACHE_FOLDER: /cache
+              TRANSFORMERS_CACHE: /cache
             envFrom: *envFrom
             probes:
               liveness:
@@ -139,5 +142,15 @@ spec:
     persistence:
       data:
         existingClaim: immich
-        globalMounts:
-          - path: /usr/src/app/upload
+        advancedMounts:
+          immich:
+            app:
+              - path: /usr/src/app/upload
+      machine-learning-cache:
+        existingClaim: immich-machine-learning-cache
+        advancedMounts:
+          machine-learning:
+            app:
+              - path: /cache
+              - path: /.cache
+                subPath: dot-cache

@@ -6,5 +6,6 @@ resources:
   - ./ocirepository.yaml
   - ./configmap.yaml
   - ./externalsecret.yaml
+  - ./pvc-machine-learning-cache.yaml
   - ./helmrelease.yaml
   - ./dnsendpoints.yaml
