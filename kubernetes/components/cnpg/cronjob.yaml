@@ -27,7 +27,7 @@ spec:
                 - |-
                   set -euo pipefail
                   backup_file="/backup/${APP}-$(date +%Y%m%d-%H%M%S).sql.gz"
-                  pg_dump -d "${APP}" | gzip -9 > "${backup_file}"
+                  pg_dump -d "${APP}" | gzip -9 > "$${backup_file}"
                   find /backup -type f -name '${APP}-*.sql.gz' -mtime +7 -delete
               env:
                 - name: PGHOST

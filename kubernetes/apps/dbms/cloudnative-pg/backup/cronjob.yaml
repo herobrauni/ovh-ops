@@ -30,8 +30,8 @@ spec:
                 - |-
                   set -euo pipefail
                   timestamp="$(date +%Y%m%d-%H%M%S)"
-                  backup_file="/backup/postgres18-${timestamp}.sql.gz"
-                  pg_dumpall --clean --if-exists --quote-all-identifiers | gzip -9 > "${backup_file}"
+                  backup_file="/backup/postgres18-$${timestamp}.sql.gz"
+                  pg_dumpall --clean --if-exists --quote-all-identifiers | gzip -9 > "$${backup_file}"
                   find /backup -type f -name 'postgres18-*.sql.gz' -mtime +14 -delete
               env:
                 - name: PGHOST
