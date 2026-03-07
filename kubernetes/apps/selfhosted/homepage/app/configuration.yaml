@@ -85,6 +85,10 @@ data:
             href: https://atuin.brauni.dev
             siteMonitor: https://atuin.brauni.dev
             icon: mdi-console-line
+        - Firefly III:
+            href: https://firefly3.brauni.dev
+            siteMonitor: https://firefly3.brauni.dev
+            icon: mdi-cash-multiple
         - Decypharr:
             href: https://decypharr.riki.boo
             siteMonitor: https://decypharr.riki.boo
