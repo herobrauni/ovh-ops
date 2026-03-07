@@ -14,8 +14,6 @@ spec:
   dependsOn:
     - name: rook-ceph-cluster
       namespace: rook-ceph
-    - name: tinyauth-brauni-dev
-      namespace: network
   interval: 1h
   path: ./kubernetes/apps/media/shelfmark/app
   postBuild:
