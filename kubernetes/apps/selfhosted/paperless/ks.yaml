@@ -29,7 +29,6 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      CNPG_NAME: *app
       VOLSYNC_CAPACITY: 8Gi
   prune: true
   sourceRef:
