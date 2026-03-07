@@ -28,7 +28,7 @@ spec:
           setup-user:
             image:
               repository: cy01/blackhole
-              tag: fenrir@sha256:d96adb1c380b693af854bc4666c2e8fd817b17b659de0dd2f76e67fdb1c89321
+              tag: fenrir@sha256:e4378bc43d5607bb1a1118cb2a73d72b4e87edbeb44cad7fc7f2ba45a8488093
             command:
               - /bin/sh
               - -ec
@@ -46,7 +46,7 @@ spec:
           app:
             image:
               repository: cy01/blackhole
-              tag: fenrir@sha256:d96adb1c380b693af854bc4666c2e8fd817b17b659de0dd2f76e67fdb1c89321
+              tag: fenrir@sha256:e4378bc43d5607bb1a1118cb2a73d72b4e87edbeb44cad7fc7f2ba45a8488093
             probes:
               liveness:
                 enabled: true
