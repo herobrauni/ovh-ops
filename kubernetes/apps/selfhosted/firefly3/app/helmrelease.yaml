@@ -1,0 +1,149 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app firefly3
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: firefly3
+  interval: 30m
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 33
+        runAsGroup: 33
+        fsGroup: 33
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
+
+    controllers:
+      firefly3:
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: firefly3-secret,firefly3-pguser-secret
+        initContainers:
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: "18"
+            envFrom:
+              - secretRef:
+                  name: firefly3-initdb-secret
+        containers:
+          app:
+            image:
+              repository: docker.io/fireflyiii/core
+              tag: latest@sha256:6ae1b92eb73b4ae8a8e7e038440b93fba46267e05b5b903c62316b8cb03779af
+            env:
+              APP_ENV: production
+              APP_DEBUG: "false"
+              APP_URL: https://firefly3.brauni.dev
+              AUTHENTICATION_GUARD: web
+              COOKIE_SECURE: "true"
+              DB_CONNECTION: pgsql
+              DB_HOST:
+                valueFrom:
+                  secretKeyRef:
+                    name: &pguser firefly3-pguser-secret
+                    key: host
+              DB_PORT:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: port
+              DB_DATABASE:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: db
+              DB_USERNAME:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: user
+              DB_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: password
+              LOG_CHANNEL: stdout
+              PGSQL_SSL_MODE: disable
+              TZ: Europe/Berlin
+              TRUSTED_PROXIES: "**"
+            envFrom:
+              - secretRef:
+                  name: firefly3-secret
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: &port 8080
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                  timeoutSeconds: 3
+                  failureThreshold: 6
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 3
+                  failureThreshold: 30
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              capabilities:
+                drop:
+                  - ALL
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+
+    service:
+      app:
+        controller: firefly3
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        annotations:
+          gatus.home-operations.com/endpoint: |-
+            conditions: ["[STATUS] == 200"]
+            url: https://firefly3.brauni.dev
+        hostnames:
+          - firefly3.brauni.dev
+        parentRefs:
+          - name: envoy-brauni-dev-public
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - name: *app
+                port: *port
+
+    persistence:
+      storage:
+        enabled: true
+        type: persistentVolumeClaim
+        accessMode: ReadWriteOnce
+        storageClass: ceph-block
+        size: 5Gi
+        globalMounts:
+          - path: /var/www/html/storage

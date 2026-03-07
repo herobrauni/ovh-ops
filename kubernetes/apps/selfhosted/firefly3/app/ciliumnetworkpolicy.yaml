@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: firefly3
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: firefly3
+      app.kubernetes.io/instance: firefly3
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: network
+            gateway.networking.k8s.io/gateway-name: envoy-brauni-dev-public
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: selfhosted
+            app.kubernetes.io/name: firefly3-cron
+            app.kubernetes.io/instance: firefly3
+            app.kubernetes.io/component: cron
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
