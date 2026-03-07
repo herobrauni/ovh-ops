@@ -46,7 +46,7 @@ spec:
               PAPERLESS_OCR_LANGUAGE: eng
               PAPERLESS_PORT: &port 8000
               PAPERLESS_TIKA_ENABLED: 1
-              PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://paperless-gotenburg.selfhosted.svc.cluster.local:3000
+              PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://paperless-gotenberg.selfhosted.svc.cluster.local:3000
               PAPERLESS_TIKA_ENDPOINT: http://paperless-tika.selfhosted.svc.cluster.local:9998
               PAPERLESS_TIME_ZONE: Europe/Berlin
               PAPERLESS_URL: https://paperless.brauni.dev
@@ -91,14 +91,12 @@ spec:
               limits:
                 memory: 2Gi
 
-      gotenburg:
+      gotenberg:
         containers:
           app:
             image:
               repository: docker.io/gotenberg/gotenberg
               tag: 8.17.3
-            env:
-              DISABLE_GOOGLE_CHROME: "1"
             resources:
               requests:
                 cpu: 10m
@@ -125,8 +123,8 @@ spec:
         ports:
           http:
             port: *port
-      gotenburg:
-        controller: gotenburg
+      gotenberg:
+        controller: gotenberg
         ports:
           http:
             port: 3000
