@@ -5,5 +5,6 @@ kind: Kustomization
 resources:
   - ./cluster18.yaml
   - ./immich.yaml
+  - ./paperless.yaml
   - ./prometheusrule.yaml
   - ./scheduledbackup.yaml
