@@ -69,6 +69,10 @@ data:
             href: https://booklore.brauni.dev
             siteMonitor: https://booklore.brauni.dev
             icon: mdi-book-open-variant
+        - Paperless:
+            href: https://paperless.brauni.dev
+            siteMonitor: https://paperless.brauni.dev
+            icon: paperless.png
         - Shelfmark:
             href: https://shelfmark.brauni.dev
             siteMonitor: https://shelfmark.brauni.dev
