@@ -27,3 +27,5 @@ Thumbs.db
 Brewfile.lock.json
 tmp/
 plans
+.worktrees/
+.opencode
