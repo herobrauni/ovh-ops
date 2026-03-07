@@ -9,5 +9,27 @@
       ]
     }
   },
-  "plugin": ["@slkiser/opencode-quota"]
+  "plugin": ["@slkiser/opencode-quota", "github:guard22/opencode-multi-auth-codex"],
+  "provider": {
+    "openai": {
+      "models": {
+        "gpt-5.4": {
+          "variants": {
+            "Medium Fast": {
+              "reasoningEffort": "medium",
+              "serviceTier": "priority"
+            },
+            "High Fast": {
+              "reasoningEffort": "high",
+              "serviceTier": "priority"
+            },
+            "XHigh Fast": {
+              "reasoningEffort": "xhigh",
+              "serviceTier": "priority"
+            }
+          }
+        }
+      }
+    }
+  }
 }
