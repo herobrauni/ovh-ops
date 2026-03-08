@@ -15,5 +15,5 @@ resources:
   - ./idlers/ks.yaml
   - ./immich/ks.yaml
   - ./atuin/ks.yaml
-  - ./firefly3/ks.yaml
+  # - ./firefly3/ks.yaml
   - ./paperless/ks.yaml
