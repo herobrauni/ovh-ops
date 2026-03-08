@@ -2,17 +2,11 @@
 # yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-components:
-  - ../../../../components/volsync
 resources:
+  - ../../../../components/volsync/externalsecret.yaml
+  - ../../../../components/volsync/replicationdestination.yaml
+  - ../../../../components/volsync/replicationsource.yaml
   - ./ocirepository.yaml
   - ./pvc-cache.yaml
   - ./helmrelease.yaml
   - ./dnsendpoints.yaml
-patches:
-  - target:
-      kind: PersistentVolumeClaim
-      name: plex
-    patch: |-
-      - op: remove
-        path: /spec/dataSourceRef
