@@ -3,7 +3,7 @@
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: &app decypharr
+  name: &app symlinks
 spec:
   targetNamespace: media
   commonMetadata:
@@ -14,16 +14,20 @@ spec:
   dependsOn:
     - name: rook-ceph-cluster
       namespace: rook-ceph
-    - name: symlinks
-      namespace: media
-    - name: csi-rclone
-      namespace: csi-rclone
+    - name: bitwarden
+      namespace: external-secrets
+    - name: volsync
+      namespace: volsync-system
   interval: 1h
-  path: ./kubernetes/apps/media/decypharr/app
+  path: ./kubernetes/apps/media/symlinks/app
   postBuild:
     substitute:
       APP: *app
-      VOLSYNC_CAPACITY: 5Gi
+      VOLSYNC_CAPACITY: 10Gi
+      VOLSYNC_ACCESSMODES: ReadWriteMany
+      VOLSYNC_STORAGECLASS: ceph-filesystem
+      VOLSYNC_SNAPSHOTCLASS: csi-ceph-filesystem
+      VOLSYNC_SNAP_ACCESSMODES: ReadOnlyMany
   prune: true
   sourceRef:
     kind: GitRepository
