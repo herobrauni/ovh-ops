@@ -34,7 +34,7 @@ spec:
               command:
                 - /bin/sh
                 - -ec
-                - wget -qO- "http://firefly3:8080/api/v1/cron/${STATIC_CRON_TOKEN}" && printf '\n'
+                - wget -qO- "http://firefly3:8080/api/v1/cron/$${STATIC_CRON_TOKEN}" && printf '\n'
               env:
                 - name: STATIC_CRON_TOKEN
                   valueFrom:
