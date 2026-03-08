@@ -6,7 +6,7 @@ resources:
   - ./ocirepository.yaml
   - ./pvc.yaml
   - ./pvc-cache.yaml
-  - ./restic-externalsecret.yaml
-  - ./restic-replicationdestination.yaml
+  - ./volsync-externalsecret.yaml
+  - ./volsync-replicationsource.yaml
   - ./helmrelease.yaml
   - ./dnsendpoints.yaml
