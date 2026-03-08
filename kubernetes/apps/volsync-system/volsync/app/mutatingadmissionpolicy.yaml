@@ -59,7 +59,7 @@ spec:
                 command: [
                   "sh",
                   "-c",
-                  "sleep $(shuf -i 0-600 -n 1)"
+                  "sleep $(shuf -i 0-60 -n 1)"
                 ]
               }
             }
