@@ -11,6 +11,7 @@ resources:
   - ./namespace.yaml
   - ./aio/symlinks/ks.yaml
   # - ./aio/rclone/ks.yaml
+  - ./plex/ks.yaml
   - ./decypharr/ks.yaml
   - ./booklore/ks.yaml
   - ./shelfmark/ks.yaml

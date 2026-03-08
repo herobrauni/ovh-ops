@@ -77,6 +77,10 @@ data:
             href: https://shelfmark.brauni.dev
             siteMonitor: https://shelfmark.brauni.dev
             icon: mdi-bookshelf
+        - Plex:
+            href: https://plex.brauni.dev
+            siteMonitor: https://plex.brauni.dev
+            icon: plex.png
         - Idlers:
             href: https://idlers.brauni.dev
             siteMonitor: https://idlers.brauni.dev
