@@ -94,7 +94,7 @@ spec:
                 url = http://decypharr.media.svc.cluster.local:8282/webdav
                 vendor = other
         globalMounts:
-          - path: /aio/decypharr
+          - path: /aio/remote/realdebrid
             readOnly: true
       etc-userdb:
         type: emptyDir
