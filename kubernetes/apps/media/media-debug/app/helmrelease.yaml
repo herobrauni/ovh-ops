@@ -67,5 +67,5 @@ spec:
                 url = http://.media.svc.cluster.local:8282/webdav
                 vendor = other
         globalMounts:
-          - path: /aio/
+          - path: /aio/remote/realdebrid
             readOnly: true
