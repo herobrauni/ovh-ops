@@ -1,6 +1,6 @@
 {
   "$schema": "https://kilo.ai/config.json",
-  "plugin": ["@slkiser/opencode-quota", "github:guard22/opencode-multi-auth-codex"],
+  "plugin": ["@slkiser/opencode-quota", "oc-codex-multi-account@latest"],
   "provider": {
     "openai": {
       "models": {
