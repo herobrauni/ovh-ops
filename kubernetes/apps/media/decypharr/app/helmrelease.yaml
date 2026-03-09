@@ -24,24 +24,24 @@ spec:
         forceRename: decypharr
         annotations:
           reloader.stakater.com/auto: "true"
-        initContainers:
-          setup-user:
-            image:
-              repository: cy01/blackhole
-              tag: fenrir@sha256:e4378bc43d5607bb1a1118cb2a73d72b4e87edbeb44cad7fc7f2ba45a8488093
-            command:
-              - /bin/sh
-              - -ec
-              - |
-                cp -a /etc/. /mnt/etc/
-                grep -q '^decypharr:x:1000:1000:' /mnt/etc/passwd || echo 'decypharr:x:1000:1000:decypharr:/app:/sbin/nologin' >> /mnt/etc/passwd
-                grep -q '^decypharr:x:1000:' /mnt/etc/group || echo 'decypharr:x:1000:' >> /mnt/etc/group
-            securityContext:
-              allowPrivilegeEscalation: false
-              runAsGroup: 0
-              runAsNonRoot: false
-              runAsUser: 0
-              capabilities: { drop: ["ALL"] }
+        # initContainers:
+        #   setup-user:
+        #     image:
+        #       repository: cy01/blackhole
+        #       tag: fenrir@sha256:e4378bc43d5607bb1a1118cb2a73d72b4e87edbeb44cad7fc7f2ba45a8488093
+        #     command:
+        #       - /bin/sh
+        #       - -ec
+        #       - |
+        #         cp -a /etc/. /mnt/etc/
+        #         grep -q '^decypharr:x:1000:1000:' /mnt/etc/passwd || echo 'decypharr:x:1000:1000:decypharr:/app:/sbin/nologin' >> /mnt/etc/passwd
+        #         grep -q '^decypharr:x:1000:' /mnt/etc/group || echo 'decypharr:x:1000:' >> /mnt/etc/group
+        #     securityContext:
+        #       allowPrivilegeEscalation: false
+        #       runAsGroup: 0
+        #       runAsNonRoot: false
+        #       runAsUser: 0
+        #       capabilities: { drop: ["ALL"] }
         containers:
           app:
             image:
