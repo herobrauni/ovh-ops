@@ -24,6 +24,10 @@ spec:
   nodeMaintenanceWindow:
     inProgress: false
     reusePVC: true
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: required
   resources:
     requests:
       cpu: 250m
