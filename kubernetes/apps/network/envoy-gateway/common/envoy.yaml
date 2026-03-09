@@ -26,6 +26,8 @@ spec:
                       labelSelector:
                         matchLabels:
                           app.kubernetes.io/name: envoy
+                      matchLabelKeys:
+                        - gateway.envoyproxy.io/owning-gateway-name
         container:
           image: mirror.gcr.io/envoyproxy/envoy:v1.37.0
           # imageRepository: mirror.gcr.io/envoyproxy/envoy
