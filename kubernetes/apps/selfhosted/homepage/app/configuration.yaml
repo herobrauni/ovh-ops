@@ -89,6 +89,10 @@ data:
             href: https://sonarr.brauni.dev
             siteMonitor: https://sonarr.brauni.dev
             icon: sonarr.png
+        - Sonarr 4K:
+            href: https://sonarr4k.brauni.dev
+            siteMonitor: https://sonarr4k.brauni.dev
+            icon: sonarr.png
         - Idlers:
             href: https://idlers.brauni.dev
             siteMonitor: https://idlers.brauni.dev
