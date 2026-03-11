@@ -1,0 +1,45 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ${POD_NAME}
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/name: rsync-migration-pod
+spec:
+  restartPolicy: Never
+  containers:
+    - name: rsyncd
+      image: alpine:3.20
+      command:
+        - /bin/sh
+        - -c
+      args:
+        - |
+          set -eu
+          apk add --no-cache rsync
+          cat >/etc/rsyncd.conf <<'EOF'
+          pid file = /tmp/rsyncd.pid
+          use chroot = no
+          log file = /dev/stdout
+          [volume]
+            path = /
+            comment = Pod root filesystem
+            read only = false
+            list = yes
+            munge symlinks = no
+            uid = root
+            gid = root
+          EOF
+          exec rsync --daemon --no-detach --config=/etc/rsyncd.conf
+      ports:
+        - name: rsync
+          containerPort: 873
+          protocol: TCP
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: ${PVC_NAME}
