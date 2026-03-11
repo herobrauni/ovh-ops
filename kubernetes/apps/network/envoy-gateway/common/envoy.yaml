@@ -29,7 +29,7 @@ spec:
                       matchLabelKeys:
                         - gateway.envoyproxy.io/owning-gateway-name
         container:
-          image: mirror.gcr.io/envoyproxy/envoy:v1.37.0
+          image: mirror.gcr.io/envoyproxy/envoy:v1.37.1
           # imageRepository: mirror.gcr.io/envoyproxy/envoy
           resources:
             requests:
