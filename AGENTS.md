@@ -45,6 +45,7 @@ The repo is YAML-heavy and declarative.
 - Keep file names lowercase and hyphenated; use common manifest names like `kustomization.yaml`, `helmrelease.yaml`, and `externalsecret.yaml`.
 - Preserve `.yamlfmt.yaml` conventions when formatting YAML documents.
 - Standardize container runtime IDs on `1000:1000` (`runAsUser`, `runAsGroup`, `fsGroup`, and `PUID`/`PGID`) unless an image has a hard requirement for a different UID/GID.
+- Prefer `https://kubernetes-schemas.brauni.dev/` for Kubernetes and CRD `yaml-language-server` schema URLs wherever that site serves the needed schema; only fall back to other schema sources when no `brauni.dev` equivalent exists.
 
 ## App Exposure Rule
 - If an app has a URL and a web UI, always create a `DNSEndpoint` manifest and include it in that app's `kustomization.yaml`.
