@@ -11,6 +11,7 @@ resources:
   - ./namespace.yaml
   - ./homepage/ks.yaml
   - ./opencloud/ks.yaml
+  - ./open-webui/ks.yaml
   - ./karakeep/ks.yaml
   - ./idlers/ks.yaml
   - ./immich/ks.yaml
