@@ -13,6 +13,7 @@ resources:
   # - ./aio/rclone/ks.yaml
   - ./decypharr/ks.yaml
   - ./sonarr/ks.yaml
+  - ./sonarr4k/ks.yaml
   - ./plex/ks.yaml
   - ./booklore/ks.yaml
   - ./shelfmark/ks.yaml

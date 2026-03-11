@@ -1,0 +1,143 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app sonarr4k
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: sonarr4k
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
+    controllers:
+      sonarr:
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: sonarr4k-pguser-secret
+        initContainers:
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: "18"
+            envFrom:
+              - secretRef:
+                  name: sonarr4k-initdb-secret
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/sonarr
+              tag: 4.0.16.2946@sha256:22651c750eedb091f6d76ade95dbecae0eeafe2b55432c3b8d8b042e8745f344
+            env:
+              SONARR__APP__INSTANCENAME: Sonarr
+              SONARR__APP__THEME: dark
+              SONARR__AUTH__METHOD: External
+              SONARR__AUTH__REQUIRED: DisabledForLocalAddresses
+              SONARR__LOG__DBENABLED: "False"
+              SONARR__LOG__LEVEL: info
+              SONARR__POSTGRES__HOST:
+                valueFrom:
+                  secretKeyRef:
+                    name: &pguser sonarr4k-pguser-secret
+                    key: host
+              SONARR__POSTGRES__MAINDB:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: db
+              SONARR__POSTGRES__PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: password
+              SONARR__POSTGRES__PORT:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: port
+              SONARR__POSTGRES__USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: user
+              SONARR__SERVER__PORT: &port 80
+              SONARR__UPDATE__BRANCH: develop
+              TZ: Europe/Berlin
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                  failureThreshold: 30
+                  periodSeconds: 10
+            resources:
+              requests:
+                cpu: 100m
+                memory: 1Gi
+              limits:
+                memory: 4Gi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    service:
+      app:
+        controller: sonarr
+        ports:
+          http:
+            port: *port
+    persistence:
+      config:
+        existingClaim: sonarr4k
+      tmp:
+        type: emptyDir
+      symlinks:
+        existingClaim: symlinks
+        globalMounts:
+          - path: /aio/symlinks
+      rclone:
+        type: custom
+        volumeSpec:
+          csi:
+            driver: rclone.csi.veloxpack.io
+            readOnly: true
+            volumeAttributes:
+              remote: decypharr
+              remotePath: "/"
+              configData: |
+                [decypharr]
+                type = webdav
+                url = http://decypharr.media.svc.cluster.local:8282/webdav
+                vendor = other
+        globalMounts:
+          - path: /aio/remote/realdebrid
+            readOnly: true
