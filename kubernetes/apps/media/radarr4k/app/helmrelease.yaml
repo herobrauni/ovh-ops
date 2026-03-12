@@ -82,14 +82,28 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  httpGet:
-                    path: /ping
-                    port: *port
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null && curl -fsS http://127.0.0.1:7878/ping >/dev/null
                   initialDelaySeconds: 0
-                  periodSeconds: 10
-                  timeoutSeconds: 1
+                  periodSeconds: 30
+                  timeoutSeconds: 5
                   failureThreshold: 3
-              readiness: *probes
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null && curl -fsS http://127.0.0.1:7878/ping >/dev/null
+                  initialDelaySeconds: 0
+                  periodSeconds: 15
+                  timeoutSeconds: 5
+                  failureThreshold: 2
               startup:
                 enabled: true
                 custom: true
