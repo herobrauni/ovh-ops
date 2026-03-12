@@ -12,6 +12,8 @@ resources:
   - ./symlinks/ks.yaml
   # - ./aio/rclone/ks.yaml
   - ./decypharr/ks.yaml
+  - ./radarr/ks.yaml
+  - ./radarr4k/ks.yaml
   - ./sonarr/ks.yaml
   - ./sonarr4k/ks.yaml
   - ./plex/ks.yaml
