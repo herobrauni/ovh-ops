@@ -85,6 +85,14 @@ data:
             href: https://plex.brauni.dev
             siteMonitor: https://plex.brauni.dev
             icon: plex.png
+        - Radarr:
+            href: https://radarr.brauni.dev
+            siteMonitor: https://radarr.brauni.dev
+            icon: radarr.png
+        - Radarr 4K:
+            href: https://radarr4k.brauni.dev
+            siteMonitor: https://radarr4k.brauni.dev
+            icon: radarr.png
         - Sonarr:
             href: https://sonarr.brauni.dev
             siteMonitor: https://sonarr.brauni.dev
