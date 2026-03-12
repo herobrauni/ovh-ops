@@ -35,26 +35,6 @@ spec:
             envFrom:
               - secretRef:
                   name: prowlarr-initdb-secret
-          02-sync-custom-definitions:
-            image:
-              repository: docker.io/alpine/git
-              tag: 2.49.1
-            command:
-              - /bin/sh
-              - -ec
-            args:
-              - >-
-                rm -rf /tmp/prowlarr-indexers &&
-                git clone --depth=1 https://github.com/dreulavelle/Prowlarr-Indexers /tmp/prowlarr-indexers &&
-                mkdir -p /config/Definitions &&
-                rm -rf /config/Definitions/Custom &&
-                cp -a /tmp/prowlarr-indexers/Custom /config/Definitions/
-            securityContext:
-              allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false
-              capabilities:
-                drop:
-                  - ALL
         containers:
           app:
             image:
