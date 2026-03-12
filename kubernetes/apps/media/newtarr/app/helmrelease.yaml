@@ -34,7 +34,6 @@ spec:
             env:
               FLASK_HOST: 0.0.0.0
               PORT: &targetPort 9705
-              TZ: Europe/Berlin
             probes:
               liveness: &probes
                 enabled: true

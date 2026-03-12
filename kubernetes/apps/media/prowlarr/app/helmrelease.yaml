@@ -74,7 +74,6 @@ spec:
                     key: user
               PROWLARR__SERVER__PORT: &targetPort 9696
               PROWLARR__UPDATE__BRANCH: develop
-              TZ: Europe/Berlin
             envFrom:
               - secretRef:
                   name: prowlarr-secret

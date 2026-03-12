@@ -86,7 +86,6 @@ spec:
               - -jar
               - /app/app.jar
             env:
-              TZ: Europe/Berlin
               FORCE_DISABLE_OIDC: false
               BOOKLORE_PORT: "6060"
               SWAGGER_ENABLED: true
