@@ -11,7 +11,6 @@ spec:
       app.kubernetes.io/name: *app
   components:
     - ../../../../components/cnpg
-    - ../../../../components/rclone-pvc
     - ../../../../components/volsync
   dependsOn:
     - name: cloudnative-pg-cluster
@@ -21,6 +20,8 @@ spec:
     - name: rook-ceph-cluster
       namespace: rook-ceph
     - name: symlinks
+      namespace: media
+    - name: rclone
       namespace: media
     - name: csi-rclone
       namespace: csi-rclone

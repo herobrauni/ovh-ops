@@ -21,6 +21,8 @@ spec:
       namespace: rook-ceph
     - name: symlinks
       namespace: media
+    - name: rclone
+      namespace: media
     - name: csi-rclone
       namespace: csi-rclone
     - name: tinyauth-brauni-dev

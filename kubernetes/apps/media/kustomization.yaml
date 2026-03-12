@@ -9,6 +9,7 @@ components:
 
 resources:
   - ./namespace.yaml
+  - ./rclone/ks.yaml
   - ./symlinks/ks.yaml
   - ./decypharr/ks.yaml
   - ./profilarr/ks.yaml
