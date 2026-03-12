@@ -12,6 +12,7 @@ resources:
   - ./symlinks/ks.yaml
   - ./decypharr/ks.yaml
   - ./profilarr/ks.yaml
+  - ./prowlarr/ks.yaml
   - ./radarr/ks.yaml
   - ./radarr4k/ks.yaml
   - ./sonarr/ks.yaml
