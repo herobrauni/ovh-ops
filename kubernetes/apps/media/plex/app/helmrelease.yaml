@@ -116,7 +116,19 @@ spec:
         globalMounts:
           - path: /aio/symlinks
       realdebrid:
-        existingClaim: decypharr-rclone
+        type: custom
+        volumeSpec:
+          csi:
+            driver: rclone.csi.veloxpack.io
+            readOnly: true
+            volumeAttributes:
+              remote: decypharr
+              remotePath: "/"
+              configData: |
+                [decypharr]
+                type = webdav
+                url = http://decypharr.media.svc.cluster.local:8282/webdav
+                vendor = other
         globalMounts:
           - path: /aio/remote/realdebrid
             readOnly: true

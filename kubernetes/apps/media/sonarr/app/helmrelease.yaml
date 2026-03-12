@@ -128,7 +128,7 @@ spec:
         globalMounts:
           - path: /aio/symlinks
       rclone:
-        existingClaim: decypharr-rclone
+        existingClaim: ${APP}-rclone
         globalMounts:
           - path: /aio/remote/realdebrid
             readOnly: true

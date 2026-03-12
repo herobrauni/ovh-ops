@@ -15,8 +15,6 @@ spec:
     - name: rook-ceph-cluster
       namespace: rook-ceph
     - name: symlinks
-    - name: rclone
-      namespace: media
     - name: decypharr
     - name: csi-rclone
       namespace: csi-rclone

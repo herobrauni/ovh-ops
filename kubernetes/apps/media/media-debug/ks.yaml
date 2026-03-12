@@ -11,8 +11,6 @@ spec:
       app.kubernetes.io/name: *app
   dependsOn:
     - name: symlinks
-    - name: rclone
-      namespace: media
     - name: decypharr
     - name: csi-rclone
       namespace: csi-rclone
