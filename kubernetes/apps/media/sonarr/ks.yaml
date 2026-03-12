@@ -11,6 +11,7 @@ spec:
       app.kubernetes.io/name: *app
   components:
     - ../../../../components/cnpg
+    - ../../../../components/rclone-pvc
     - ../../../../components/volsync
   dependsOn:
     - name: cloudnative-pg-cluster
