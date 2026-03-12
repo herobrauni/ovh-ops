@@ -126,6 +126,10 @@ data:
             href: https://profilarr.brauni.dev
             siteMonitor: https://profilarr.brauni.dev
             icon: mdi-format-list-checks
+        - Prowlarr:
+            href: https://prowlarr.brauni.dev
+            siteMonitor: https://prowlarr.brauni.dev
+            icon: prowlarr.png
 
     - Observability:
         - Grafana:
