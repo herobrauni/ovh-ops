@@ -116,19 +116,7 @@ spec:
         globalMounts:
           - path: /aio/symlinks
       realdebrid:
-        type: custom
-        volumeSpec:
-          csi:
-            driver: rclone.csi.veloxpack.io
-            readOnly: true
-            volumeAttributes:
-              remote: 
-              remotePath: "/"
-              configData: |
-                []
-                type = webdav
-                url = http://.media.svc.cluster.local:8282/webdav
-                vendor = other
+        existingClaim: -rclone
         globalMounts:
           - path: /aio/remote/realdebrid
             readOnly: true
