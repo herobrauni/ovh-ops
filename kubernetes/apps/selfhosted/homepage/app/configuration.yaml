@@ -126,6 +126,10 @@ data:
             href: https://profilarr.brauni.dev
             siteMonitor: https://profilarr.brauni.dev
             icon: mdi-format-list-checks
+        - NewtArr:
+            href: https://newtarr.brauni.dev
+            siteMonitor: https://newtarr.brauni.dev
+            icon: mdi-new-box
         - Prowlarr:
             href: https://prowlarr.brauni.dev
             siteMonitor: https://prowlarr.brauni.dev
