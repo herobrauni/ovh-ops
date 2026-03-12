@@ -64,5 +64,10 @@ spec:
     persistence:
       config:
         existingClaim: profilarr
+        advancedMounts:
+          profilarr:
+            app:
+              - path: /config
+                subPath: config
       tmp:
         type: emptyDir
