@@ -29,7 +29,6 @@ spec:
               PORT: &port 6868
               PGID: "1000"
               PUID: "1000"
-              TZ: Europe/Berlin
             probes:
               liveness: &probes
                 enabled: true

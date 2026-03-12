@@ -75,7 +75,6 @@ spec:
                     key: password
               LOG_CHANNEL: stdout
               PGSQL_SSL_MODE: disable
-              TZ: Europe/Berlin
               TRUSTED_PROXIES: "**"
             envFrom:
               - secretRef:

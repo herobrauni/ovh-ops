@@ -74,7 +74,6 @@ spec:
                     key: user
               SONARR__SERVER__PORT: &port 80
               SONARR__UPDATE__BRANCH: develop
-              TZ: Europe/Berlin
             envFrom:
               - secretRef:
                   name: sonarr-secret

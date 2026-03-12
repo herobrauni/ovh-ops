@@ -4,7 +4,6 @@ kind: ConfigMap
 metadata:
   name: immich-configmap
 data:
-  TZ: Europe/Berlin
   DISABLE_REVERSE_GEOCODING: "true"
   ENABLE_MAPBOX: "false"
   LOG_LEVEL: log

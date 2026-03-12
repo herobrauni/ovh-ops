@@ -73,7 +73,6 @@ spec:
                   secretKeyRef:
                     name: *pguser
                     key: user
-              TZ: Europe/Berlin
             envFrom:
               - secretRef:
                   name: radarr-secret

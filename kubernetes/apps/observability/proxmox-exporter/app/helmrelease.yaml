@@ -30,7 +30,6 @@ spec:
               tag: 3.8.1
             env:
               PVE_VERIFY_SSL: "true"
-              TZ: Europe/Berlin
             envFrom:
               - secretRef:
                   name: proxmox-exporter-secret
@@ -57,4 +56,3 @@ spec:
         ports:
           metrics:
             port: *port
-
