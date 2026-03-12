@@ -15,12 +15,6 @@ spec:
     defaultPodOptions:
       automountServiceAccountToken: false
       enableServiceLinks: false
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-        fsGroupChangePolicy: OnRootMismatch
     controllers:
       profilarr:
         annotations:
@@ -33,6 +27,8 @@ spec:
             env:
               LOG_LEVEL: info
               PORT: &port 6868
+              PGID: "1000"
+              PUID: "1000"
               TZ: Europe/Berlin
             probes:
               liveness: &probes
@@ -51,9 +47,15 @@ spec:
                 memory: 1Gi
             securityContext:
               allowPrivilegeEscalation: false
+              runAsUser: 0
+              runAsGroup: 0
               capabilities:
                 drop:
                   - ALL
+                add:
+                  - CHOWN
+                  - SETUID
+                  - SETGID
     service:
       app:
         controller: profilarr
