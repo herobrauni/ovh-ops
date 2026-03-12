@@ -26,7 +26,7 @@ spec:
       sonarr:
         annotations:
           reloader.stakater.com/auto: "true"
-          secret.reloader.stakater.com/reload: sonarr4k-pguser-secret
+          secret.reloader.stakater.com/reload: sonarr4k-secret,sonarr4k-pguser-secret
         initContainers:
           01-init-db:
             image:
@@ -75,6 +75,9 @@ spec:
               SONARR__SERVER__PORT: &port 80
               SONARR__UPDATE__BRANCH: develop
               TZ: Europe/Berlin
+            envFrom:
+              - secretRef:
+                  name: sonarr4k-secret
             probes:
               liveness: &probes
                 enabled: true
