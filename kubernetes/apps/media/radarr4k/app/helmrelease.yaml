@@ -136,6 +136,17 @@ spec:
             volumeAttributes:
               remote: decypharr
               remotePath: "/"
+              dir-cache-time: "10s"
+              vfs-cache-mode: full
+              vfs-cache-max-age: "504h"
+              vfs-cache-max-size: "10G"
+              vfs-cache-poll-interval: "30s"
+              vfs-read-chunk-size: "32M"
+              vfs-read-chunk-size-limit: "128M"
+              vfs-fast-fingerprint: "true"
+              no-modtime: "true"
+              no-checksum: "true"
+              read-only: "true"
               configData: |
                 [decypharr]
                 type = webdav
