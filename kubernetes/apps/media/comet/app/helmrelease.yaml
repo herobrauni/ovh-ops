@@ -127,6 +127,9 @@ spec:
           http:
             port: 80
             targetPort: *targetPort
+          cometnet:
+            port: 8765
+            targetPort: 8765
     persistence:
       config:
         existingClaim: comet
