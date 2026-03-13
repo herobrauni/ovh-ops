@@ -64,6 +64,10 @@ data:
             href: https://open-webui.brauni.dev
             siteMonitor: https://open-webui.brauni.dev
             icon: mdi-robot-outline
+        - Web Check:
+            href: https://web-check.brauni.dev
+            siteMonitor: https://web-check.brauni.dev
+            icon: mdi-web
         - Immich:
             href: https://immich.brauni.dev
             siteMonitor: https://immich.brauni.dev
