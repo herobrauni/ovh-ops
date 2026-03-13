@@ -62,7 +62,7 @@ spec:
                   secretKeyRef:
                     name: prowlarr-secret
                     key: PROWLARR__AUTH__APIKEY
-              PROWLARR_URL: http://prowlarr
+              PROWLARR_URL: http://prowlarr.media.svc.cluster.local
               DMM_INGEST_ENABLED: "true"
               SCRAPE_BITMAGNET: both
               SCRAPE_PROWLARR: live
