@@ -18,6 +18,7 @@ resources:
   - ./radarr4k/ks.yaml
   - ./sonarr/ks.yaml
   - ./sonarr4k/ks.yaml
+  - ./swaparr/ks.yaml
   - ./plex/ks.yaml
   - ./booklore/ks.yaml
   - ./shelfmark/ks.yaml
