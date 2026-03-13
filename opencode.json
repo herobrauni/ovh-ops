@@ -1,6 +1,9 @@
 {
   "$schema": "https://kilo.ai/config.json",
-  "plugin": ["@iam-brain/opencode-codex-auth@latest"],
+  "plugin": [
+    "@iam-brain/opencode-codex-auth@latest",
+    "@tarquinen/opencode-dcp@latest"
+  ],
   "provider": {
     "openai": {
       "models": {
