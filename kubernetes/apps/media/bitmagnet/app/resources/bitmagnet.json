@@ -1542,7 +1542,7 @@
         "multi": false,
         "name": "DS_VICTORIALOGS",
         "options": [],
-        "query": "victoria-logs",
+        "query": "victoriametrics-logs-datasource",
         "queryValue": "",
         "refresh": 1,
         "regex": "",
