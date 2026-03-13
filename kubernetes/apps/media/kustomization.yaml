@@ -9,7 +9,7 @@ components:
 
 resources:
   - ./namespace.yaml
-  - ./bitmagnet/ks.yaml
+  # - ./bitmagnet/ks.yaml
   - ./booklore/ks.yaml
   - ./cleanuparr/ks.yaml
   - ./decypharr/ks.yaml
