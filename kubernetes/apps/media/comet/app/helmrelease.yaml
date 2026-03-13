@@ -49,8 +49,11 @@ spec:
                     key: uri
               FASTAPI_HOST: 0.0.0.0
               FASTAPI_PORT: &targetPort 8000
+              HOME: /tmp
               PUBLIC_BASE_URL: https://comet.brauni.dev
               USE_GUNICORN: "true"
+              UV_CACHE_DIR: /tmp/.cache/uv
+              XDG_CACHE_HOME: /tmp/.cache
             envFrom:
               - secretRef:
                   name: comet-secret
