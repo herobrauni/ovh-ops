@@ -72,3 +72,9 @@ spec:
           - backendRefs:
               - name: *app
                 port: *port
+
+    persistence:
+      nginx-cache:
+        type: emptyDir
+        globalMounts:
+          - path: /var/cache/nginx
