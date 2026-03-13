@@ -66,6 +66,7 @@ The repo is YAML-heavy and declarative.
 - The shared CNPG component in `kubernetes/components/cnpg` creates the usual `${APP}-initdb-secret` and `${APP}-pguser-secret` flow and defaults to a single database named `${APP}`. Apps that can tolerate a single DB should prefer that standard path.
 - For media namespace remote mounts backed by Decypharr WebDAV, prefer the custom CSI rclone volume pattern used in `kubernetes/apps/media/media-debug/app/helmrelease.yaml` instead of assuming a PVC such as `pvc-rclone` exists.
 - Sonarr in this repo is intended to use native Postgres env configuration with the `home-operations/sonarr` image. The working pattern is to set `SONARR__POSTGRES__*` env vars from `sonarr-pguser-secret` and disable the separate log database with `SONARR__LOG__DBENABLED: "False"` so logs stay on disk/Loki.
+- Do not run Flux reconcile commands for local-only manifest edits that have not been committed and pushed yet; Flux will only apply the Git revision it can fetch from the remote source.
 
 ## Testing Guidelines
 Primary validation is CI-based:
