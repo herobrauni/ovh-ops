@@ -77,9 +77,9 @@ spec:
               tag: 1.4.2
             env:
               SERVER_PROTOCOL: https
-              SERVER_HOST: patchmon.brauni.dev
+              SERVER_HOST: patchmon.riki.boo
               SERVER_PORT: "443"
-              CORS_ORIGIN: https://patchmon.brauni.dev
+              CORS_ORIGIN: https://patchmon.riki.boo
               LOG_LEVEL: info
               ENABLE_LOGGING: "true"
               PM_LOG_TO_CONSOLE: "true"
@@ -152,9 +152,9 @@ spec:
         annotations:
           gatus.home-operations.com/endpoint: |-
             conditions: ["[STATUS] == 200"]
-            url: https://patchmon.brauni.dev
+            url: https://patchmon.riki.boo
         hostnames:
-          - patchmon.brauni.dev
+          - patchmon.riki.boo
         parentRefs:
           - name: envoy-brauni-dev-public
             namespace: network
