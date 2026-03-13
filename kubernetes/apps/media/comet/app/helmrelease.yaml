@@ -47,7 +47,9 @@ spec:
                   secretKeyRef:
                     name: &pguser comet-pguser-secret
                     key: uri
-              BITMAGNET_URL: https://bitmagnetfortheweebs.midnightignite.me
+              BITMAGNET_URL: https://bitmagnet.media.svc.cluster.local
+              SCRAPE_COMET: both
+              COMET_URL: https://comet.feels.legal
               COMETNET_BOOTSTRAP_NODES: '["wss://cometnet-beta.feels.legal", "wss://cometnet.micasa161.me","wss://cometuk2.sophnsharm.stream/cometnet/ws",  "wss://cometnetuk.sophnsharm.stream/cometnet/ws", "wss://cometnet.stremio.ru", "https://cometnet.elfhosted.com", "wss://cometnet.streamproxy.xyz"]'
               COMETNET_CONTRIBUTION_MODE: leech
               COMETNET_ENABLED: "true"
