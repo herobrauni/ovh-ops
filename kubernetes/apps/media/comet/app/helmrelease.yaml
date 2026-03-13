@@ -52,7 +52,7 @@ spec:
               COMETNET_CONTRIBUTION_MODE: leech
               COMETNET_ENABLED: "true"
               COMETNET_NODE_ALIAS: 480p.com
-              COMETNET_ADVERTISE_URL: "comet.riki.boo"
+              COMETNET_ADVERTISE_URL: "wss://comet.riki.boo/cometnet/ws"
               FASTAPI_HOST: 0.0.0.0
               FASTAPI_PORT: &targetPort 8000
               HOME: /tmp
