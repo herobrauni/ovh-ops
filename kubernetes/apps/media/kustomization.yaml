@@ -9,7 +9,7 @@ components:
 
 resources:
   - ./namespace.yaml
-  # - .//ks.yaml
+  - .//ks.yaml
   - ./booklore/ks.yaml
   - ./cleanuparr/ks.yaml
   - .//ks.yaml
