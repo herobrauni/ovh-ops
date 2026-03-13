@@ -172,12 +172,6 @@ spec:
             app:
               - path: /app/agents
                 subPath: agents
-              - path: /app/assets
-                subPath: assets
-          frontend:
-            app:
-              - path: /usr/share/nginx/html/assets
-                subPath: assets
       tmp:
         type: emptyDir
         globalMounts:
