@@ -31,8 +31,8 @@ spec:
         containers:
           app:
             image:
-              repository: lissy93/web-check
-              tag: 2.0.2
+              repository: ghcr.io/lissy93/web-check
+              tag: latest@sha256:2b4ee0a63f6e5cf12c96dd5b123fff488b40410b99f43f08a6e24bc8460531fa
             env:
               PORT: &port 3000
               CHROME_PATH: /usr/bin/chromium
