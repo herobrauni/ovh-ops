@@ -31,7 +31,7 @@ spec:
   resources:
     requests:
       cpu: 250m
-      memory: 384Mi
+      memory: 1Gi
     limits:
       memory: 12Gi
   monitoring:
