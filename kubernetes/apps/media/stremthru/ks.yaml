@@ -32,7 +32,7 @@ spec:
     substitute:
       APP: *app
       CNPG_NAME: postgres18
-      VOLSYNC_CAPACITY: 5Gi
+      VOLSYNC_CAPACITY: 10Gi
   prune: true
   sourceRef:
     kind: GitRepository
