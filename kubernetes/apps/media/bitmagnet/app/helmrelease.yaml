@@ -26,7 +26,15 @@ spec:
       :
         annotations:
           reloader.stakater.com/auto: "true"
-          secret.reloader.stakater.com/reload: -secret,-pguser-secret
+          secret.reloader.stakater.com/reload: -secret,-initdb-secret,-pguser-secret
+        initContainers:
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: "18"
+            envFrom:
+              - secretRef:
+                  name: -initdb-secret
         containers:
           app:
             image:
