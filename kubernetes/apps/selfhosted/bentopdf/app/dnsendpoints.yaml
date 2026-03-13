@@ -8,6 +8,10 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
+    - dnsName: pdf.brauni.dev
+      recordType: CNAME
+      targets:
+        - public.brauni.dev
     - dnsName: bentopdf.brauni.dev
       recordType: CNAME
       targets:
