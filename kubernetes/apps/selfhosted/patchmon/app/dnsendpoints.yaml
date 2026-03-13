@@ -8,7 +8,7 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: patchmon.brauni.dev
+    - dnsName: patchmon.riki.boo
       recordType: CNAME
       targets:
         - public.brauni.dev

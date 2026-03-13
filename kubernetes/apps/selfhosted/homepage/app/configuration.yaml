@@ -89,16 +89,16 @@ data:
             siteMonitor: https://atuin.brauni.dev
             icon: mdi-console-line
         - BentoPDF:
-            href: https://bentopdf.brauni.dev
-            siteMonitor: https://bentopdf.brauni.dev
+            href: https://pdf.brauni.dev
+            siteMonitor: https://pdf.brauni.dev
             icon: mdi-file-pdf-box
         - Firefly III:
             href: https://firefly3.brauni.dev
             siteMonitor: https://firefly3.brauni.dev
             icon: mdi-cash-multiple
         - PatchMon:
-            href: https://patchmon.brauni.dev
-            siteMonitor: https://patchmon.brauni.dev
+            href: https://patchmon.riki.boo
+            siteMonitor: https://patchmon.riki.boo
             icon: mdi-package-up
 
     - Media:
