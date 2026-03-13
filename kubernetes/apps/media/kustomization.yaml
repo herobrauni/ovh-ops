@@ -25,5 +25,6 @@ resources:
   - ./shelfmark/ks.yaml
   - ./sonarr/ks.yaml
   - ./sonarr4k/ks.yaml
+  - ./stremthru/ks.yaml
   # - ./swaparr/ks.yaml
   - ./symlinks/ks.yaml

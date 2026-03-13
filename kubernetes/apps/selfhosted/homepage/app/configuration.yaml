@@ -134,6 +134,10 @@ data:
             href: https://decypharr.riki.boo
             siteMonitor: https://decypharr.riki.boo
             icon: mdi-magnet
+        - StremThru:
+            href: https://stremthru.riki.boo
+            siteMonitor: https://stremthru.riki.boo
+            icon: mdi-magnet
         - Profilarr:
             href: https://profilarr.brauni.dev
             siteMonitor: https://profilarr.brauni.dev
