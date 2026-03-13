@@ -138,6 +138,10 @@ data:
             href: https://prowlarr.brauni.dev
             siteMonitor: https://prowlarr.brauni.dev
             icon: prowlarr.png
+        - Seerr:
+            href: https://requests.brauni.dev
+            siteMonitor: https://requests.brauni.dev
+            icon: mdi-television-guide
 
     - Observability:
         - Grafana:

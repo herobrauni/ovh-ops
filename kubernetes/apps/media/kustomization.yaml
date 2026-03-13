@@ -19,6 +19,7 @@ resources:
   - ./prowlarr/ks.yaml
   - ./radarr/ks.yaml
   - ./radarr4k/ks.yaml
+  - ./seerr/ks.yaml
   - ./shelfmark/ks.yaml
   - ./sonarr/ks.yaml
   - ./sonarr4k/ks.yaml
