@@ -6,6 +6,16 @@ resources:
   - ./ocirepository.yaml
   - ./externalsecret.yaml
   - ./helmrelease.yaml
+  - ./servicemonitor.yaml
+  - ./grafanadashboard.yaml
   - ./httproute.yaml
   - ./securitypolicy.yaml
   - ./dnsendpoints.yaml
+configMapGenerator:
+  - name: bitmagnet-dashboard
+    files:
+      - bitmagnet.json=./resources/bitmagnet.json
+generatorOptions:
+  disableNameSuffixHash: true
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
