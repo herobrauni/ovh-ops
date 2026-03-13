@@ -96,6 +96,10 @@ data:
             href: https://firefly3.brauni.dev
             siteMonitor: https://firefly3.brauni.dev
             icon: mdi-cash-multiple
+        - PatchMon:
+            href: https://patchmon.brauni.dev
+            siteMonitor: https://patchmon.brauni.dev
+            icon: mdi-package-up
 
     - Media:
         - Bitmagnet:

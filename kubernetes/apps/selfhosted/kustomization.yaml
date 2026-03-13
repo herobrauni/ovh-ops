@@ -20,3 +20,4 @@ resources:
   - ./bentopdf/ks.yaml
   - ./firefly3/ks.yaml
   - ./paperless/ks.yaml
+  - ./patchmon/ks.yaml
