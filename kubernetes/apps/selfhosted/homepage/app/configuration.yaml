@@ -80,10 +80,18 @@ data:
             href: https://idlers.brauni.dev
             siteMonitor: https://idlers.brauni.dev
             icon: mdi-application-cog
+        - Jotty:
+            href: https://jotty.brauni.dev
+            siteMonitor: https://jotty.brauni.dev
+            icon: mdi-notebook-edit-outline
         - Atuin:
             href: https://atuin.brauni.dev
             siteMonitor: https://atuin.brauni.dev
             icon: mdi-console-line
+        - BentoPDF:
+            href: https://bentopdf.brauni.dev
+            siteMonitor: https://bentopdf.brauni.dev
+            icon: mdi-file-pdf-box
         - Firefly III:
             href: https://firefly3.brauni.dev
             siteMonitor: https://firefly3.brauni.dev
