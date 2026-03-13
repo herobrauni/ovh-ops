@@ -90,6 +90,10 @@ data:
             icon: mdi-cash-multiple
 
     - Media:
+        - Cleanuparr:
+            href: https://cleanuparr.brauni.dev
+            siteMonitor: https://cleanuparr.brauni.dev
+            icon: mdi-broom
         - BookLore:
             href: https://booklore.brauni.dev
             siteMonitor: https://booklore.brauni.dev
