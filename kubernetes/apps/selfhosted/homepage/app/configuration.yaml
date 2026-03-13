@@ -90,6 +90,10 @@ data:
             icon: mdi-cash-multiple
 
     - Media:
+        - Bitmagnet:
+            href: https://bitmagnet.brauni.dev
+            siteMonitor: https://bitmagnet.brauni.dev
+            icon: mdi-magnet
         - Cleanuparr:
             href: https://cleanuparr.brauni.dev
             siteMonitor: https://cleanuparr.brauni.dev
