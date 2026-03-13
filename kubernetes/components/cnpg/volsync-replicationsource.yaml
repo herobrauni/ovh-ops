@@ -6,7 +6,7 @@ metadata:
 spec:
   sourcePVC: ${APP}-pg-backups
   trigger:
-    schedule: ${VOLSYNC_TRIGGER_SCHEDULE:=0 * * * *}
+    schedule: ${VOLSYNC_TRIGGER_SCHEDULE:=0 */6 * * *}
   kopia:
     accessModes:
       - ${VOLSYNC_SNAP_ACCESSMODES:=ReadWriteOnce}
