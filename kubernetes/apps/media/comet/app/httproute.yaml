@@ -48,4 +48,4 @@ spec:
   rules:
     - backendRefs:
         - name: comet
-          port: 80
+          port: 8765
