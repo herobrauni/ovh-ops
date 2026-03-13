@@ -134,6 +134,10 @@ data:
             href: https://.riki.boo
             siteMonitor: https://.riki.boo
             icon: mdi-magnet
+        - StremThru:
+            href: https://.riki.boo
+            siteMonitor: https://.riki.boo
+            icon: mdi-magnet
         - Profilarr:
             href: https://profilarr.brauni.dev
             siteMonitor: https://profilarr.brauni.dev
