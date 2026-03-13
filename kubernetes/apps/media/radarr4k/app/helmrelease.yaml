@@ -86,10 +86,10 @@ spec:
                       - /bin/sh
                       - -c
                       - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null && curl -fsS http://127.0.0.1:7878/ping >/dev/null
-                  initialDelaySeconds: 0
+                  initialDelaySeconds: 30
                   periodSeconds: 30
-                  timeoutSeconds: 5
-                  failureThreshold: 3
+                  timeoutSeconds: 10
+                  failureThreshold: 6
               readiness:
                 enabled: true
                 custom: true
@@ -99,10 +99,10 @@ spec:
                       - /bin/sh
                       - -c
                       - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null && curl -fsS http://127.0.0.1:7878/ping >/dev/null
-                  initialDelaySeconds: 0
+                  initialDelaySeconds: 30
                   periodSeconds: 15
-                  timeoutSeconds: 5
-                  failureThreshold: 2
+                  timeoutSeconds: 10
+                  failureThreshold: 6
               startup:
                 enabled: true
                 custom: true
