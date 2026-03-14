@@ -79,4 +79,26 @@ spec:
 
     # # -- A list of CephObjectStore configurations to deploy
     # # @default -- See [below](#ceph-object-stores)
-    cephObjectStores: {}
+    cephObjectStores:
+      - name: proxmox-s3
+        # The storage class isn't strictly required for the gateway itself,
+        # but is useful if you want to dynamically provision ObjectBucketClaims later
+        storageClass:
+          enabled: true
+          name: ceph-bucket
+          reclaimPolicy: Delete
+        spec:
+          # This instructs Rook to spin up 2 RGW pods inside K8s for High Availability
+          gateway:
+            port: 80
+            instances: 2
+          # Rook will attempt to create these pools on your external Proxmox Ceph cluster.
+          # Ensure your replication size matches your Proxmox Ceph configuration (usually 3).
+          dataPool:
+            failureDomain: host # or 'osd' depending on your Proxmox Ceph layout
+            replicated:
+              size: 3
+          metadataPool:
+            failureDomain: host
+            replicated:
+              size: 3
