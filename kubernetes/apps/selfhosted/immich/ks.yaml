@@ -31,7 +31,7 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      CNPG_NAME: *app
+      CNPG_NAME: immich-openebs
       VOLSYNC_CAPACITY: 100Gi
   prune: true
   sourceRef:
