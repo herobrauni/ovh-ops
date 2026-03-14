@@ -8,7 +8,5 @@ resources:
   - ./grafanadashboard.yaml
   - ./immich.yaml
   - ./immich-openebs.yaml
-  - ./immich-restore-test.yaml
-  - ./postgres18-restore-test.yaml
   - ./prometheusrule.yaml
   - ./scheduledbackup.yaml
