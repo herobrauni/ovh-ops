@@ -159,3 +159,7 @@ controlPlane:
     - "@./patches/controller/cluster.yaml"
     - "@./patches/controller/talosapiaccess.yaml"
 
+# Worker patches
+worker:
+  patches:
+    - "@./patches/worker/machine-openebs-local.yaml"
