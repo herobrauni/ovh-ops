@@ -12,10 +12,6 @@ spec:
   storage:
     size: 20Gi
     storageClass: openebs-hostpath
-  bootstrap:
-    recovery:
-      backup:
-        name: immich-openebs-manual-s3-202603142355
   superuserSecret:
     name: cloudnative-pg-secret
   enableSuperuserAccess: true
