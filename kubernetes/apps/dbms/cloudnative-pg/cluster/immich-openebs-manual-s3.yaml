@@ -1,0 +1,10 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/postgresql.cnpg.io/backup_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: immich-openebs-manual-s3
+spec:
+  cluster:
+    name: immich-openebs
+  method: barmanObjectStore
