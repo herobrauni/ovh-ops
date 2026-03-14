@@ -7,7 +7,5 @@ resources:
   - ./cnpg-backups-obc.yaml
   - ./grafanadashboard.yaml
   - ./immich.yaml
-  - ./immich-openebs.yaml
-  - ./immich-openebs-manual-s3.yaml
   - ./prometheusrule.yaml
   - ./scheduledbackup.yaml
