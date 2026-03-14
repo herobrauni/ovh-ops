@@ -23,6 +23,8 @@ metadata:
 spec:
   dependsOn:
     - name: actions-runner-controller
+    - name: openebs
+      namespace: openebs-system
     - name: bitwarden
       namespace: external-secrets
     - name: rook-ceph-cluster
