@@ -22,6 +22,7 @@ spec:
 
     controllers:
       immich:
+        replicas: 0
         annotations:
           reloader.stakater.com/auto: "true"
           secret.reloader.stakater.com/reload: immich-secret,immich-pguser-secret
@@ -87,6 +88,7 @@ spec:
                 memory: 4Gi
 
       machine-learning:
+        replicas: 0
         annotations:
           reloader.stakater.com/auto: "true"
           secret.reloader.stakater.com/reload: immich-secret
