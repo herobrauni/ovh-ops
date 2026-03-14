@@ -1,0 +1,9 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/objectbucket.io/objectbucketclaim_v1alpha1.json
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: cnpg-backups
+spec:
+  bucketName: cnpg-backups
+  storageClassName: ceph-bucket

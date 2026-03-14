@@ -18,14 +18,11 @@ spec:
       namespace: external-secrets
     - name: rook-ceph-cluster
       namespace: rook-ceph
-    - name: volsync
-      namespace: volsync-system
   interval: 1h
   path: ./kubernetes/apps/selfhosted/firefly3/app
   postBuild:
     substitute:
       APP: *app
-      VOLSYNC_CAPACITY: 5Gi
   prune: true
   sourceRef:
     kind: GitRepository
