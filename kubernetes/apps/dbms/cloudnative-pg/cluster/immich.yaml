@@ -5,21 +5,17 @@ kind: Cluster
 metadata:
   name: immich
 spec:
-  instances: 3
+  instances: 1
   imageName: ghcr.io/tensorchord/cloudnative-vectorchord:18.3-1.1.1
   primaryUpdateStrategy: unsupervised
   primaryUpdateMethod: switchover
   storage:
     size: 20Gi
-    storageClass: ceph-block
+    storageClass: openebs-hostpath
   bootstrap:
     recovery:
-      source: immich-v1
-      volumeSnapshots:
-        storage:
-          name: immich-20260314000000
-          kind: VolumeSnapshot
-          apiGroup: snapshot.storage.k8s.io
+      backup:
+        name: immich-final-s3-20260314194250
   superuserSecret:
     name: cloudnative-pg-secret
   enableSuperuserAccess: true
@@ -60,19 +56,3 @@ spec:
       wal:
         compression: gzip
         maxParallel: 8
-  externalClusters:
-    - name: immich-v1
-      barmanObjectStore:
-        serverName: immich
-        destinationPath: s3://cnpg-backups/immich/v1/
-        endpointURL: http://rook-ceph-rgw-proxmox-s3.rook-ceph.svc:80
-        s3Credentials:
-          accessKeyId:
-            name: cnpg-backups
-            key: AWS_ACCESS_KEY_ID
-          secretAccessKey:
-            name: cnpg-backups
-            key: AWS_SECRET_ACCESS_KEY
-        wal:
-          compression: gzip
-          maxParallel: 8
