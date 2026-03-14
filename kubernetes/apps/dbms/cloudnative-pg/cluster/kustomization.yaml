@@ -7,5 +7,6 @@ resources:
   - ./cnpg-backups-obc.yaml
   - ./grafanadashboard.yaml
   - ./immich.yaml
+  - ./postgres18-restore-test.yaml
   - ./prometheusrule.yaml
   - ./scheduledbackup.yaml
