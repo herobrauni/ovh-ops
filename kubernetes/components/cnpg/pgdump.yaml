@@ -87,7 +87,7 @@ spec:
       runAsGroup: ${PGDUMP_PGID:=1000}
       fsGroup: ${PGDUMP_PGID:=1000}
     moverVolumes:
-      - mountPath: /mnt/pg-auth
+      - mountPath: pg-auth
         volumeSource:
           secret:
             secretName: "${APP}-pguser-secret"
