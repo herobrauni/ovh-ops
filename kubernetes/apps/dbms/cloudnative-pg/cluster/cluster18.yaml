@@ -12,11 +12,6 @@ spec:
   storage:
     size: 50Gi
     storageClass: openebs-hostpath
-  bootstrap:
-    recovery:
-      source: postgres18
-      recoveryTarget:
-        backupID: 20260315T114628
   superuserSecret:
     name: cloudnative-pg-secret
   enableSuperuserAccess: true
