@@ -12,6 +12,35 @@ spec:
       storage: ${PGDUMP_CAPACITY:=10Gi}
   storageClassName: ${PGDUMP_STORAGECLASS:=ceph-block}
 ---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/batch/v1/job.json
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "${APP}-pgdump-seed"
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsUser: ${PGDUMP_PUID:=1000}
+        runAsGroup: ${PGDUMP_PGID:=1000}
+        fsGroup: ${PGDUMP_PGID:=1000}
+      containers:
+        - name: seed
+          image: ghcr.io/home-operations/busybox:1.37.0
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              touch /data/.seed
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: "${APP}-pgdump"
+---
 # yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/external-secrets.io/externalsecret_v1.json
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
