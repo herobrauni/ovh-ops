@@ -184,7 +184,24 @@ spec:
               value: false
             },
             JSONPatch{
-              op: "remove",
-              path: "/spec/template/spec/containers/0/securityContext/capabilities"
+              op: "add",
+              path: "/spec/template/spec/containers/0/securityContext/capabilities",
+              value: Object.spec.template.spec.containers.securityContext.capabilities{
+                add: [
+                  "CHOWN",
+                  "DAC_OVERRIDE",
+                  "FOWNER",
+                  "FSETID",
+                  "MKNOD",
+                  "SETGID",
+                  "SETUID",
+                  "SETPCAP",
+                  "NET_BIND_SERVICE",
+                  "SYS_CHROOT",
+                  "KILL",
+                  "AUDIT_WRITE",
+                  "SETFCAP"
+                ]
+              }
             }
           ]
