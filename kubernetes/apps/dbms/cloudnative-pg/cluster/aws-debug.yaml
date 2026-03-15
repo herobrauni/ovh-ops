@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: aws-debug
+spec:
+  restartPolicy: Always
+  containers:
+    - name: aws-cli
+      image: amazon/aws-cli:latest
+      command:
+        - sleep
+        - infinity
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: cnpg-backups
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: cnpg-backups
+              key: AWS_SECRET_ACCESS_KEY
+        - name: AWS_DEFAULT_REGION
+          value: us-east-1
+        - name: AWS_ENDPOINT_URL_S3
+          value: http://rook-ceph-rgw-proxmox-s3.rook-ceph.svc:80
+        - name: AWS_EC2_METADATA_DISABLED
+          value: "true"
