@@ -21,6 +21,9 @@ data:
       Selfhosted:
         style: column
         icon: mdi-home
+      Tools:
+        style: column
+        icon: mdi-tools
       Media:
         style: column
         icon: mdi-play-box-multiple
@@ -64,10 +67,6 @@ data:
             href: https://open-webui.brauni.dev
             siteMonitor: https://open-webui.brauni.dev
             icon: mdi-robot-outline
-        - Web Check:
-            href: https://web-check.brauni.dev
-            siteMonitor: https://web-check.brauni.dev
-            icon: mdi-web
         - Immich:
             href: https://immich.brauni.dev
             siteMonitor: https://immich.brauni.dev
@@ -84,18 +83,6 @@ data:
             href: https://idlers.brauni.dev
             siteMonitor: https://idlers.brauni.dev
             icon: mdi-application-cog
-        - Jotty:
-            href: https://jotty.brauni.dev
-            siteMonitor: https://jotty.brauni.dev
-            icon: mdi-notebook-edit-outline
-        - Atuin:
-            href: https://atuin.brauni.dev
-            siteMonitor: https://atuin.brauni.dev
-            icon: mdi-console-line
-        - BentoPDF:
-            href: https://pdf.brauni.dev
-            siteMonitor: https://pdf.brauni.dev
-            icon: mdi-file-pdf-box
         - Firefly III:
             href: https://firefly3.brauni.dev
             siteMonitor: https://firefly3.brauni.dev
@@ -104,6 +91,24 @@ data:
             href: https://patchmon.riki.boo
             siteMonitor: https://patchmon.riki.boo
             icon: mdi-package-up
+
+    - Tools:
+        - BentoPDF:
+            href: https://pdf.brauni.dev
+            siteMonitor: https://pdf.brauni.dev
+            icon: mdi-file-pdf-box
+        - Jotty:
+            href: https://jotty.brauni.dev
+            siteMonitor: https://jotty.brauni.dev
+            icon: mdi-notebook-edit-outline
+        - Web Check:
+            href: https://web-check.brauni.dev
+            siteMonitor: https://web-check.brauni.dev
+            icon: mdi-web
+        - Atuin:
+            href: https://atuin.brauni.dev
+            siteMonitor: https://atuin.brauni.dev
+            icon: mdi-console-line
 
     - Media:
         - Bitmagnet:
