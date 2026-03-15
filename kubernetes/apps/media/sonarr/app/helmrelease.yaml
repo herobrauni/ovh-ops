@@ -24,6 +24,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
     controllers:
       sonarr:
+        replicas: 0
         annotations:
           reloader.stakater.com/auto: "true"
           secret.reloader.stakater.com/reload: sonarr-secret,sonarr-pguser-secret

@@ -24,6 +24,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
     controllers:
       prowlarr:
+        replicas: 0
         annotations:
           reloader.stakater.com/auto: "true"
           secret.reloader.stakater.com/reload: prowlarr-secret,prowlarr-pguser-secret
