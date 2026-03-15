@@ -52,9 +52,17 @@ spec:
   kopia:
     accessModes:
       - ReadWriteOnce
+    policyConfig:
+      repositoryConfig: |
+        {
+          "enableActions": true,
+          "actionCommandTimeout": "1h"
+        }
     actions:
       beforeSnapshot: |
         set -euo pipefail
+
+        command -v pg_dump >/dev/null 2>&1 || microdnf install -y postgresql
 
         ts="$(date -u +%Y%m%dT%H%M%SZ)"
         app="${APP}"
@@ -83,8 +91,8 @@ spec:
     compression: zstd-fastest
     copyMethod: Snapshot
     moverSecurityContext:
-      runAsUser: ${PGDUMP_PUID:=1000}
-      runAsGroup: ${PGDUMP_PGID:=1000}
+      runAsUser: ${PGDUMP_MOVER_PUID:=0}
+      runAsGroup: ${PGDUMP_MOVER_PGID:=0}
       fsGroup: ${PGDUMP_PGID:=1000}
     moverVolumes:
       - mountPath: pg-auth
