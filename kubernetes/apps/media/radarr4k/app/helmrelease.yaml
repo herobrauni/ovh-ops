@@ -24,7 +24,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
     controllers:
       radarr4k:
-        replicas: 0
+        replicas: 1
         annotations:
           reloader.stakater.com/auto: "true"
           secret.reloader.stakater.com/reload: radarr4k-secret,radarr4k-pguser-secret
