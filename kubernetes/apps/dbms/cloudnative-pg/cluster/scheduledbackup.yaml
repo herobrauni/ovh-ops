@@ -5,7 +5,7 @@ kind: ScheduledBackup
 metadata:
   name: postgres18
 spec:
-  schedule: "20 17 * * *"
+  schedule: "@daily"
   immediate: true
   backupOwnerReference: self
   method: barmanObjectStore
@@ -18,7 +18,7 @@ kind: ScheduledBackup
 metadata:
   name: immich
 spec:
-  schedule: "20 17 * * *"
+  schedule: "@daily"
   immediate: true
   backupOwnerReference: self
   method: barmanObjectStore
