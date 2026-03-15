@@ -24,7 +24,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
     controllers:
       comet:
-        replicas: 0
+        replicas: 1
         annotations:
           reloader.stakater.com/auto: "true"
           secret.reloader.stakater.com/reload: comet-secret,comet-initdb-secret,comet-pguser-secret

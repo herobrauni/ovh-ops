@@ -24,7 +24,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
     controllers:
       stremthru:
-        replicas: 0
+        replicas: 1
         annotations:
           reloader.stakater.com/auto: "true"
           secret.reloader.stakater.com/reload: stremthru-secret,stremthru-initdb-secret,stremthru-pguser-secret
