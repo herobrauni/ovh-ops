@@ -165,7 +165,7 @@ spec:
       runAsGroup: 1000
       fsGroup: 1000
     moverVolumes:
-      - mountPath: /mnt/pg-auth
+      - mountPath: pg-auth
         volumeSource:
           secret:
             secretName: cloudnative-pg-secret
