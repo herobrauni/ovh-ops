@@ -3,7 +3,7 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Backup
 metadata:
-  name: postgres18-manual-20260315
+  name: postgres18-manual-20260315-rerun
 spec:
   method: barmanObjectStore
   cluster:
