@@ -1,0 +1,102 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/v1/persistentvolumeclaim-v1.json
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "${APP}-pgdump"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: ${PGDUMP_CAPACITY:=10Gi}
+  storageClassName: ${PGDUMP_STORAGECLASS:=ceph-block}
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/external-secrets.io/externalsecret_v1.json
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: "${APP}-pgdump-volsync"
+spec:
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: bitwarden
+  target:
+    name: "${APP}-pgdump-volsync-secret"
+    template:
+      data:
+        KOPIA_REPOSITORY: "{{ .KOPIA_REPOSITORY }}"
+        KOPIA_PASSWORD: "{{ .KOPIA_PASSWORD }}"
+        SFTP_HOST: "{{ .SFTP_HOST }}"
+        SFTP_PORT: "{{ .SFTP_PORT }}"
+        SFTP_USERNAME: "{{ .SFTP_USERNAME }}"
+        SFTP_PATH: "{{ .SFTP_PATH }}"
+        SFTP_KEY_FILE: "{{ .SFTP_KEY_FILE }}"
+        SFTP_KNOWN_HOSTS_DATA: |-
+          {{ .SFTP_KNOWN_HOSTS_DATA | replace "\\n" "\n" | replace " [" "\n[" }}
+  dataFrom:
+    - extract:
+        key: volsync-template
+    - extract:
+        key: kopia_known_hosts
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/volsync.backube/replicationsource_v1alpha1.json
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: "${APP}-pgdump"
+spec:
+  sourcePVC: "${APP}-pgdump"
+  trigger:
+    schedule: ${PGDUMP_VOLSYNC_SCHEDULE:=30 3 * * *}
+  kopia:
+    accessModes:
+      - ReadWriteOnce
+    actions:
+      beforeSnapshot: |
+        set -euo pipefail
+
+        ts="$(date -u +%Y%m%dT%H%M%SZ)"
+        app="${APP}"
+        host="$(cat /mnt/pg-auth/host)"
+        port="$(cat /mnt/pg-auth/port)"
+        db="$(cat /mnt/pg-auth/db)"
+        user="$(cat /mnt/pg-auth/user)"
+        pass="$(cat /mnt/pg-auth/password)"
+        tmpfile="/data/${APP}-${ts}.dump.tmp"
+        outfile="/data/${APP}-${ts}.dump"
+
+        export PGPASSWORD="${pass}"
+        pg_dump \
+          --host="${host}" \
+          --port="${port}" \
+          --username="${user}" \
+          --dbname="${db}" \
+          --format=custom \
+          --compress=9 \
+          --file="${tmpfile}"
+
+        mv "${tmpfile}" "${outfile}"
+        find /data -maxdepth 1 -type f -name "${app}-*.dump" -mtime +${PGDUMP_RETENTION_DAYS:=7} -delete
+      afterSnapshot: |
+        find /data -maxdepth 1 -type f -name "${APP}-*.dump*" -delete
+    compression: zstd-fastest
+    copyMethod: Snapshot
+    moverSecurityContext:
+      runAsUser: ${PGDUMP_PUID:=1000}
+      runAsGroup: ${PGDUMP_PGID:=1000}
+      fsGroup: ${PGDUMP_PGID:=1000}
+    moverVolumes:
+      - mountPath: /mnt/pg-auth
+        volumeSource:
+          secret:
+            secretName: "${APP}-pguser-secret"
+    parallelism: 2
+    repository: "${APP}-pgdump-volsync-secret"
+    retain:
+      latest: 10
+      weekly: 6
+      monthly: 6
+      yearly: 2
+    storageClassName: ${PGDUMP_STORAGECLASS:=ceph-block}
+    volumeSnapshotClassName: ${PGDUMP_SNAPSHOTCLASS:=csi-ceph-blockpool}
