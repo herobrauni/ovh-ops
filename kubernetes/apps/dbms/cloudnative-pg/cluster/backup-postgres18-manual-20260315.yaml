@@ -8,3 +8,13 @@ spec:
   method: barmanObjectStore
   cluster:
     name: postgres18
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/postgresql.cnpg.io/backup_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: immich-manual-20260315
+spec:
+  method: barmanObjectStore
+  cluster:
+    name: immich
