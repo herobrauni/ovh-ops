@@ -15,6 +15,14 @@ metadata:
 spec:
   policyName: volsync-kopia-maint-keyfile
 ---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicybinding-admissionregistration-v1beta1.json
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicyBinding
+metadata:
+  name: volsync-pgdump-rw-rootfs
+spec:
+  policyName: volsync-pgdump-rw-rootfs
+---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicy-admissionregistration-v1beta1.json
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingAdmissionPolicy
@@ -133,5 +141,46 @@ spec:
                 name: "SFTP_KEY_FILE",
                 value: "/tmp/kopia-ssh/id_ed25519"
               }
+            }
+          ]
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicy-admissionregistration-v1beta1.json
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingAdmissionPolicy
+metadata:
+  name: volsync-pgdump-rw-rootfs
+spec:
+  matchConstraints:
+    resourceRules:
+      - apiGroups:
+          - batch
+        apiVersions:
+          - v1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - jobs
+  matchConditions:
+    - name: has-volsync-job-name-prefix
+      expression: >-
+        object.metadata.name.startsWith("volsync-src-")
+    - name: is-pgdump-job
+      expression: >-
+        object.metadata.name.contains("-pgdump")
+    - name: has-volsync-created-by-labels
+      expression: >-
+        object.metadata.?labels["app.kubernetes.io/created-by"].orValue("") == "volsync"
+  failurePolicy: Fail
+  reinvocationPolicy: IfNeeded
+  mutations:
+    - patchType: JSONPatch
+      jsonPatch:
+        expression: >-
+          [
+            JSONPatch{
+              op: "add",
+              path: "/spec/template/spec/containers/0/securityContext/readOnlyRootFilesystem",
+              value: false
             }
           ]
