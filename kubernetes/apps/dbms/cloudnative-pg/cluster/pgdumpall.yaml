@@ -1,0 +1,180 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/v1/persistentvolumeclaim-v1.json
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres18-pgdumpall
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 25Gi
+  storageClassName: ceph-block
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/external-secrets.io/externalsecret_v1.json
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: postgres18-pgdumpall-volsync
+spec:
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: bitwarden
+  target:
+    name: postgres18-pgdumpall-volsync-secret
+    template:
+      data:
+        KOPIA_REPOSITORY: "{{ .KOPIA_REPOSITORY }}"
+        KOPIA_PASSWORD: "{{ .KOPIA_PASSWORD }}"
+        SFTP_HOST: "{{ .SFTP_HOST }}"
+        SFTP_PORT: "{{ .SFTP_PORT }}"
+        SFTP_USERNAME: "{{ .SFTP_USERNAME }}"
+        SFTP_PATH: "{{ .SFTP_PATH }}"
+        SFTP_KEY_FILE: "{{ .SFTP_KEY_FILE }}"
+        SFTP_KNOWN_HOSTS_DATA: |-
+          {{ .SFTP_KNOWN_HOSTS_DATA | replace "\\n" "\n" | replace " [" "\n[" }}
+  dataFrom:
+    - extract:
+        key: volsync-template
+    - extract:
+        key: kopia_known_hosts
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/volsync.backube/replicationsource_v1alpha1.json
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: postgres18-pgdumpall
+spec:
+  sourcePVC: postgres18-pgdumpall
+  trigger:
+    schedule: 30 3 * * *
+  kopia:
+    accessModes:
+      - ReadWriteOnce
+    actions:
+      beforeSnapshot: |
+        set -euo pipefail
+
+        ts="$(date -u +%Y%m%dT%H%M%SZ)"
+        user="$(cat /mnt/pg-auth/username)"
+        pass="$(cat /mnt/pg-auth/password)"
+        host="postgres18-rw.dbms.svc.cluster.local"
+        tmpfile="/data/postgres18-${ts}.sql.gz.tmp"
+        outfile="/data/postgres18-${ts}.sql.gz"
+
+        export PGPASSWORD="${pass}"
+        pg_dumpall --host="${host}" --port="5432" --username="${user}" | gzip -9 > "${tmpfile}"
+        mv "${tmpfile}" "${outfile}"
+      afterSnapshot: |
+        find /data -maxdepth 1 -type f -name 'postgres18-*.sql.gz*' -delete
+    compression: zstd-fastest
+    copyMethod: Snapshot
+    moverSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+    moverVolumes:
+      - mountPath: /mnt/pg-auth
+        volumeSource:
+          secret:
+            secretName: cloudnative-pg-secret
+    parallelism: 2
+    repository: postgres18-pgdumpall-volsync-secret
+    retain:
+      latest: 10
+      weekly: 6
+      monthly: 6
+      yearly: 2
+    storageClassName: ceph-block
+    volumeSnapshotClassName: csi-ceph-blockpool
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/v1/persistentvolumeclaim-v1.json
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-pgdumpall
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 15Gi
+  storageClassName: ceph-block
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/external-secrets.io/externalsecret_v1.json
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: immich-pgdumpall-volsync
+spec:
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: bitwarden
+  target:
+    name: immich-pgdumpall-volsync-secret
+    template:
+      data:
+        KOPIA_REPOSITORY: "{{ .KOPIA_REPOSITORY }}"
+        KOPIA_PASSWORD: "{{ .KOPIA_PASSWORD }}"
+        SFTP_HOST: "{{ .SFTP_HOST }}"
+        SFTP_PORT: "{{ .SFTP_PORT }}"
+        SFTP_USERNAME: "{{ .SFTP_USERNAME }}"
+        SFTP_PATH: "{{ .SFTP_PATH }}"
+        SFTP_KEY_FILE: "{{ .SFTP_KEY_FILE }}"
+        SFTP_KNOWN_HOSTS_DATA: |-
+          {{ .SFTP_KNOWN_HOSTS_DATA | replace "\\n" "\n" | replace " [" "\n[" }}
+  dataFrom:
+    - extract:
+        key: volsync-template
+    - extract:
+        key: kopia_known_hosts
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/volsync.backube/replicationsource_v1alpha1.json
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: immich-pgdumpall
+spec:
+  sourcePVC: immich-pgdumpall
+  trigger:
+    schedule: 0 4 * * *
+  kopia:
+    accessModes:
+      - ReadWriteOnce
+    actions:
+      beforeSnapshot: |
+        set -euo pipefail
+
+        ts="$(date -u +%Y%m%dT%H%M%SZ)"
+        user="$(cat /mnt/pg-auth/username)"
+        pass="$(cat /mnt/pg-auth/password)"
+        host="immich-rw.dbms.svc.cluster.local"
+        tmpfile="/data/immich-${ts}.sql.gz.tmp"
+        outfile="/data/immich-${ts}.sql.gz"
+
+        export PGPASSWORD="${pass}"
+        pg_dumpall --host="${host}" --port="5432" --username="${user}" | gzip -9 > "${tmpfile}"
+        mv "${tmpfile}" "${outfile}"
+      afterSnapshot: |
+        find /data -maxdepth 1 -type f -name 'immich-*.sql.gz*' -delete
+    compression: zstd-fastest
+    copyMethod: Snapshot
+    moverSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000
+    moverVolumes:
+      - mountPath: /mnt/pg-auth
+        volumeSource:
+          secret:
+            secretName: cloudnative-pg-secret
+    parallelism: 2
+    repository: immich-pgdumpall-volsync-secret
+    retain:
+      latest: 10
+      weekly: 6
+      monthly: 6
+      yearly: 2
+    storageClassName: ceph-block
+    volumeSnapshotClassName: csi-ceph-blockpool

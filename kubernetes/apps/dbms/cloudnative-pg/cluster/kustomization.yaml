@@ -8,5 +8,6 @@ resources:
   - ./cnpg-backups-obc.yaml
   - ./grafanadashboard.yaml
   - ./immich.yaml
+  - ./pgdumpall.yaml
   - ./prometheusrule.yaml
   - ./scheduledbackup.yaml

@@ -23,6 +23,8 @@ spec:
       namespace: network
     - name: tinyauth-riki-boo
       namespace: network
+    - name: volsync
+      namespace: volsync-system
   interval: 1h
   path: ./kubernetes/apps/media/comet/app
   postBuild:
