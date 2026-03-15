@@ -5,7 +5,7 @@ kind: Kustomization
 resources:
   - ./aws-debug.yaml
   - ./backup-postgres18-manual-20260315.yaml
-  - ./cluster18.yaml
+  # - ./cluster18.yaml
   - ./cnpg-backups-obc.yaml
   - ./grafanadashboard.yaml
   - ./immich.yaml
