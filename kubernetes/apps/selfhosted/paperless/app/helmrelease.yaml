@@ -32,7 +32,7 @@ spec:
           01-init-db:
             image:
               repository: ghcr.io/home-operations/postgres-init
-              tag: "18"
+              tag: 18.3@sha256:6fa1f331cddd2eb0b6afa7b8d3685c864127a81ab01c3d9400bc3ff5263a51cf
             envFrom:
               - secretRef:
                   name: paperless-initdb-secret
@@ -40,7 +40,7 @@ spec:
           app:
             image:
               repository: ghcr.io/paperless-ngx/paperless-ngx
-              tag: 2.20.11
+              tag: 2.20.11@sha256:1919ba5edec278e81d2393efc82c97c9e3e18ef9dfcb43fdcfa7359dd3adfe99
             env:
               PAPERLESS_CONSUMER_POLLING: 5
               PAPERLESS_OCR_LANGUAGE: eng
@@ -95,7 +95,7 @@ spec:
           app:
             image:
               repository: docker.io/gotenberg/gotenberg
-              tag: 8.27.0
+              tag: 8.27.0@sha256:d71ab8c13b6bd47c7bc81195082005dfb17eaa75e8b1fadd347a64ee66ed98d5
             resources:
               requests:
                 cpu: 10m
@@ -108,7 +108,7 @@ spec:
           app:
             image:
               repository: docker.io/apache/tika
-              tag: 3.2.3.0-full
+              tag: 3.2.3.0-full@sha256:21d8052de04e491ccf66e8680ade4da6f3d453a56d59f740b4167e54167219b7
             resources:
               requests:
                 cpu: 50m
