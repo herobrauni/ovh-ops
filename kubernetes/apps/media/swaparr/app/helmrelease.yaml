@@ -31,7 +31,7 @@ spec:
           # radarr:
           #   image:
           #     repository: ghcr.io/thijmengthn/swaparr
-          #     tag: latest
+          #     tag: 0.12.0@sha256:c7fd9327b173df20d73f93f3d74e3a20434b9c64df0cecdf72e3a96c32e6687c
           #   env:
           #     BASEURL: http://radarr.media.svc.cluster.local
           #     PLATFORM: radarr
@@ -89,7 +89,7 @@ spec:
           # radarr4k:
           #   image:
           #     repository: ghcr.io/thijmengthn/swaparr
-          #     tag: latest
+          #     tag: 0.12.0@sha256:c7fd9327b173df20d73f93f3d74e3a20434b9c64df0cecdf72e3a96c32e6687c
           #   env:
           #     BASEURL: http://radarr4k.media.svc.cluster.local
           #     PLATFORM: radarr
@@ -113,7 +113,7 @@ spec:
           sonarr:
             image:
               repository: ghcr.io/thijmengthn/swaparr
-              tag: latest
+              tag: 0.12.0@sha256:c7fd9327b173df20d73f93f3d74e3a20434b9c64df0cecdf72e3a96c32e6687c
             env:
               BASEURL: http://sonarr.media.svc.cluster.local
               PLATFORM: sonarr
@@ -171,7 +171,7 @@ spec:
           # sonarr4k:
           #   image:
           #     repository: ghcr.io/thijmengthn/swaparr
-          #     tag: latest
+          #     tag: 0.12.0@sha256:c7fd9327b173df20d73f93f3d74e3a20434b9c64df0cecdf72e3a96c32e6687c
           #   env:
           #     BASEURL: http://sonarr4k.media.svc.cluster.local
           #     PLATFORM: sonarr

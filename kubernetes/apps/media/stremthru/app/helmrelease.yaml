@@ -32,7 +32,7 @@ spec:
           01-init-db:
             image:
               repository: ghcr.io/home-operations/postgres-init
-              tag: "18"
+              tag: 18.3@sha256:6fa1f331cddd2eb0b6afa7b8d3685c864127a81ab01c3d9400bc3ff5263a51cf
             envFrom:
               - secretRef:
                   name: stremthru-initdb-secret
@@ -40,7 +40,7 @@ spec:
           app:
             image:
               repository: docker.io/muniftanjim/stremthru
-              tag: latest
+              tag: 0.98.8@sha256:7dfe51ba168cc778c201ae2128d49abde751fe6e825ecd47ada7d3b2a4fd125c
             env:
               STREMTHRU_BASE_URL: https://stremthru.riki.boo
               STREMTHRU_PORT: &targetPort 8080
