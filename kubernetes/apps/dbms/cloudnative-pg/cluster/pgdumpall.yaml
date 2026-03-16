@@ -115,35 +115,6 @@ spec:
       storage: 15Gi
   storageClassName: ceph-block
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/batch/v1/job.json
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: immich-pgdumpall-seed
-spec:
-  template:
-    spec:
-      restartPolicy: OnFailure
-      securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-      containers:
-        - name: seed
-          image: ghcr.io/home-operations/busybox:1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc
-          command:
-            - /bin/sh
-            - -ec
-            - |
-              touch /data/.seed
-          volumeMounts:
-            - name: data
-              mountPath: /data
-      volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: immich-pgdumpall
----
 # yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/external-secrets.io/externalsecret_v1.json
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
