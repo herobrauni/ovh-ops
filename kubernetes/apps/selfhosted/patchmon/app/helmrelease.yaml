@@ -41,19 +41,19 @@ spec:
                 enabled: true
                 spec:
                   tcpSocket:
-                    port: 8080
+                    port: 3000
               readiness:
                 enabled: true
                 spec:
                   tcpSocket:
-                    port: 8080
+                    port: 3000
               startup:
                 enabled: true
                 spec:
                   failureThreshold: 30
                   periodSeconds: 10
                   tcpSocket:
-                    port: 8080
+                    port: 3000
             resources:
               requests:
                 cpu: 10m
@@ -149,7 +149,7 @@ spec:
         forceRename: patchmon
         ports:
           http:
-            port: &frontendPort 8080
+            port: &frontendPort 3000
       backend:
         controller: backend
         forceRename: patchmon-backend
