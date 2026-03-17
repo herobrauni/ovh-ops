@@ -179,6 +179,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Media
           gethomepage.dev/name: BookLore
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=booklore
           gethomepage.dev/icon: mdi-book-open-variant
         hostnames:
           - booklore.brauni.dev

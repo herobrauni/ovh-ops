@@ -104,6 +104,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Tools
           gethomepage.dev/name: Atuin
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=atuin
           gethomepage.dev/icon: mdi-console-line
         hostnames:
           - atuin.brauni.dev

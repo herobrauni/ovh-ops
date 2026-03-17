@@ -8,6 +8,7 @@ metadata:
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: Media
     gethomepage.dev/name: Comet
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=comet
     gethomepage.dev/icon: mdi-comet
 spec:
   hostnames:

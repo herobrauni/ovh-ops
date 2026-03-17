@@ -75,6 +75,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Tools
           gethomepage.dev/name: Jotty
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=jotty
           gethomepage.dev/icon: mdi-notebook-edit-outline
         hostnames:
           - jotty.brauni.dev

@@ -8,6 +8,7 @@ metadata:
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: Media
     gethomepage.dev/name: Sonarr 4K
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=sonarr4k
     gethomepage.dev/icon: sonarr.png
 spec:
   hostnames:

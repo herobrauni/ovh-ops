@@ -25,6 +25,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Observability
           gethomepage.dev/name: Victoria Logs
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=victoria-logs
           gethomepage.dev/icon: victoriametrics.png
         hostnames:
           - victoria-logs.riki.boo

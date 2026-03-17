@@ -166,6 +166,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Selfhosted
           gethomepage.dev/name: PatchMon
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=patchmon
           gethomepage.dev/icon: mdi-package-up
         hostnames:
           - patchmon.riki.boo

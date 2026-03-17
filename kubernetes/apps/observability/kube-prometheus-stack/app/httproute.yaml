@@ -8,6 +8,7 @@ metadata:
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: Observability
     gethomepage.dev/name: Alertmanager
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=alertmanager
     gethomepage.dev/icon: alertmanager.png
 spec:
   hostnames:
@@ -30,6 +31,7 @@ metadata:
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: Observability
     gethomepage.dev/name: Prometheus
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=prometheus
     gethomepage.dev/icon: prometheus.png
 spec:
   hostnames:

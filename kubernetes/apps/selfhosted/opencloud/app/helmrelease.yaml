@@ -134,6 +134,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Selfhosted
           gethomepage.dev/name: OpenCloud
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=opencloud
           gethomepage.dev/icon: https://opencloud.brauni.dev/themes/opencloud/assets/logo.svg
           gethomepage.dev/href: https://opencloud.brauni.dev
         hostnames:

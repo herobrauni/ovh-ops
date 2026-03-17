@@ -74,6 +74,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Network
           gethomepage.dev/name: TinyAuth (riki.boo)
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=tinyauth-riki-boo
           gethomepage.dev/icon: mdi-lock-check
         hostnames:
           - auth.riki.boo

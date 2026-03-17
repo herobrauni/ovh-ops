@@ -96,6 +96,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Selfhosted
           gethomepage.dev/name: Open WebUI
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=open-webui
           gethomepage.dev/icon: mdi-robot-outline
         hostnames:
           - open-webui.brauni.dev

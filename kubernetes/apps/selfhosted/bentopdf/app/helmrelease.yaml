@@ -65,6 +65,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Tools
           gethomepage.dev/name: BentoPDF
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=bentopdf
           gethomepage.dev/icon: mdi-file-pdf-box
         hostnames:
           - pdf.brauni.dev
