@@ -130,6 +130,12 @@ spec:
             subPath: tmp
     route:
       app:
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Selfhosted
+          gethomepage.dev/name: OpenCloud
+          gethomepage.dev/icon: https://opencloud.brauni.dev/themes/opencloud/assets/logo.svg
+          gethomepage.dev/href: https://opencloud.brauni.dev
         hostnames:
           - files.brauni.dev
           - opencloud.brauni.dev

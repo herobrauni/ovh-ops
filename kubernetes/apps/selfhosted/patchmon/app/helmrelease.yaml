@@ -163,6 +163,10 @@ spec:
           gatus.home-operations.com/endpoint: |-
             conditions: ["[STATUS] == 200"]
             url: https://patchmon.riki.boo
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Selfhosted
+          gethomepage.dev/name: PatchMon
+          gethomepage.dev/icon: mdi-package-up
         hostnames:
           - patchmon.riki.boo
         parentRefs:

@@ -126,6 +126,10 @@ spec:
           gatus.home-operations.com/endpoint: |-
             conditions: ["[STATUS] == 200"]
             url: https://firefly3.brauni.dev
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Selfhosted
+          gethomepage.dev/name: Firefly III
+          gethomepage.dev/icon: mdi-cash-multiple
         hostnames:
           - firefly3.brauni.dev
         parentRefs:

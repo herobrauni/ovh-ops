@@ -4,6 +4,11 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: sonarr4k-480p-com
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: Media
+    gethomepage.dev/name: Sonarr 4K
+    gethomepage.dev/icon: sonarr.png
 spec:
   hostnames:
     - sonarr4k.480p.com

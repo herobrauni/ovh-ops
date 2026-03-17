@@ -70,6 +70,11 @@ spec:
             port: *port
     route:
       480p-com:
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Network
+          gethomepage.dev/name: TinyAuth (480p.com)
+          gethomepage.dev/icon: mdi-lock-check
         hostnames:
           - auth.480p.com
         parentRefs:

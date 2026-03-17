@@ -128,6 +128,11 @@ spec:
 
     route:
       app:
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Selfhosted
+          gethomepage.dev/name: Immich
+          gethomepage.dev/icon: immich.png
         hostnames:
           - immich.brauni.dev
         parentRefs:
