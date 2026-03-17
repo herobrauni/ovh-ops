@@ -25,7 +25,7 @@ spec:
 
     controllers:
       frontend:
-        replicas: 0
+        replicas: 1
         annotations:
           reloader.stakater.com/auto: "true"
         containers:
@@ -60,7 +60,7 @@ spec:
                 memory: 512Mi
 
       backend:
-        replicas: 0
+        replicas: 1
         annotations:
           reloader.stakater.com/auto: "true"
           secret.reloader.stakater.com/reload: patchmon-secret,patchmon-pguser-secret
