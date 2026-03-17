@@ -11,4 +11,4 @@ spec:
     - dnsName: patchmon.riki.boo
       recordType: CNAME
       targets:
-        - public.brauni.dev
+        - public.riki.boo
