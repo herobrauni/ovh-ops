@@ -37,24 +37,6 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: envoy-gateway-brauni-eu
-spec:
-  dependsOn:
-    - name: envoy-gateway-common
-  interval: 1h
-  path: ./kubernetes/apps/network/envoy-gateway/brauni-eu
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-    namespace: flux-system
-  targetNamespace: network
-  wait: false
----
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
   name: envoy-gateway-480p-com
 spec:
   dependsOn:

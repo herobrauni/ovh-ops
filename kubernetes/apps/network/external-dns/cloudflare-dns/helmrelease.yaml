@@ -36,7 +36,6 @@ spec:
     txtPrefix: ovh-ops.
     domainFilters:
       - riki.boo
-      - brauni.eu
       - 480p.com
       - brauni.dev
     serviceMonitor:

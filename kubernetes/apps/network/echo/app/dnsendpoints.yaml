@@ -12,7 +12,7 @@ spec:
       recordType: CNAME
       targets:
         - public.riki.boo
-    - dnsName: echo.brauni.eu
+    - dnsName: echo.480p.com
       recordType: CNAME
       targets:
-        - public.brauni.eu
+        - public.480p.com
