@@ -27,9 +27,6 @@ spec:
       name: tinyauth-riki-boo
     - group: ""
       kind: Service
-      name: tinyauth-brauni-eu
-    - group: ""
-      kind: Service
       name: tinyauth-brauni-dev
     - group: ""
       kind: Service

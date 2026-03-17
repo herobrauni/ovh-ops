@@ -19,7 +19,6 @@ spec:
         selector:
           dnsZones:
             - riki.boo
-            - brauni.eu
             - 480p.com
             - brauni.dev
 ---
@@ -43,7 +42,6 @@ spec:
         selector:
           dnsZones:
             - riki.boo
-            - brauni.eu
             - 480p.com
             - brauni.dev
 ---

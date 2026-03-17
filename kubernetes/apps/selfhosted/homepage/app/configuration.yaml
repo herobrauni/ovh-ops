@@ -236,10 +236,6 @@ data:
             href: https://auth.riki.boo
             siteMonitor: https://auth.riki.boo
             icon: mdi-lock-check
-        - TinyAuth (brauni.eu):
-            href: https://auth.brauni.eu
-            siteMonitor: https://auth.brauni.eu
-            icon: mdi-lock-check
         - TinyAuth (brauni.dev):
             href: https://auth.brauni.dev
             siteMonitor: https://auth.brauni.dev
