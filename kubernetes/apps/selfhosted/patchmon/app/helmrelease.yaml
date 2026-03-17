@@ -39,13 +39,21 @@ spec:
             probes:
               liveness:
                 enabled: true
+                spec:
+                  tcpSocket:
+                    port: 8080
               readiness:
                 enabled: true
+                spec:
+                  tcpSocket:
+                    port: 8080
               startup:
                 enabled: true
                 spec:
                   failureThreshold: 30
                   periodSeconds: 10
+                  tcpSocket:
+                    port: 8080
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
