@@ -86,6 +86,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Media
           gethomepage.dev/name: Plex
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=plex
           gethomepage.dev/icon: plex.png
         hostnames:
           - plex.480p.com

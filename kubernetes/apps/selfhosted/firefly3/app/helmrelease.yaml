@@ -129,6 +129,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Selfhosted
           gethomepage.dev/name: Firefly III
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=firefly3
           gethomepage.dev/icon: mdi-cash-multiple
         hostnames:
           - firefly3.brauni.dev

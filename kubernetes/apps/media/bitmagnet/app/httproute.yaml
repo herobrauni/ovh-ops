@@ -8,6 +8,7 @@ metadata:
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: Media
     gethomepage.dev/name: Bitmagnet
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=bitmagnet
     gethomepage.dev/icon: mdi-magnet
 spec:
   hostnames:

@@ -120,6 +120,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Selfhosted
           gethomepage.dev/name: Idlers
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=idlers
           gethomepage.dev/icon: mdi-application-cog
         hostnames:
           - idlers.brauni.dev

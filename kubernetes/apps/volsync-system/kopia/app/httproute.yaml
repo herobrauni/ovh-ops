@@ -8,6 +8,7 @@ metadata:
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: Platform
     gethomepage.dev/name: Kopia
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=kopia
     gethomepage.dev/icon: mdi-folder-sync
 spec:
   hostnames:

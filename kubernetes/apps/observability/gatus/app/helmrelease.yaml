@@ -95,6 +95,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Observability
           gethomepage.dev/name: Status
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=gatus
           gethomepage.dev/icon: gatus.png
           gethomepage.dev/href: https://status.riki.boo
         hostnames:

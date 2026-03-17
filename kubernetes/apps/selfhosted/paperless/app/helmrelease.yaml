@@ -142,6 +142,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Selfhosted
           gethomepage.dev/name: Paperless
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=paperless
           gethomepage.dev/icon: paperless.png
         hostnames:
           - paperless.brauni.dev

@@ -8,6 +8,7 @@ metadata:
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: Platform
     gethomepage.dev/name: KGuardian
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=kguardian
     gethomepage.dev/icon: mdi-shield-check
 spec:
   hostnames:

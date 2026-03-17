@@ -78,6 +78,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Tools
           gethomepage.dev/name: Web Check
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=web-check
           gethomepage.dev/icon: mdi-web
         hostnames:
           - web-check.brauni.dev

@@ -97,6 +97,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Media
           gethomepage.dev/name: Shelfmark
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=shelfmark
           gethomepage.dev/icon: mdi-bookshelf
         hostnames:
           - shelfmark.brauni.dev

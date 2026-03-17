@@ -132,6 +132,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Selfhosted
           gethomepage.dev/name: Immich
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=immich
           gethomepage.dev/icon: immich.png
         hostnames:
           - immich.brauni.dev
