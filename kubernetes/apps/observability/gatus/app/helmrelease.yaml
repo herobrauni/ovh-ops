@@ -92,6 +92,11 @@ spec:
       app:
         annotations:
           gatus.home-operations.com/enabled: "false"
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Observability
+          gethomepage.dev/name: Status
+          gethomepage.dev/icon: gatus.png
+          gethomepage.dev/href: https://status.riki.boo
         hostnames:
           - "{{ .Release.Name }}.riki.boo"
           - status.riki.boo

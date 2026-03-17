@@ -62,6 +62,10 @@ spec:
           gatus.home-operations.com/endpoint: |-
             conditions: ["[STATUS] == 200"]
             url: https://pdf.brauni.dev
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Tools
+          gethomepage.dev/name: BentoPDF
+          gethomepage.dev/icon: mdi-file-pdf-box
         hostnames:
           - pdf.brauni.dev
           - bentopdf.brauni.dev

@@ -4,6 +4,11 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: decypharr-480p-com
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: Media
+    gethomepage.dev/name: Decypharr
+    gethomepage.dev/icon: mdi-magnet
 spec:
   hostnames:
     - decypharr.480p.com

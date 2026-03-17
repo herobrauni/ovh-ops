@@ -139,6 +139,10 @@ spec:
           gatus.home-operations.com/endpoint: |-
             conditions: ["[STATUS] == 200"]
             url: https://paperless.brauni.dev
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Selfhosted
+          gethomepage.dev/name: Paperless
+          gethomepage.dev/icon: paperless.png
         hostnames:
           - paperless.brauni.dev
         parentRefs:

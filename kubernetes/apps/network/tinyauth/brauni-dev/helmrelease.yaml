@@ -70,6 +70,11 @@ spec:
             port: *port
     route:
       brauni-dev:
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Network
+          gethomepage.dev/name: TinyAuth (brauni.dev)
+          gethomepage.dev/icon: mdi-lock-check
         hostnames:
           - auth.brauni.dev
         parentRefs:

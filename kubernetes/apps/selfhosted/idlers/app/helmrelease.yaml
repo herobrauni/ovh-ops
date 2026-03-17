@@ -117,6 +117,10 @@ spec:
           gatus.home-operations.com/endpoint: |-
             conditions: ["[STATUS] == 200"]
             url: https://idlers.brauni.dev
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Selfhosted
+          gethomepage.dev/name: Idlers
+          gethomepage.dev/icon: mdi-application-cog
         hostnames:
           - idlers.brauni.dev
         parentRefs:

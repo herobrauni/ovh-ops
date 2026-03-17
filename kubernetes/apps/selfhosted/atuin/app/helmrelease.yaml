@@ -101,6 +101,10 @@ spec:
           gatus.home-operations.com/endpoint: |-
             conditions: ["[STATUS] == 200"]
             url: https://atuin.brauni.dev
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Tools
+          gethomepage.dev/name: Atuin
+          gethomepage.dev/icon: mdi-console-line
         hostnames:
           - atuin.brauni.dev
         parentRefs:

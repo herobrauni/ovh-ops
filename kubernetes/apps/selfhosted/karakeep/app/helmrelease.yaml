@@ -181,6 +181,12 @@ spec:
 
     route:
       app:
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Selfhosted
+          gethomepage.dev/name: Hoarder
+          gethomepage.dev/icon: hoarder.png
+          gethomepage.dev/href: https://hoarder.brauni.dev
         hostnames:
           - hoarder.brauni.dev
           - karakeep.brauni.dev

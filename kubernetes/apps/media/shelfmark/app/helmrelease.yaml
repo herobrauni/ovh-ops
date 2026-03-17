@@ -93,6 +93,11 @@ spec:
             subPath: var-log
     route:
       shelfmark:
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Media
+          gethomepage.dev/name: Shelfmark
+          gethomepage.dev/icon: mdi-bookshelf
         hostnames:
           - shelfmark.brauni.dev
         parentRefs:

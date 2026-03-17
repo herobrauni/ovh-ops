@@ -72,6 +72,10 @@ spec:
           gatus.home-operations.com/endpoint: |-
             conditions: ["[STATUS] == 200"]
             url: https://jotty.brauni.dev
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Tools
+          gethomepage.dev/name: Jotty
+          gethomepage.dev/icon: mdi-notebook-edit-outline
         hostnames:
           - jotty.brauni.dev
         parentRefs:

@@ -21,6 +21,11 @@ spec:
       retentionPeriod: 14d
       route:
         enabled: true
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Observability
+          gethomepage.dev/name: Victoria Logs
+          gethomepage.dev/icon: victoriametrics.png
         hostnames:
           - victoria-logs.riki.boo
         parentRefs:
