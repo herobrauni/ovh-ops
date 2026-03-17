@@ -8,14 +8,6 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: requests.brauni.dev
-      recordType: CNAME
-      targets:
-        - public.brauni.dev
-    - dnsName: requests.riki.boo
-      recordType: CNAME
-      targets:
-        - public.riki.boo
     - dnsName: requests.480p.com
       recordType: CNAME
       targets:
