@@ -66,9 +66,6 @@ spec:
               runAsNonRoot: false
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
-              capabilities:
-                drop:
-                  - ALL
 
       backend:
         replicas: 1
