@@ -75,6 +75,10 @@ spec:
           gatus.home-operations.com/endpoint: |-
             conditions: ["[STATUS] == 200"]
             url: https://web-check.brauni.dev
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Tools
+          gethomepage.dev/name: Web Check
+          gethomepage.dev/icon: mdi-web
         hostnames:
           - web-check.brauni.dev
         parentRefs:
