@@ -35,7 +35,7 @@ spec:
                     --persist-credentials
 
                   if [ -n "$${SFTP_KEY_FILE:-}" ]; then
-                    key_file=/tmp/kopia-sftp.key
+                    key_file=/config/kopia-sftp.key
                     umask 077
                     printf '%s\n' "$${SFTP_KEY_FILE}" > "$${key_file}"
                     set -- "$@" --keyfile "$${key_file}"
