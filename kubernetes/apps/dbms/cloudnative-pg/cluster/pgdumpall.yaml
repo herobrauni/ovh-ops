@@ -12,6 +12,83 @@ spec:
       storage: 35Gi
   storageClassName: ceph-block
 ---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres18-pgdumpall-dump
+spec:
+  schedule: "30 0 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      activeDeadlineSeconds: 9000
+      template:
+        spec:
+          automountServiceAccountToken: false
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+          containers:
+            - name: pgdumpall
+              image: ghcr.io/cloudnative-pg/postgresql:18@sha256:16aa41fdc7df47e7bc45d882227323048a4ea21e3cf384b44e20608e900d3449
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  set -euo pipefail
+
+                  find /data -maxdepth 1 -type f -name 'postgres18-*.sql.gz.tmp' -delete
+                  find /data -maxdepth 1 -type f -name 'postgres18-*.sql.gz' -delete
+
+                  ts="$(date -u +%Y%m%dT%H%M%SZ)"
+                  tmpfile="/data/postgres18-${ts}.sql.gz.tmp"
+                  outfile="/data/postgres18-${ts}.sql.gz"
+
+                  cleanup() {
+                    rm -f "${tmpfile}"
+                  }
+                  trap cleanup EXIT
+
+                  export PGPASSWORD="${PGPASSWORD}"
+                  pg_dumpall --host="postgres18-rw.dbms.svc.cluster.local" --port="5432" --username="${PGUSER}" | gzip -9 > "${tmpfile}"
+
+                  mv "${tmpfile}" "${outfile}"
+                  trap - EXIT
+              env:
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: cloudnative-pg-secret
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: cloudnative-pg-secret
+                      key: password
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: tmp
+                  mountPath: /tmp
+          restartPolicy: OnFailure
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: postgres18-pgdumpall
+            - name: tmp
+              emptyDir: {}
+---
 # yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/external-secrets.io/externalsecret_v1.json
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
@@ -52,54 +129,12 @@ spec:
   kopia:
     accessModes:
       - ReadWriteOnce
-    policyConfig:
-      repositoryConfig: |
-        {
-          "enableActions": true,
-          "actionCommandTimeout": "1h"
-        }
-    actions:
-      beforeSnapshot: |
-        set -euo pipefail
-
-        if [ ! -x /usr/pgsql-18/bin/pg_dumpall ]; then
-          curl -fsSL -o /tmp/pgdg.rpm https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-          rpm -ivh /tmp/pgdg.rpm
-          microdnf -y module disable postgresql || true
-          microdnf install -y postgresql18
-        fi
-
-        find /data -maxdepth 1 -type f -name 'postgres18-*.sql.gz.tmp' -delete
-
-        ts="$(date -u +%Y%m%dT%H%M%SZ)"
-        user="$(cat /mnt/pg-auth/username)"
-        pass="$(cat /mnt/pg-auth/password)"
-        host="postgres18-rw.dbms.svc.cluster.local"
-        tmpfile="/data/postgres18-${ts}.sql.gz.tmp"
-        outfile="/data/postgres18-${ts}.sql.gz"
-
-        cleanup() {
-          rm -f "${tmpfile}"
-        }
-        trap cleanup EXIT
-
-        export PGPASSWORD="${pass}"
-        /usr/pgsql-18/bin/pg_dumpall --host="${host}" --port="5432" --username="${user}" | gzip -9 > "${tmpfile}"
-        mv "${tmpfile}" "${outfile}"
-        trap - EXIT
-      afterSnapshot: |
-        find /data -maxdepth 1 -type f -name 'postgres18-*.sql.gz*' -delete
     compression: zstd-fastest
     copyMethod: Snapshot
     moverSecurityContext:
       runAsUser: 0
       runAsGroup: 0
       fsGroup: 1000
-    moverVolumes:
-      - mountPath: pg-auth
-        volumeSource:
-          secret:
-            secretName: cloudnative-pg-secret
     parallelism: 2
     repository: postgres18-pgdumpall-volsync-secret
     retain:
@@ -122,6 +157,83 @@ spec:
     requests:
       storage: 15Gi
   storageClassName: ceph-block
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: immich-pgdumpall-dump
+spec:
+  schedule: "0 1 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      activeDeadlineSeconds: 9000
+      template:
+        spec:
+          automountServiceAccountToken: false
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+          containers:
+            - name: pgdumpall
+              image: ghcr.io/cloudnative-pg/postgresql:18@sha256:16aa41fdc7df47e7bc45d882227323048a4ea21e3cf384b44e20608e900d3449
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  set -euo pipefail
+
+                  find /data -maxdepth 1 -type f -name 'immich-*.sql.gz.tmp' -delete
+                  find /data -maxdepth 1 -type f -name 'immich-*.sql.gz' -delete
+
+                  ts="$(date -u +%Y%m%dT%H%M%SZ)"
+                  tmpfile="/data/immich-${ts}.sql.gz.tmp"
+                  outfile="/data/immich-${ts}.sql.gz"
+
+                  cleanup() {
+                    rm -f "${tmpfile}"
+                  }
+                  trap cleanup EXIT
+
+                  export PGPASSWORD="${PGPASSWORD}"
+                  pg_dumpall --host="immich-rw.dbms.svc.cluster.local" --port="5432" --username="${PGUSER}" | gzip -9 > "${tmpfile}"
+
+                  mv "${tmpfile}" "${outfile}"
+                  trap - EXIT
+              env:
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: cloudnative-pg-secret
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: cloudnative-pg-secret
+                      key: password
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: tmp
+                  mountPath: /tmp
+          restartPolicy: OnFailure
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: immich-pgdumpall
+            - name: tmp
+              emptyDir: {}
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/external-secrets.io/externalsecret_v1.json
 apiVersion: external-secrets.io/v1
@@ -163,54 +275,12 @@ spec:
   kopia:
     accessModes:
       - ReadWriteOnce
-    policyConfig:
-      repositoryConfig: |
-        {
-          "enableActions": true,
-          "actionCommandTimeout": "1h"
-        }
-    actions:
-      beforeSnapshot: |
-        set -euo pipefail
-
-        if [ ! -x /usr/pgsql-18/bin/pg_dumpall ]; then
-          curl -fsSL -o /tmp/pgdg.rpm https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-          rpm -ivh /tmp/pgdg.rpm
-          microdnf -y module disable postgresql || true
-          microdnf install -y postgresql18
-        fi
-
-        find /data -maxdepth 1 -type f -name 'immich-*.sql.gz.tmp' -delete
-
-        ts="$(date -u +%Y%m%dT%H%M%SZ)"
-        user="$(cat /mnt/pg-auth/username)"
-        pass="$(cat /mnt/pg-auth/password)"
-        host="immich-rw.dbms.svc.cluster.local"
-        tmpfile="/data/immich-${ts}.sql.gz.tmp"
-        outfile="/data/immich-${ts}.sql.gz"
-
-        cleanup() {
-          rm -f "${tmpfile}"
-        }
-        trap cleanup EXIT
-
-        export PGPASSWORD="${pass}"
-        /usr/pgsql-18/bin/pg_dumpall --host="${host}" --port="5432" --username="${user}" | gzip -9 > "${tmpfile}"
-        mv "${tmpfile}" "${outfile}"
-        trap - EXIT
-      afterSnapshot: |
-        find /data -maxdepth 1 -type f -name 'immich-*.sql.gz*' -delete
     compression: zstd-fastest
     copyMethod: Snapshot
     moverSecurityContext:
       runAsUser: 0
       runAsGroup: 0
       fsGroup: 1000
-    moverVolumes:
-      - mountPath: pg-auth
-        volumeSource:
-          secret:
-            secretName: cloudnative-pg-secret
     parallelism: 2
     repository: immich-pgdumpall-volsync-secret
     retain:
