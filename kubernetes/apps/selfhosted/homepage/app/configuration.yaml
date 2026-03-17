@@ -244,6 +244,10 @@ data:
             href: https://auth.brauni.dev
             siteMonitor: https://auth.brauni.dev
             icon: mdi-lock-check
+        - TinyAuth (480p.com):
+            href: https://auth.480p.com
+            siteMonitor: https://auth.480p.com
+            icon: mdi-lock-check
 
   bookmarks.yaml: |
     - Ops:

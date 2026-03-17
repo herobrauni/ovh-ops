@@ -31,3 +31,6 @@ spec:
     - group: ""
       kind: Service
       name: tinyauth-brauni-dev
+    - group: ""
+      kind: Service
+      name: tinyauth-480p-com
