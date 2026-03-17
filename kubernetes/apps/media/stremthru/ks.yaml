@@ -22,7 +22,7 @@ spec:
       namespace: external-secrets
     - name: rook-ceph-cluster
       namespace: rook-ceph
-    - name: tinyauth-riki-boo
+    - name: tinyauth-480p-com
       namespace: network
     - name: volsync
       namespace: volsync-system

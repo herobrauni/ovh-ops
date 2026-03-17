@@ -19,14 +19,12 @@ spec:
       namespace: external-secrets
     - name: rook-ceph-cluster
       namespace: rook-ceph
+    - name: tinyauth-480p-com
+      namespace: network
     - name: symlinks
       namespace: media
     - name: csi-rclone
       namespace: csi-rclone
-    - name: tinyauth-brauni-dev
-      namespace: network
-    - name: tinyauth-riki-boo
-      namespace: network
     - name: volsync
       namespace: volsync-system
   interval: 1h

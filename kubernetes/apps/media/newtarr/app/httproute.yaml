@@ -3,29 +3,12 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: newtarr-brauni-dev
+  name: newtarr-480p-com
 spec:
   hostnames:
-    - newtarr.brauni.dev
+    - newtarr.480p.com
   parentRefs:
-    - name: envoy-brauni-dev-public
-      namespace: network
-      sectionName: https
-  rules:
-    - backendRefs:
-        - name: newtarr
-          port: 9705
----
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/gateway.networking.k8s.io/httproute_v1.json
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: newtarr-riki-boo
-spec:
-  hostnames:
-    - newtarr.riki.boo
-  parentRefs:
-    - name: envoy-riki-boo-public
+    - name: envoy-480p-com-public
       namespace: network
       sectionName: https
   rules:

@@ -8,11 +8,7 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: sonarr4k.brauni.dev
+    - dnsName: sonarr4k.480p.com
       recordType: CNAME
       targets:
-        - public.brauni.dev
-    - dnsName: sonarr4k.riki.boo
-      recordType: CNAME
-      targets:
-        - public.riki.boo
+        - public.480p.com

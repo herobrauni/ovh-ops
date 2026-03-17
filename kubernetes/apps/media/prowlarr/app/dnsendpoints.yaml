@@ -8,11 +8,7 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: prowlarr.brauni.dev
+    - dnsName: prowlarr.480p.com
       recordType: CNAME
       targets:
-        - public.brauni.dev
-    - dnsName: prowlarr.riki.boo
-      recordType: CNAME
-      targets:
-        - public.riki.boo
+        - public.480p.com

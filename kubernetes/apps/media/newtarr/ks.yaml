@@ -14,9 +14,7 @@ spec:
   dependsOn:
     - name: rook-ceph-cluster
       namespace: rook-ceph
-    - name: tinyauth-brauni-dev
-      namespace: network
-    - name: tinyauth-riki-boo
+    - name: tinyauth-480p-com
       namespace: network
   interval: 1h
   path: ./kubernetes/apps/media/newtarr/app

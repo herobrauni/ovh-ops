@@ -3,29 +3,12 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: -brauni-dev
+  name: -480p-com
 spec:
   hostnames:
-    - .brauni.dev
+    - .480p.com
   parentRefs:
-    - name: envoy-brauni-dev-public
-      namespace: network
-      sectionName: https
-  rules:
-    - backendRefs:
-        - name: 
-          port: 80
----
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/gateway.networking.k8s.io/httproute_v1.json
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: -riki-boo
-spec:
-  hostnames:
-    - .riki.boo
-  parentRefs:
-    - name: envoy-riki-boo-public
+    - name: envoy-480p-com-public
       namespace: network
       sectionName: https
   rules:
