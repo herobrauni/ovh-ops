@@ -24,3 +24,11 @@ spec:
       recordType: CNAME
       targets:
         - public.riki.boo
+    - dnsName: homepage.480p.com
+      recordType: CNAME
+      targets:
+        - public.480p.com
+    - dnsName: home.480p.com
+      recordType: CNAME
+      targets:
+        - public.480p.com

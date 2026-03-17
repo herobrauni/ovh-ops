@@ -12,6 +12,10 @@ spec:
       recordType: CNAME
       targets:
         - public.riki.boo
+    - dnsName: echo.brauni.dev
+      recordType: CNAME
+      targets:
+        - public.brauni.dev
     - dnsName: echo.480p.com
       recordType: CNAME
       targets:
