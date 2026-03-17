@@ -58,6 +58,25 @@ data:
           showLabel: true
 
   services.yaml: |
+    - Selfhosted:
+        - PatchMon:
+            href: https://patchmon.riki.boo
+            icon: mdi-package-up
+            description: Patching overview
+            widget:
+              type: customapi
+              url: https://patchmon.riki.boo/api/v1/gethomepage/stats
+              headers:
+                Authorization: "{{HOMEPAGE_VAR_PATCHMON_AUTH_HEADER}}"
+              mappings:
+                - field: total_hosts
+                  label: Total Hosts
+                - field: hosts_needing_updates
+                  label: Needs Updates
+                - field: security_updates
+                  label: Security Updates
+                - field: recent_updates_24h
+                  label: Updated (24h)
     - Development:
         - ovh-ops Pull Requests:
             href: https://github.com/herobrauni/ovh-ops/pulls
