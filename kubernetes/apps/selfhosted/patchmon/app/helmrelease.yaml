@@ -141,7 +141,7 @@ spec:
         forceRename: patchmon
         ports:
           http:
-            port: &frontendPort 3000
+            port: &frontendPort 8080
       backend:
         controller: backend
         forceRename: patchmon-backend
