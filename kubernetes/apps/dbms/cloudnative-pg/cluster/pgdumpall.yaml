@@ -69,6 +69,8 @@ spec:
           microdnf install -y postgresql18
         fi
 
+        find /data -maxdepth 1 -type f -name 'postgres18-*.sql.gz.tmp' -delete
+
         ts="$(date -u +%Y%m%dT%H%M%SZ)"
         user="$(cat /mnt/pg-auth/username)"
         pass="$(cat /mnt/pg-auth/password)"
@@ -76,9 +78,15 @@ spec:
         tmpfile="/data/postgres18-${ts}.sql.gz.tmp"
         outfile="/data/postgres18-${ts}.sql.gz"
 
+        cleanup() {
+          rm -f "${tmpfile}"
+        }
+        trap cleanup EXIT
+
         export PGPASSWORD="${pass}"
         /usr/pgsql-18/bin/pg_dumpall --host="${host}" --port="5432" --username="${user}" | gzip -9 > "${tmpfile}"
         mv "${tmpfile}" "${outfile}"
+        trap - EXIT
       afterSnapshot: |
         find /data -maxdepth 1 -type f -name 'postgres18-*.sql.gz*' -delete
     compression: zstd-fastest
@@ -172,6 +180,8 @@ spec:
           microdnf install -y postgresql18
         fi
 
+        find /data -maxdepth 1 -type f -name 'immich-*.sql.gz.tmp' -delete
+
         ts="$(date -u +%Y%m%dT%H%M%SZ)"
         user="$(cat /mnt/pg-auth/username)"
         pass="$(cat /mnt/pg-auth/password)"
@@ -179,9 +189,15 @@ spec:
         tmpfile="/data/immich-${ts}.sql.gz.tmp"
         outfile="/data/immich-${ts}.sql.gz"
 
+        cleanup() {
+          rm -f "${tmpfile}"
+        }
+        trap cleanup EXIT
+
         export PGPASSWORD="${pass}"
         /usr/pgsql-18/bin/pg_dumpall --host="${host}" --port="5432" --username="${user}" | gzip -9 > "${tmpfile}"
         mv "${tmpfile}" "${outfile}"
+        trap - EXIT
       afterSnapshot: |
         find /data -maxdepth 1 -type f -name 'immich-*.sql.gz*' -delete
     compression: zstd-fastest
