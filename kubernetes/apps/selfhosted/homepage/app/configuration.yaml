@@ -132,8 +132,8 @@ data:
             siteMonitor: https://shelfmark.brauni.dev
             icon: mdi-bookshelf
         - Plex:
-            href: https://plex.brauni.dev
-            siteMonitor: https://plex.brauni.dev
+            href: https://plex.480p.com
+            siteMonitor: https://plex.480p.com
             icon: plex.png
         - Radarr:
             href: https://radarr.480p.com
@@ -172,8 +172,8 @@ data:
             siteMonitor: https://prowlarr.480p.com
             icon: prowlarr.png
         - Seerr:
-            href: https://requests.brauni.dev
-            siteMonitor: https://requests.brauni.dev
+            href: https://requests.480p.com
+            siteMonitor: https://requests.480p.com
             icon: mdi-television-guide
 
     - Observability:

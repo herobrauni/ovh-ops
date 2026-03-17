@@ -8,10 +8,6 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: plex.brauni.dev
-      recordType: CNAME
-      targets:
-        - public.brauni.dev
     - dnsName: plex.480p.com
       recordType: CNAME
       targets:
