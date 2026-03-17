@@ -8,11 +8,7 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: radarr.brauni.dev
+    - dnsName: radarr.480p.com
       recordType: CNAME
       targets:
-        - public.brauni.dev
-    - dnsName: radarr.riki.boo
-      recordType: CNAME
-      targets:
-        - public.riki.boo
+        - public.480p.com

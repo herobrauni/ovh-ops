@@ -3,12 +3,12 @@
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
-  name: decypharr-auth
+  name: decypharr-480p-com-auth
 spec:
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: HTTPRoute
-      name: decypharr
+      name: decypharr-480p-com
   extAuth:
     failOpen: false
     headersToExtAuth:
@@ -21,7 +21,7 @@ spec:
       - cookie
     http:
       backendRefs:
-        - name: tinyauth-riki-boo
+        - name: tinyauth-480p-com
           namespace: network
           port: 3000
       path: /api/auth/envoy?path=

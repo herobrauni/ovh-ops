@@ -3,29 +3,12 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: sonarr4k-brauni-dev
+  name: sonarr4k-480p-com
 spec:
   hostnames:
-    - sonarr4k.brauni.dev
+    - sonarr4k.480p.com
   parentRefs:
-    - name: envoy-brauni-dev-public
-      namespace: network
-      sectionName: https
-  rules:
-    - backendRefs:
-        - name: sonarr4k
-          port: 80
----
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/gateway.networking.k8s.io/httproute_v1.json
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: sonarr4k-riki-boo
-spec:
-  hostnames:
-    - sonarr4k.riki.boo
-  parentRefs:
-    - name: envoy-riki-boo-public
+    - name: envoy-480p-com-public
       namespace: network
       sectionName: https
   rules:

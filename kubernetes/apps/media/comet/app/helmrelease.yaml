@@ -61,7 +61,7 @@ spec:
               FASTAPI_PORT: &targetPort 8000
               HOME: /tmp
               INDEXER_MANAGER_UPDATE_INTERVAL: "900"
-              PUBLIC_BASE_URL: https://comet.brauni.dev
+              PUBLIC_BASE_URL: https://comet.480p.com
               DMM_INGEST_ENABLED: "true"
               SCRAPE_STREMTHRU: both
               STREMTHRU_SCRAPE_URL: https://stremthru.13377001.xyz

@@ -8,11 +8,7 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: bitmagnet.brauni.dev
+    - dnsName: bitmagnet.480p.com
       recordType: CNAME
       targets:
-        - public.brauni.dev
-    - dnsName: bitmagnet.riki.boo
-      recordType: CNAME
-      targets:
-        - public.riki.boo
+        - public.480p.com

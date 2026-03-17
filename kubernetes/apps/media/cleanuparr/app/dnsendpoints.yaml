@@ -8,11 +8,7 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: cleanuparr.brauni.dev
+    - dnsName: cleanuparr.480p.com
       recordType: CNAME
       targets:
-        - public.brauni.dev
-    - dnsName: cleanuparr.riki.boo
-      recordType: CNAME
-      targets:
-        - public.riki.boo
+        - public.480p.com

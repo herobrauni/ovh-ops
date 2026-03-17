@@ -112,16 +112,16 @@ data:
 
     - Media:
         - Bitmagnet:
-            href: https://bitmagnet.brauni.dev
-            siteMonitor: https://bitmagnet.brauni.dev
+            href: https://bitmagnet.480p.com
+            siteMonitor: https://bitmagnet.480p.com
             icon: mdi-magnet
         - Cleanuparr:
-            href: https://cleanuparr.brauni.dev
-            siteMonitor: https://cleanuparr.brauni.dev
+            href: https://cleanuparr.480p.com
+            siteMonitor: https://cleanuparr.480p.com
             icon: mdi-broom
         - Comet:
-            href: https://comet.brauni.dev
-            siteMonitor: https://comet.brauni.dev
+            href: https://comet.480p.com
+            siteMonitor: https://comet.480p.com
             icon: mdi-comet
         - BookLore:
             href: https://booklore.brauni.dev
@@ -136,40 +136,40 @@ data:
             siteMonitor: https://plex.brauni.dev
             icon: plex.png
         - Radarr:
-            href: https://radarr.brauni.dev
-            siteMonitor: https://radarr.brauni.dev
+            href: https://radarr.480p.com
+            siteMonitor: https://radarr.480p.com
             icon: radarr.png
         - Radarr 4K:
-            href: https://radarr4k.brauni.dev
-            siteMonitor: https://radarr4k.brauni.dev
+            href: https://radarr4k.480p.com
+            siteMonitor: https://radarr4k.480p.com
             icon: radarr.png
         - Sonarr:
-            href: https://sonarr.brauni.dev
-            siteMonitor: https://sonarr.brauni.dev
+            href: https://sonarr.480p.com
+            siteMonitor: https://sonarr.480p.com
             icon: sonarr.png
         - Sonarr 4K:
-            href: https://sonarr4k.brauni.dev
-            siteMonitor: https://sonarr4k.brauni.dev
+            href: https://sonarr4k.480p.com
+            siteMonitor: https://sonarr4k.480p.com
             icon: sonarr.png
         - Decypharr:
-            href: https://decypharr.riki.boo
-            siteMonitor: https://decypharr.riki.boo
+            href: https://decypharr.480p.com
+            siteMonitor: https://decypharr.480p.com
             icon: mdi-magnet
         - StremThru:
-            href: https://stremthru.riki.boo
-            siteMonitor: https://stremthru.riki.boo
+            href: https://stremthru.480p.com
+            siteMonitor: https://stremthru.480p.com
             icon: mdi-magnet
         - Profilarr:
-            href: https://profilarr.brauni.dev
-            siteMonitor: https://profilarr.brauni.dev
+            href: https://profilarr.480p.com
+            siteMonitor: https://profilarr.480p.com
             icon: mdi-format-list-checks
         - NewtArr:
-            href: https://newtarr.brauni.dev
-            siteMonitor: https://newtarr.brauni.dev
+            href: https://newtarr.480p.com
+            siteMonitor: https://newtarr.480p.com
             icon: mdi-new-box
         - Prowlarr:
-            href: https://prowlarr.brauni.dev
-            siteMonitor: https://prowlarr.brauni.dev
+            href: https://prowlarr.480p.com
+            siteMonitor: https://prowlarr.480p.com
             icon: prowlarr.png
         - Seerr:
             href: https://requests.brauni.dev

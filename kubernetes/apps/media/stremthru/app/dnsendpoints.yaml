@@ -8,7 +8,7 @@ metadata:
     dns.scope: all
 spec:
   endpoints:
-    - dnsName: stremthru.riki.boo
+    - dnsName: stremthru.480p.com
       recordType: CNAME
       targets:
-        - public.riki.boo
+        - public.480p.com
