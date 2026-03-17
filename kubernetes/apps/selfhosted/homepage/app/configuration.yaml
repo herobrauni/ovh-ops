@@ -101,10 +101,6 @@ data:
             href: https://jotty.brauni.dev
             siteMonitor: https://jotty.brauni.dev
             icon: mdi-notebook-edit-outline
-        - Web Check:
-            href: https://web-check.brauni.dev
-            siteMonitor: https://web-check.brauni.dev
-            icon: mdi-web
         - Atuin:
             href: https://atuin.brauni.dev
             siteMonitor: https://atuin.brauni.dev
@@ -261,3 +257,4 @@ data:
 
   kubernetes.yaml: |
     mode: cluster
+    gateway: true
