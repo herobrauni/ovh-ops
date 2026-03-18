@@ -1,0 +1,32 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app databasus
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: databasus
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    image:
+      tag: v3.22.0@sha256:0e79347dda558290601c89cdb5ca788e1b50e8d841bb4c87abb32cb116f811a3
+    service:
+      port: &port 4005
+      targetPort: *port
+    route:
+      enabled: true
+      hostnames:
+        - databasus.riki.boo
+      parentRefs:
+        - name: envoy-riki-boo-public
+          namespace: network
+          sectionName: https
+    persistence:
+      enabled: true
+      storageClassName: ceph-block
+      accessMode: ReadWriteOnce
+      size: 10Gi
