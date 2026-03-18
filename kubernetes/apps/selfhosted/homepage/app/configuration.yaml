@@ -77,6 +77,11 @@ data:
                   label: Security Updates
                 - field: recent_updates_24h
                   label: Updated (24h)
+    - Platform:
+        - Databasus:
+            href: https://databasus.riki.boo
+            icon: mdi-database
+            description: Database backup and restore management
     - Development:
         - ovh-ops Pull Requests:
             href: https://github.com/herobrauni/ovh-ops/pulls
