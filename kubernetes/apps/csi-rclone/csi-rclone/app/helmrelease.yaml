@@ -18,6 +18,17 @@ spec:
     feature:
       enableInlineVolume: true
     node:
+      resources:
+        rclone:
+          requests:
+            cpu: 50m
+            memory: 256Mi
+          limits:
+            memory: 12Gi
+      cache:
+        enabled: true
+        hostPath: /var/mnt/local-hostpath/rclone-cache
+        mountPath: /var/lib/rclone-cache
       metrics:
         enabled: true
         service:
