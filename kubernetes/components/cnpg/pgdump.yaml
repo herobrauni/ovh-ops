@@ -92,8 +92,6 @@ spec:
         set -euo pipefail
 
         if [ ! -x /usr/pgsql-18/bin/pg_dump ]; then
-          curl -fsSL -o /tmp/pgdg.rpm https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-          rpm -ivh /tmp/pgdg.rpm
           microdnf -y module disable postgresql || true
           microdnf install -y postgresql18
         fi
