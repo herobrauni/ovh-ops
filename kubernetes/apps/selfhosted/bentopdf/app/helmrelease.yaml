@@ -20,7 +20,7 @@ spec:
           app:
             image:
               repository: ghcr.io/alam00000/bentopdf-simple
-              tag: latest@sha256:ea5e0b7f38bd81be9fcbba96c168c736221b20675958c0084d411dc39fa2682e
+              tag: latest@sha256:d87f37f320d02950b452190d84183b6191e497355859ac901facafdd1074269a
             probes:
               liveness:
                 enabled: true
