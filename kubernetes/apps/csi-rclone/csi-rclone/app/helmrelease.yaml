@@ -25,10 +25,6 @@ spec:
             memory: 256Mi
           limits:
             memory: 12Gi
-      cache:
-        enabled: true
-        hostPath: /var/mnt/local-hostpath/rclone-cache
-        mountPath: /var/lib/rclone-cache
       metrics:
         enabled: true
         service:
