@@ -77,7 +77,7 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group",
       },
-      minimumGroupSize: 5,
+      minimumReleaseAge: "3 days",
     },
     {
       description: "Rook-Ceph Group",
