@@ -16,6 +16,16 @@ spec:
       bentopdf:
         annotations:
           reloader.stakater.com/auto: "true"
+        initContainers:
+          01-init-nginx-dirs:
+            image:
+              repository: ghcr.io/alam00000/bentopdf-simple
+              tag: latest@sha256:d87f37f320d02950b452190d84183b6191e497355859ac901facafdd1074269a
+            command:
+              - /bin/sh
+              - -c
+              - |
+                mkdir -p /var/lib/nginx/logs /var/lib/nginx/tmp/client_body
         containers:
           app:
             image:
@@ -89,3 +99,9 @@ spec:
             path: /var/cache/nginx
           - subPath: tmp
             path: /etc/nginx/tmp
+      varlib:
+        type: emptyDir
+        medium: Memory
+        sizeLimit: 32Mi
+        globalMounts:
+          - path: /var/lib/nginx
