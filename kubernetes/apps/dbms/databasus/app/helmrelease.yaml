@@ -19,6 +19,12 @@ spec:
       targetPort: *port
     route:
       enabled: true
+      annotations:
+        gethomepage.dev/enabled: "true"
+        gethomepage.dev/group: Platform
+        gethomepage.dev/name: Databasus
+        gethomepage.dev/pod-selector: app.kubernetes.io/name=databasus
+        gethomepage.dev/icon: mdi-database
       hostnames:
         - databasus.riki.boo
       parentRefs:
