@@ -48,10 +48,6 @@ spec:
                   secretKeyRef:
                     name: &pguser comet-pguser-secret
                     key: uri
-              SCRAPE_BITMAGNET: live
-              BITMAGNET_URL: https://bitmagnet.media.svc.cluster.local
-              SCRAPE_COMET: both
-              COMET_URL: https://comet.feels.legal
               COMETNET_BOOTSTRAP_NODES: '["wss://cometnet-beta.feels.legal", "wss://cometnet.micasa161.me","wss://cometuk2.sophnsharm.stream/cometnet/ws",  "wss://cometnetuk.sophnsharm.stream/cometnet/ws", "wss://cometnet.stremio.ru", "https://cometnet.elfhosted.com", "wss://cometnet.streamproxy.xyz"]'
               COMETNET_CONTRIBUTION_MODE: leech
               COMETNET_ENABLED: "true"
@@ -63,13 +59,9 @@ spec:
               INDEXER_MANAGER_UPDATE_INTERVAL: "900"
               PUBLIC_BASE_URL: https://comet.480p.com
               DMM_INGEST_ENABLED: "true"
-              SCRAPE_STREMTHRU: both
-              STREMTHRU_SCRAPE_URL: https://stremthru.13377001.xyz
               USE_GUNICORN: "true"
               UV_CACHE_DIR: /tmp/.cache/uv
               XDG_CACHE_HOME: /tmp/.cache
-              SCRAPE_ZILEAN: both
-              ZILEAN_URL: https://zileanfortheweebs.midnightignite.me
               MEMORY_TRIM_INTERVAL: 300
             envFrom:
               - secretRef:
