@@ -70,6 +70,7 @@ spec:
               XDG_CACHE_HOME: /tmp/.cache
               SCRAPE_ZILEAN: both
               ZILEAN_URL: https://zileanfortheweebs.midnightignite.me
+              MEMORY_TRIM_INTERVAL: 300
             envFrom:
               - secretRef:
                   name: comet-secret
