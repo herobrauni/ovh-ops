@@ -58,7 +58,6 @@ spec:
               HOME: /tmp
               INDEXER_MANAGER_UPDATE_INTERVAL: "900"
               PUBLIC_BASE_URL: https://comet.480p.com
-              DMM_INGEST_ENABLED: "true"
               USE_GUNICORN: "true"
               UV_CACHE_DIR: /tmp/.cache/uv
               XDG_CACHE_HOME: /tmp/.cache
@@ -68,6 +67,23 @@ spec:
               BACKGROUND_SCRAPER_MAX_MOVIES_PER_RUN: 1000
               BACKGROUND_SCRAPER_MAX_SERIES_PER_RUN: 1000
               BACKGROUND_SCRAPER_MAX_EPISODES_PER_SERIES_PER_RUN: 2500
+              # scrape
+              SCRAPE_COMET: "background"
+              COMET_URL: "https://comet.feels.legal"
+              SCRAPE_ZILEAN: "background"
+              ZILEAN_URL: https://zileanfortheweebs.midnightignite.me
+              SCRAPE_STREMTHRU: "background"
+              STREMTHRU_SCRAPE_URL: http://stremthru.media.svc.cluster.local
+              SCRAPE_DMM: "background"
+              DMM_INGEST_ENABLED: "true"
+              DMM_INGEST_INTERVAL: 86400 # Seconds between ingestion cycles (default: 1 day)
+              DMM_INGEST_CONCURRENT_WORKERS: 4 # Number of concurrent workers for DMM ingestion. Increase this if you have a powerful CPU. Make sure EXECUTOR_MAX_WORKERS is set to at least this value.
+              DMM_INGEST_BATCH_SIZE: 100 # Number of files to process per batch. Increase this for better throughput if your CPU can handle it.
+              SCRAPE_BITMAGNET: "background"
+              BITMAGNET_URL: http://bitmagnet.media.svc.cluster.local
+              SCRAPE_DEBRIDIO: "background"
+              DEBRIDIO_PROVIDER: realdebrid
+
             envFrom:
               - secretRef:
                   name: comet-secret
