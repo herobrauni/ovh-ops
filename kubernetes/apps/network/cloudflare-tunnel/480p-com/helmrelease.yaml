@@ -80,7 +80,6 @@ spec:
       config:
         data:
           config.yaml: |-
-            protocol: http2
             ingress:
               - hostname: "*.480p.com"
                 originRequest:

@@ -49,7 +49,7 @@ spec:
                     name: &pguser comet-pguser-secret
                     key: uri
               COMETNET_BOOTSTRAP_NODES: '["wss://cometnet-beta.feels.legal", "wss://cometnet.micasa161.me","wss://cometuk2.sophnsharm.stream/cometnet/ws",  "wss://cometnetuk.sophnsharm.stream/cometnet/ws", "wss://cometnet.stremio.ru", "https://cometnet.elfhosted.com", "wss://cometnet.streamproxy.xyz"]'
-              COMETNET_CONTRIBUTION_MODE: consumer
+              COMETNET_CONTRIBUTION_MODE: leech
               COMETNET_ENABLED: "true"
               COMETNET_NODE_ALIAS: 480p.com
               COMETNET_ADVERTISE_URL: "wss://cometnet.480p.com/cometnet/ws"
