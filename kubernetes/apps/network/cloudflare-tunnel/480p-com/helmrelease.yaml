@@ -14,7 +14,7 @@ spec:
   values:
     controllers:
       cloudflare-tunnel-480p-com:
-        replicas: 2
+        replicas: 3
         strategy: RollingUpdate
         annotations:
           reloader.stakater.com/auto: "true"
@@ -84,9 +84,9 @@ spec:
               - hostname: "*.480p.com"
                 originRequest:
                   http2Origin: true
-                  keepAliveTimeout: 3600s
+                  keepAliveTimeout: 300s
                   originServerName: public.480p.com
-                  tcpKeepAlive: 7200s
+                  tcpKeepAlive: 300s
                 service: https://envoy-480p-com-public.{{ .Release.Namespace }}.svc.cluster.local:443
               - service: http_status:404
     persistence:
