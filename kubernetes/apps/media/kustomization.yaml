@@ -14,6 +14,7 @@ resources:
   - ./cleanuparr/ks.yaml
   - ./comet/ks.yaml
   - ./decypharr/ks.yaml
+  - ./kometa/ks.yaml
   - ./media-debug/ks.yaml
   - ./newtarr/ks.yaml
   - ./plex/ks.yaml
