@@ -63,6 +63,11 @@ spec:
               UV_CACHE_DIR: /tmp/.cache/uv
               XDG_CACHE_HOME: /tmp/.cache
               MEMORY_TRIM_INTERVAL: 300
+              BACKGROUND_SCRAPER_ENABLED: "true"
+              BACKGROUND_SCRAPER_CONCURRENT_WORKERS: 5
+              BACKGROUND_SCRAPER_MAX_MOVIES_PER_RUN: 1000
+              BACKGROUND_SCRAPER_MAX_SERIES_PER_RUN: 1000
+              BACKGROUND_SCRAPER_MAX_EPISODES_PER_SERIES_PER_RUN: 2500
             envFrom:
               - secretRef:
                   name: comet-secret
