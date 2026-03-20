@@ -1,0 +1,137 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: jellyfin
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: jellyfin
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        supplementalGroups:
+          - 44
+    controllers:
+      jellyfin:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: docker.io/jellyfin/jellyfin
+              tag: 10.10.7@sha256:3b38dae4c3ddd6ebc7378538fba4d3f314070ebefbdb3d688166b7c8658fb123
+            env:
+              JELLYFIN_PublishedServerUrl: https://jellyfin.480p.com
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: &port 8096
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: *port
+                  initialDelaySeconds: 30
+                  periodSeconds: 15
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: *port
+                  failureThreshold: 30
+                  periodSeconds: 10
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    service:
+      app:
+        controller: jellyfin
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Media
+          gethomepage.dev/name: Jellyfin
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=jellyfin
+          gethomepage.dev/icon: jellyfin.png
+        hostnames:
+          - jellyfin.480p.com
+          - jelly.480p.com
+        parentRefs:
+          - name: envoy-480p-com-public
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - name: jellyfin
+                port: *port
+    persistence:
+      config:
+        existingClaim: jellyfin
+      cache:
+        existingClaim: jellyfin-cache
+      logs:
+        type: emptyDir
+      transcode:
+        type: emptyDir
+      tmp:
+        type: emptyDir
+      symlinks:
+        existingClaim: symlinks
+        globalMounts:
+          - path: /aio/symlinks
+      realdebrid:
+        type: custom
+        volumeSpec:
+          csi:
+            driver: rclone.csi.veloxpack.io
+            readOnly: true
+            volumeAttributes:
+              remote: decypharr
+              remotePath: "/"
+              dir-cache-time: "10s"
+              vfs-cache-mode: full
+              vfs-cache-max-age: "504h"
+              vfs-cache-max-size: "10G"
+              vfs-cache-poll-interval: "30s"
+              vfs-read-chunk-size: "32M"
+              vfs-read-chunk-size-limit: "128M"
+              vfs-fast-fingerprint: "true"
+              no-modtime: "true"
+              no-checksum: "true"
+              read-only: "true"
+              configData: |
+                [decypharr]
+                type = webdav
+                url = http://decypharr.media.svc.cluster.local:8282/webdav
+                vendor = other
+        globalMounts:
+          - path: /aio/remote/realdebrid
+            readOnly: true
