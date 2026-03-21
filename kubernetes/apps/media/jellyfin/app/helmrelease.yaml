@@ -25,13 +25,47 @@ spec:
       jellyfin:
         annotations:
           reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: jellyfin-pguser-secret
+        initContainers:
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.3@sha256:6fa1f331cddd2eb0b6afa7b8d3685c864127a81ab01c3d9400bc3ff5263a51cf
+            envFrom:
+              - secretRef:
+                  name: jellyfin-initdb-secret
         containers:
           app:
             image:
-              repository: docker.io/jellyfin/jellyfin
-              tag: 10.10.7@sha256:3b38dae4c3ddd6ebc7378538fba4d3f314070ebefbdb3d688166b7c8658fb123
+              repository: ghcr.io/jpvenson/jellyfin.pgsql
+              tag: 10.11.6-1@sha256:69d691ef7cc2ce438576af85b42ec0c5048f91e7283bf34e6533923331077cba
             env:
               JELLYFIN_PublishedServerUrl: https://jellyfin.480p.com
+              POSTGRES_HOST:
+                valueFrom:
+                  secretKeyRef:
+                    name: &pguser jellyfin-pguser-secret
+                    key: host
+              POSTGRES_PORT:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: port
+              POSTGRES_DB:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: db
+              POSTGRES_USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: user
+              POSTGRES_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: password
             probes:
               liveness: &probes
                 enabled: true
