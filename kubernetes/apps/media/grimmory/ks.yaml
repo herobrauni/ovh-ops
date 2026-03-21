@@ -18,7 +18,7 @@ spec:
   path: ./kubernetes/apps/media/grimmory/app
   postBuild:
     substitute:
-      APP: booklore
+      APP: *app
       VOLSYNC_CLAIM: booklore
       VOLSYNC_CAPACITY: 15Gi
   prune: true
