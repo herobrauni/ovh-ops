@@ -10,7 +10,7 @@ components:
 resources:
   - ./namespace.yaml
   - ./bitmagnet/ks.yaml
-  - ./grimmory/ks.yaml
+  - ./booklore/ks.yaml
   - ./cleanuparr/ks.yaml
   - ./comet/ks.yaml
   - ./decypharr/ks.yaml

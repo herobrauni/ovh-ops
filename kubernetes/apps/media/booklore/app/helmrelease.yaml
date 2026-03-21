@@ -3,17 +3,17 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: grimmory
+  name: booklore
 spec:
   chartRef:
     kind: OCIRepository
-    name: grimmory
+    name: booklore
   interval: 30m
   driftDetection:
     mode: enabled
   values:
     controllers:
-      grimmory:
+      booklore:
         annotations:
           reloader.stakater.com/auto: "true"
         pod:
@@ -76,10 +76,10 @@ spec:
                     name: booklore-secret
                     key: booklore_mariadb_password
         containers:
-          grimmory:
+          booklore:
             image:
-              repository: ghcr.io/grimmory-tools/grimmory
-              tag: nightly@sha256:b4c8cbd1dbb36f180fe060b1c420c9a4c35bc28df7a676a17ecfefbf37053a90
+              repository: ghcr.io/booklore-app/booklore
+              tag: v2.2.1@sha256:252586c469ff6d07a06469fd1d49f19af932f4d323713d253c5d29e33b6ec97a
             command:
               - java
             args:
@@ -138,8 +138,8 @@ spec:
       data:
         existingClaim: booklore
         advancedMounts:
-          grimmory:
-            grimmory:
+          booklore:
+            booklore:
               - path: /app/data
                 subPath: app
               - path: /books
@@ -152,44 +152,43 @@ spec:
       bookdrop:
         existingClaim: bookdrop
         advancedMounts:
-          grimmory:
-            grimmory:
+          booklore:
+            booklore:
               - path: /bookdrop
       mysqld:
         type: emptyDir
         medium: Memory
         sizeLimit: 1Mi
         advancedMounts:
-          grimmory:
+          booklore:
             mariadb:
               - path: /run/mysqld
       tmpfs:
         type: emptyDir
         advancedMounts:
-          grimmory:
-            grimmory:
+          booklore:
+            booklore:
               - path: /tmp
                 subPath: app
             mariadb:
               - path: /tmp
                 subPath: mysql
     route:
-      grimmory:
+      booklore:
         annotations:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Media
-          gethomepage.dev/name: Grimmory
-          gethomepage.dev/pod-selector: app.kubernetes.io/name=grimmory
+          gethomepage.dev/name: BookLore
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=booklore
           gethomepage.dev/icon: mdi-book-open-variant
         hostnames:
           - booklore.brauni.dev
-          - grimmory.brauni.dev
         parentRefs:
           - name: envoy-brauni-dev-public
             namespace: network
             sectionName: https
     service:
-      grimmory:
+      booklore:
         ports:
           http:
             port: *httpPort

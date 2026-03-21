@@ -3,12 +3,12 @@
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: grimmory
+  name: booklore
 spec:
   endpointSelector:
     matchLabels:
-      app.kubernetes.io/name: grimmory
-      app.kubernetes.io/instance: grimmory
+      app.kubernetes.io/name: booklore
+      app.kubernetes.io/instance: booklore
   ingress:
     - fromEndpoints:
         - matchLabels:
