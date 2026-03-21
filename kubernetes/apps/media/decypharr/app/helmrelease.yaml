@@ -46,7 +46,7 @@ spec:
           app:
             image:
               repository: cy01/blackhole
-              tag: fenrir@sha256:e2a6b3bd7938171d63130630681468fe91d015f577227d6c32d6470b35c61e0c
+              tag: fenrir@sha256:3f7717427aa8fba9e8b200ebd80eefbd2897e79df69fba22ae0904cdb2b42e42
             probes:
               liveness:
                 enabled: true
