@@ -10,14 +10,21 @@ spec:
     labels:
       app.kubernetes.io/name: *app
   components:
+    - ../../../../components/cnpg
     - ../../../../components/volsync
   dependsOn:
+    - name: cloudnative-pg-cluster
+      namespace: dbms
+    - name: bitwarden
+      namespace: external-secrets
     - name: openebs
       namespace: openebs-system
     - name: rook-ceph-cluster
       namespace: rook-ceph
     - name: symlinks
+      namespace: media
     - name: decypharr
+      namespace: media
     - name: csi-rclone
       namespace: csi-rclone
   interval: 1h
@@ -25,6 +32,7 @@ spec:
   postBuild:
     substitute:
       APP: *app
+      CNPG_NAME: postgres18
       VOLSYNC_CAPACITY: 25Gi
       VOLSYNC_CACHE_CAPACITY: 25Gi
   prune: true
