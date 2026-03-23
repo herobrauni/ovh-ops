@@ -13,6 +13,7 @@ resources:
   - ./opencloud/ks.yaml
   - ./open-webui/ks.yaml
   - ./web-check/ks.yaml
+  - ./networking-toolbox/ks.yaml
   - ./karakeep/ks.yaml
   - ./idlers/ks.yaml
   - ./immich/ks.yaml
