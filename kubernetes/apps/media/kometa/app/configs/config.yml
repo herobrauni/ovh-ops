@@ -36,7 +36,7 @@ settings:
   show_unconfigured: true
 
 plex:
-  url: env
+  url: http://plex.media.svc.cluster.local:32400
   token: env
   timeout: 120
 
