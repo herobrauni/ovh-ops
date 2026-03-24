@@ -36,8 +36,8 @@ settings:
   show_unconfigured: true
 
 plex:
-  url: <<PLEX_URL>>
-  token: <<PLEX_TOKEN>>
+  url: env
+  token: env
   timeout: 120
 
 tmdb:
