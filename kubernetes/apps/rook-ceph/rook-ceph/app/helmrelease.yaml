@@ -23,7 +23,7 @@ spec:
         enabled: true
     image:
       repository: ghcr.io/rook/ceph
-      tag: v1.19.2@sha256:6e1cb1e77b294ce2189f11ba43173c85dabeb8065d5ae5791dd278a6581eba5e
+      tag: v1.19.3@sha256:a9cbff55abbf33a30bfae18f78c385b2e0c2256e5bbf68ae79ab32266de7c354
     monitoring:
       enabled: true
     resources:
