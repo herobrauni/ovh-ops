@@ -37,7 +37,7 @@ spec:
   monitoring:
     enablePodMonitor: true
   backup:
-    retentionPolicy: 30d
+    retentionPolicy: 14d
     barmanObjectStore:
       destinationPath: s3://cnpg-backups/postgres18/v1/
       endpointURL: http://rook-ceph-rgw-proxmox-s3.rook-ceph.svc:80
