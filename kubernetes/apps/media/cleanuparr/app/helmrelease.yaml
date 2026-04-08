@@ -28,7 +28,7 @@ spec:
           app:
             image:
               repository: ghcr.io/cleanuparr/cleanuparr
-              tag: 2.9.3@sha256:284577a6c457bc6af06a2a7fb9640eea27c8136a34c459a5e0d323230db62dad
+              tag: 2.9.5@sha256:6c14c9560f0d97f248d02369fd9b122ec2d6d04af51b6c4ec87e7084b913cdf7
             env:
               BIND_ADDRESS: 0.0.0.0
               PORT: &targetPort 11011
