@@ -22,12 +22,12 @@ spec:
               repository: ghcr.io/steveiliop56/tinyauth
               tag: v5.0.5-beta.3-distroless@sha256:c72d8bffdea3f86e6b9444737c23e14f78a1d260598d5ccb120dea73870828c4
             env:
-              TINYAUTH_APPURL: https://auth.riki.boo
-              TINYAUTH_DISABLEANALYTICS: true
+              TINYAUTH_APPURL: https://auth.riki-boo.com
+              TINYAUTH_ANALYTICS_ENABLED: false
               TINYAUTH_AUTH_SECURECOOKIE: true
               TINYAUTH_AUTH_SESSIONEXPIRY: 604800
-              TINYAUTH_RESOURCESDIR: /data/resources
-              TINYAUTH_DATABASEPATH: /data/tinyauth.db
+              TINYAUTH_RESOURCES_PATH: /data/resources
+              TINYAUTH_DATABASE_PATH: /data/tinyauth.db
               TINYAUTH_AUTH_TRUSTEDPROXIES: 10.42.0.0/16
             envFrom:
               - secretRef:
