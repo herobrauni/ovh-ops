@@ -15,3 +15,4 @@ resources:
   - ./proxmox-exporter/ks.yaml
   - ./gatus/ks.yaml
   - ./grafana/ks.yaml
+  - ./beszel-hub/ks.yaml
