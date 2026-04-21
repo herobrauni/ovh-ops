@@ -1,0 +1,45 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app authentik
+spec:
+  targetNamespace: authentik
+  healthChecks:
+    - apiVersion: helm.toolkit.fluxcd.io/v2
+      kind: HelmRelease
+      name: authentik
+      namespace: authentik
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  components:
+    - ../../../../components/cnpg
+    - ../../../../components/volsync
+  dependsOn:
+    - name: cloudnative-pg-cluster
+      namespace: dbms
+    - name: bitwarden
+      namespace: external-secrets
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
+    - name: volsync
+      namespace: volsync-system
+  interval: 1h
+  path: ./kubernetes/apps/authentik/authentik/app
+  postBuild:
+    substitute:
+      APP: *app
+      CNPG_NAME: postgres18
+      VOLSYNC_CAPACITY: 5Gi
+      VOLSYNC_ACCESSMODES: ReadWriteMany
+      VOLSYNC_STORAGECLASS: ceph-filesystem
+      VOLSYNC_SNAPSHOTCLASS: csi-ceph-filesystem
+      VOLSYNC_SNAP_ACCESSMODES: ReadOnlyMany
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false

@@ -70,7 +70,9 @@ The repo is YAML-heavy and declarative.
 - For media namespace remote mounts backed by Decypharr WebDAV, prefer the custom CSI rclone volume pattern used in `kubernetes/apps/media/media-debug/app/helmrelease.yaml` instead of assuming a PVC such as `pvc-rclone` exists.
 - Sonarr in this repo is intended to use native Postgres env configuration with the `home-operations/sonarr` image. The working pattern is to set `SONARR__POSTGRES__*` env vars from `sonarr-pguser-secret` and disable the separate log database with `SONARR__LOG__DBENABLED: "False"` so logs stay on disk/Loki.
 - Large VolSync Kopia restores in this repo can exceed the default cache EmptyDir size and get evicted with `Usage of EmptyDir volume "cache" exceeds the limit`. The shared `kubernetes/components/volsync/replicationdestination.yaml` should keep a larger `spec.kopia.cacheCapacity` (currently `32Gi`) unless an app has a smaller proven requirement.
+- The shared `kubernetes/components/volsync` PVC template currently names the restored/managed claim `${APP}` and does not consume `VOLSYNC_CLAIM`; workloads using that component should mount the `${APP}` claim name unless the component itself is changed.
 - Do not run Flux reconcile commands for local-only manifest edits that have not been committed and pushed yet; Flux will only apply the Git revision it can fetch from the remote source.
+- For the goauthentik/authentik Helm chart, setting `serviceAccount.create: false` alone makes server/worker pods fall back to the namespace's default ServiceAccount. If you do not need managed outpost RBAC, create a dedicated minimal ServiceAccount with `automountServiceAccountToken: false` and set both `server.serviceAccountName` and `worker.serviceAccountName` explicitly.
 
 ## Testing Guidelines
 Primary validation is CI-based:
