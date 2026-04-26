@@ -74,6 +74,9 @@ spec:
                   httpGet:
                     path: /health
                     port: 3000
+                    httpHeaders:
+                      - name: Host
+                        value: patchmon.riki.boo
               readiness:
                 enabled: true
                 custom: true
@@ -81,6 +84,9 @@ spec:
                   httpGet:
                     path: /health
                     port: 3000
+                    httpHeaders:
+                      - name: Host
+                        value: patchmon.riki.boo
               startup:
                 enabled: true
                 custom: true
@@ -90,6 +96,9 @@ spec:
                   httpGet:
                     path: /health
                     port: 3000
+                    httpHeaders:
+                      - name: Host
+                        value: patchmon.riki.boo
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
