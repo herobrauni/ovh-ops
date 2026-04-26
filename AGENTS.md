@@ -73,6 +73,7 @@ The repo is YAML-heavy and declarative.
 - The shared `kubernetes/components/volsync` PVC template currently names the restored/managed claim `${APP}` and does not consume `VOLSYNC_CLAIM`; workloads using that component should mount the `${APP}` claim name unless the component itself is changed.
 - Do not run Flux reconcile commands for local-only manifest edits that have not been committed and pushed yet; Flux will only apply the Git revision it can fetch from the remote source.
 - For the goauthentik/authentik Helm chart, setting `serviceAccount.create: false` alone makes server/worker pods fall back to the namespace's default ServiceAccount. If you do not need managed outpost RBAC, create a dedicated minimal ServiceAccount with `automountServiceAccountToken: false` and set both `server.serviceAccountName` and `worker.serviceAccountName` explicitly.
+- Ceph `osd.1` was manually reweighted to `0.96002` on 2026-04-26 with `ceph osd reweight-by-utilization 105 0.02 2 --no-increasing` to relieve nearfull pressure while old CNPG S3 backups age out. Recheck after backup cleanup and normalize `osd.1` back toward `1.00000` if utilization allows.
 
 ## Testing Guidelines
 Primary validation is CI-based:
