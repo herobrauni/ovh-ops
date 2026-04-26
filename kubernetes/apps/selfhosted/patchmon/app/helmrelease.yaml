@@ -24,50 +24,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
 
     controllers:
-      frontend:
-        replicas: 1
-        annotations:
-          reloader.stakater.com/auto: "true"
-        containers:
-          app:
-            image:
-              repository: ghcr.io/patchmon/patchmon-frontend
-              tag: 1.4.2@sha256:002c9c9c1fe36961b0cf45a4b6723a6dafe97fa24ea4e39bd2fcc6b9ab73b71d
-            env:
-              BACKEND_HOST: patchmon-backend
-              BACKEND_PORT: "3001"
-            probes:
-              liveness:
-                enabled: true
-                spec:
-                  tcpSocket:
-                    port: 3000
-              readiness:
-                enabled: true
-                spec:
-                  tcpSocket:
-                    port: 3000
-              startup:
-                enabled: true
-                spec:
-                  failureThreshold: 30
-                  periodSeconds: 10
-                  tcpSocket:
-                    port: 3000
-            resources:
-              requests:
-                cpu: 10m
-                memory: 50Mi
-              limits:
-                memory: 512Mi
-            securityContext:
-              runAsUser: 0
-              runAsGroup: 0
-              runAsNonRoot: false
-              allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: false
-
-      backend:
+      app:
         replicas: 1
         annotations:
           reloader.stakater.com/auto: "true"
@@ -83,16 +40,17 @@ spec:
         containers:
           app:
             image:
-              repository: ghcr.io/patchmon/patchmon-backend
-              tag: 1.4.2@sha256:e44e310bf3e4647ae67c7a8a45c60c350fe7954df2809ba2842edf8cb56e9b07
+              repository: ghcr.io/patchmon/patchmon-server
+              tag: 2.0.0@sha256:d781332df3e9a3b21bfb0c5a297b1d329d360ad0a5d8249cf273da2a96454398
             env:
+              APP_ENV: production
+              PORT: "3000"
               SERVER_PROTOCOL: https
               SERVER_HOST: patchmon.riki.boo
               SERVER_PORT: "443"
               CORS_ORIGIN: https://patchmon.riki.boo
               LOG_LEVEL: info
               ENABLE_LOGGING: "true"
-              PM_LOG_TO_CONSOLE: "true"
               DATABASE_URL:
                 valueFrom:
                   secretKeyRef:
@@ -104,31 +62,34 @@ spec:
               TRUST_PROXY: "true"
               ENABLE_HSTS: "true"
               DEFAULT_USER_ROLE: user
-              AUTO_CREATE_ROLE_PERMISSIONS: "false"
+              GUACD_ADDRESS: patchmon-guacd:4822
             envFrom:
               - secretRef:
                   name: patchmon-secret
             probes:
               liveness:
                 enabled: true
+                custom: true
                 spec:
                   httpGet:
                     path: /health
-                    port: 3001
+                    port: 3000
               readiness:
                 enabled: true
+                custom: true
                 spec:
                   httpGet:
                     path: /health
-                    port: 3001
+                    port: 3000
               startup:
                 enabled: true
+                custom: true
                 spec:
                   failureThreshold: 30
                   periodSeconds: 10
                   httpGet:
                     path: /health
-                    port: 3001
+                    port: 3000
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
@@ -138,24 +99,62 @@ spec:
             resources:
               requests:
                 cpu: 10m
-                memory: 256Mi
+                memory: 128Mi
               limits:
-                memory: 2Gi
+                memory: 512Mi
+
+      guacd:
+        replicas: 1
+        containers:
+          app:
+            image:
+              repository: docker.io/guacamole/guacd
+              tag: 1.6.0@sha256:f39258e35244b6bf79bc6ac4e60eee176aea6f6a5adb13e8c3090e48df8ae515
+            probes:
+              liveness:
+                enabled: true
+                spec:
+                  tcpSocket:
+                    port: 4822
+              readiness:
+                enabled: true
+                spec:
+                  tcpSocket:
+                    port: 4822
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 10
+                  tcpSocket:
+                    port: 4822
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 512Mi
 
     service:
       app:
         primary: true
-        controller: frontend
+        controller: app
         forceRename: patchmon
         ports:
           http:
-            port: &frontendPort 3000
-      backend:
-        controller: backend
-        forceRename: patchmon-backend
+            port: &httpPort 3000
+      guacd:
+        controller: guacd
+        forceRename: patchmon-guacd
         ports:
-          http:
-            port: 3001
+          guacd:
+            port: 4822
 
     route:
       app:
@@ -166,7 +165,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Selfhosted
           gethomepage.dev/name: PatchMon
-          gethomepage.dev/pod-selector: app.kubernetes.io/name=patchmon
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=patchmon,app.kubernetes.io/controller=app
           gethomepage.dev/icon: mdi-package-up
         hostnames:
           - patchmon.riki.boo
@@ -177,16 +176,9 @@ spec:
         rules:
           - backendRefs:
               - name: *app
-                port: *frontendPort
+                port: *httpPort
 
     persistence:
-      data:
-        existingClaim: patchmon
-        advancedMounts:
-          backend:
-            app:
-              - path: /app/agents
-                subPath: agents
       tmp:
         type: emptyDir
         globalMounts:
