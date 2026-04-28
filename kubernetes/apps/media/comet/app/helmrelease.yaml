@@ -40,7 +40,7 @@ spec:
           app:
             image:
               repository: docker.io/g0ldyy/comet
-              tag: latest@sha256:6679bd38bd500dc65bb1adbbad3d1428fa7c8978e653285ed5e619af2b676157
+              tag: latest@sha256:af129a939980967455f3a55a123a4817e9974fddb2e6341f355233cb11116c50
             env:
               DATABASE_TYPE: postgresql
               DATABASE_URL:
