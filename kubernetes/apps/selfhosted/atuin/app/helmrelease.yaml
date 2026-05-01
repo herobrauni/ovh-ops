@@ -9,6 +9,7 @@ spec:
     kind: OCIRepository
     name: atuin
   interval: 30m
+  timeout: "15m"
   driftDetection:
     mode: enabled
   values:
