@@ -1,0 +1,135 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app niks3
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: niks3
+  interval: 30m
+  timeout: "15m"
+  driftDetection:
+    mode: enabled
+  values:
+    controllers:
+      niks3:
+        replicas: 1
+        strategy: RollingUpdate
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.3@sha256:6fa1f331cddd2eb0b6afa7b8d3685c864127a81ab01c3d9400bc3ff5263a51cf
+            envFrom:
+              - secretRef:
+                  name: niks3-initdb-secret
+        containers:
+          app:
+            image:
+              repository: ghcr.io/mic92/niks3
+              tag: v1.4.0@sha256:fcbeef12785af2048250022a02e6830efe67dcc26eeb765ce87a0a93a7a28449
+            env:
+              NIKS3_DB:
+                valueFrom:
+                  secretKeyRef:
+                    name: niks3-pguser-secret
+                    key: uri_no_ssl
+              NIKS3_HTTP_ADDR: ":5751"
+              NIKS3_S3_ENDPOINT: rook-ceph-rgw-proxmox-s3.rook-ceph.svc:80
+              NIKS3_S3_BUCKET: niks3
+              NIKS3_S3_ACCESS_KEY_PATH: /secrets/s3/AWS_ACCESS_KEY_ID
+              NIKS3_S3_SECRET_KEY_PATH: /secrets/s3/AWS_SECRET_ACCESS_KEY
+              NIKS3_S3_USE_SSL: "false"
+              NIKS3_API_TOKEN_PATH: /secrets/niks3/api-token
+              NIKS3_SIGN_KEY_PATHS: /secrets/niks3/signing-key
+              NIKS3_CACHE_URL: https://niks3.brauni.dev
+              NIKS3_ENABLE_READ_PROXY: "true"
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: &port 5751
+                  initialDelaySeconds: 0
+                  periodSeconds: 10
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *probes
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+
+    service:
+      app:
+        controller: niks3
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        annotations:
+          gatus.home-operations.com/endpoint: |-
+            conditions: ["[STATUS] == 200"]
+            url: https://niks3.brauni.dev/health
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Tools
+          gethomepage.dev/name: Niks3
+          gethomepage.dev/description: Nix binary cache
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=niks3
+          gethomepage.dev/icon: mdi-package-variant-closed
+        hostnames:
+          - niks3.brauni.dev
+        parentRefs:
+          - name: envoy-brauni-dev-public
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - name: *app
+                port: *port
+
+    persistence:
+      niks3-secret:
+        type: secret
+        name: niks3-secret
+        advancedMounts:
+          niks3:
+            app:
+              - path: /secrets/niks3
+                readOnly: true
+      s3-credentials:
+        type: secret
+        name: niks3-bucket
+        advancedMounts:
+          niks3:
+            app:
+              - path: /secrets/s3
+                readOnly: true
