@@ -10,8 +10,5 @@ spec:
   endpoints:
     - dnsName: niks3.brauni.dev
       recordType: CNAME
-      providerSpecific:
-        - name: external-dns.alpha.kubernetes.io/cloudflare-proxied
-          value: "false"
       targets:
         - public.brauni.dev
