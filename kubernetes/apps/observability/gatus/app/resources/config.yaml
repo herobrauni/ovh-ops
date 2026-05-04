@@ -26,15 +26,6 @@ endpoints:
     conditions:
       - "[CONNECTED] == true"
 
-  - name: proxmox webui
-    group: proxmox
-    url: https://ovhsbg.brauni.dev
-    interval: 1m
-    client:
-      timeout: 10s
-    conditions:
-      - "[STATUS] == 200"
-
   - name: Proxmox node ICMP ovhsbg1
     group: proxmox
     url: icmp://54.38.92.92
