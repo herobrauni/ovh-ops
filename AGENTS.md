@@ -76,7 +76,6 @@ The repo is YAML-heavy and declarative.
 - Ceph `osd.1` was manually reweighted to `0.96002` on 2026-04-26 with `ceph osd reweight-by-utilization 105 0.02 2 --no-increasing` to relieve nearfull pressure while old CNPG S3 backups age out. Recheck after backup cleanup and normalize `osd.1` back toward `1.00000` if utilization allows.
 - Do not configure CoreDNS to answer `AAAA` queries with `NXDOMAIN` globally. Musl/libpq clients (for example `ghcr.io/home-operations/postgres-init`) can treat the failed IPv6 lookup as full hostname resolution failure and stay stuck waiting for PostgreSQL. If suppressing IPv6 answers is required, return empty `NOERROR` instead.
 - Niks3 uses an in-cluster Rook Ceph ObjectBucketClaim plus `NIKS3_ENABLE_READ_PROXY=true` for public cache reads at `niks3.brauni.dev`; its write path still returns presigned URLs for `rook-ceph-rgw-proxmox-s3.rook-ceph.svc:80`, so `niks3 push` clients must run where that endpoint is reachable or the S3 endpoint must be changed/exposed.
-- Do not Cloudflare-proxy `niks3.brauni.dev`; Nix clients need direct cache object/narinfo responses and Cloudflare bot/challenge pages break substitutions. Keep its `DNSEndpoint` providerSpecific `external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"`.
 
 ## Testing Guidelines
 Primary validation is CI-based:
