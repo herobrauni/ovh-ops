@@ -9,7 +9,7 @@ metadata:
     gethomepage.dev/group: Media
     gethomepage.dev/name: Comet
     gethomepage.dev/pod-selector: app.kubernetes.io/name=comet
-    gethomepage.dev/icon: mdi-comet
+    gethomepage.dev/icon: https://t4.ftcdn.net/jpg/19/04/81/49/360_F_1904814978_T79e2NNuedREmr6RjSNB6cpF1URtTCnW.jpg
 spec:
   hostnames:
     - comet.480p.com
