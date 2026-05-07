@@ -56,9 +56,9 @@ spec:
               name: *pguser
               key: password
       image:
-        repository: ghcr.io/goauthentik/server
-        tag: 2026.2.2
-        digest: sha256:40f0df709957c11324420fa387f1135c427f16086f12ca266b2d883d39c71fe3
+        repository: ghcr.io/herobrauni/authentik
+        tag: account-switcher-85cc477
+        digest: sha256:013f839f579671ecdafe7673fba15b28f9f6645d1cb6197751aff6c03945dd70
       podAnnotations:
         reloader.stakater.com/auto: "true"
         secret.reloader.stakater.com/reload: authentik-secret,authentik-initdb-secret,authentik-pguser-secret
