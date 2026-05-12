@@ -16,7 +16,7 @@ resources:
   - ./decypharr/ks.yaml
   # - ./jellyfin/ks.yaml
   - ./kometa/ks.yaml
-  - ./media-debug/ks.yaml
+  # - ./media-debug/ks.yaml
   - ./newtarr/ks.yaml
   - ./plex/ks.yaml
   - ./profilarr/ks.yaml
