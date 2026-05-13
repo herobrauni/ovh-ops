@@ -12,6 +12,7 @@ resources:
   # - ./bitmagnet/ks.yaml
   - ./booklore/ks.yaml
   # - ./cleanuparr/ks.yaml
+  - ./clonarr/ks.yaml
   # - ./comet/ks.yaml
   - ./decypharr/ks.yaml
   # - ./jellyfin/ks.yaml
