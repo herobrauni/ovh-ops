@@ -21,6 +21,7 @@ resources:
   - ./plex/ks.yaml
   - ./profilarr/ks.yaml
   - ./prowlarr/ks.yaml
+  - ./repair/ks.yaml
   - ./radarr/ks.yaml
   - ./radarr4k/ks.yaml
   - ./seerr/ks.yaml
