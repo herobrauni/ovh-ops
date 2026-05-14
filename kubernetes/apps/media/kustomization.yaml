@@ -12,8 +12,8 @@ resources:
   # - ./bitmagnet/ks.yaml
   - ./booklore/ks.yaml
   # - ./cleanuparr/ks.yaml
-  # - ./altmount/ks.yaml
-  - ./clonarr/ks.yaml
+  - ./altmount/ks.yaml
+  # - ./clonarr/ks.yaml
   # - ./comet/ks.yaml
   # - ./decypharr/ks.yaml
   # - ./jellyfin/ks.yaml
@@ -29,7 +29,7 @@ resources:
   # - ./swaparr/ks.yaml
 
   # - ./plex/ks.yaml
-  - ./radarr/ks.yaml
+  # - ./radarr/ks.yaml
   # - ./radarr4k/ks.yaml
   # - ./sonarr/ks.yaml
   # - ./sonarr4k/ks.yaml
