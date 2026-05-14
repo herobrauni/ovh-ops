@@ -35,4 +35,4 @@ resources:
   # - ./sonarr4k/ks.yaml
 
   - ./symlinks/ks.yaml
-  - ./umlautadaptarr/ks.yaml
+  # - ./umlautadaptarr/ks.yaml
