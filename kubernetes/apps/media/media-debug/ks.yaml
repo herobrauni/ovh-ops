@@ -12,8 +12,6 @@ spec:
   dependsOn:
     - name: symlinks
       namespace: media
-    - name: webdav-nfs-gateway
-      namespace: media
   interval: 1h
   path: ./kubernetes/apps/media/media-debug/app
   prune: true

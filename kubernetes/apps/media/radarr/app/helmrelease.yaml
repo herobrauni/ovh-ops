@@ -86,7 +86,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null && curl -fsS http://127.0.0.1:7878/ping >/dev/null
+                      - timeout 2 stat /aio/remote/realdebrid/version.txt >/dev/null 2>&1 && curl -fsS http://127.0.0.1:7878/ping >/dev/null
                   initialDelaySeconds: 30
                   periodSeconds: 30
                   timeoutSeconds: 10
@@ -99,7 +99,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null && curl -fsS http://127.0.0.1:7878/ping >/dev/null
+                      - timeout 2 stat /aio/remote/realdebrid/version.txt >/dev/null 2>&1 && curl -fsS http://127.0.0.1:7878/ping >/dev/null
                   initialDelaySeconds: 30
                   periodSeconds: 15
                   timeoutSeconds: 10
@@ -141,8 +141,33 @@ spec:
         existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
-      webdav-nfs:
-        existingClaim: webdav-nfs
+      realdebrid:
+        type: custom
+        volumeSpec:
+          csi:
+            driver: rclone.csi.veloxpack.io
+            readOnly: true
+            volumeAttributes:
+              remote: realdebrid
+              remotePath: "/"
+              dir-cache-time: "10s"
+              vfs-cache-mode: full
+              vfs-cache-max-age: "504h"
+              vfs-cache-max-size: "10G"
+              vfs-cache-poll-interval: "30s"
+              vfs-read-chunk-size: "32M"
+              vfs-read-chunk-size-limit: "128M"
+              vfs-fast-fingerprint: "true"
+              no-modtime: "true"
+              no-checksum: "true"
+              read-only: "true"
+              configData: |
+                [realdebrid]
+                type = webdav
+                url = http://decypharr.media.svc.cluster.local:8282/webdav
+                vendor = other
+                user = usenet
+                pass = e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
         globalMounts:
           - path: /aio/remote/realdebrid
             readOnly: true
