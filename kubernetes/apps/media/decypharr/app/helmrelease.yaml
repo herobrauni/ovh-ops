@@ -79,14 +79,14 @@ spec:
         existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
-      decypharr:
+      altmount:
         type: custom
         volumeSpec:
           csi:
             driver: rclone.csi.veloxpack.io
             readOnly: true
             volumeAttributes:
-              remote: decypharr
+              remote: altmount
               remotePath: "/"
               dir-cache-time: "10s"
               vfs-cache-mode: full
@@ -100,12 +100,14 @@ spec:
               no-checksum: "true"
               read-only: "true"
               configData: |
-                [decypharr]
+                [altmount]
                 type = webdav
-                url = http://decypharr.media.svc.cluster.local:8282/webdav
+                url = http://altmount.media.svc.cluster.local:8080/webdav
                 vendor = other
+                user = usenet
+                pass = e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
         globalMounts:
-          - path: /aio/remote/realdebrid
+          - path: /aio/altmount
             readOnly: true
       etc-userdb:
         type: emptyDir

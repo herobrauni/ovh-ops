@@ -42,33 +42,33 @@ spec:
               - /bin/sh
               - -c
               - sleep infinity
-            probes:
-              liveness:
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null
-                  initialDelaySeconds: 0
-                  periodSeconds: 30
-                  timeoutSeconds: 5
-                  failureThreshold: 3
-              readiness:
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null
-                  initialDelaySeconds: 0
-                  periodSeconds: 15
-                  timeoutSeconds: 5
-                  failureThreshold: 2
+            # probes:
+            #   liveness:
+            #     enabled: true
+            #     custom: true
+            #     spec:
+            #       exec:
+            #         command:
+            #           - /bin/sh
+            #           - -c
+            #           - test -r /aio/altmount/version.txt && cat /aio/altmount/version.txt >/dev/null
+            #       initialDelaySeconds: 0
+            #       periodSeconds: 30
+            #       timeoutSeconds: 5
+            #       failureThreshold: 3
+            #   readiness:
+            #     enabled: true
+            #     custom: true
+            #     spec:
+            #       exec:
+            #         command:
+            #           - /bin/sh
+            #           - -c
+            #           - test -r /aio/altmount/version.txt && cat /aio/altmount/version.txt >/dev/null
+            #       initialDelaySeconds: 0
+            #       periodSeconds: 15
+            #       timeoutSeconds: 5
+            #       failureThreshold: 2
             securityContext:
               allowPrivilegeEscalation: false
               capabilities:
@@ -79,14 +79,14 @@ spec:
         existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
-      decypharr:
+      altmount:
         type: custom
         volumeSpec:
           csi:
             driver: rclone.csi.veloxpack.io
             readOnly: true
             volumeAttributes:
-              remote: decypharr
+              remote: altmount
               remotePath: "/"
               dir-cache-time: "10s"
               vfs-cache-mode: full
@@ -100,10 +100,12 @@ spec:
               no-checksum: "true"
               read-only: "true"
               configData: |
-                [decypharr]
+                [altmount]
                 type = webdav
-                url = http://decypharr.media.svc.cluster.local:8282/webdav
+                url = http://altmount.media.svc.cluster.local:8080/webdav
                 vendor = other
+                user = usenet
+                pass = e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
         globalMounts:
-          - path: /aio/remote/realdebrid
+          - path: /aio/altmount
             readOnly: true

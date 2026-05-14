@@ -37,7 +37,7 @@ spec:
               tag: latest@sha256:ef2490de1ead5d2866c5f8f21200b815792e72f3d88cde2bb53a8c9b965067bd
             env:
               REPAIR_MEDIA_LINKS_ROOT: /aio/symlinks
-              REPAIR_DECYPHARR_MOUNT: /aio/remote/realdebrid
+              REPAIR_DECYPHARR_MOUNT: /aio/altmount
               REPAIR_ARRS_FILE: /config/arrs.json
               REPAIR_WORKERS: "16"
               REPAIR_DELAY: "3.0"
@@ -73,14 +73,14 @@ spec:
         globalMounts:
           - path: /aio/symlinks
             readOnly: true
-      rclone:
+      altmount:
         type: custom
         volumeSpec:
           csi:
             driver: rclone.csi.veloxpack.io
             readOnly: true
             volumeAttributes:
-              remote: decypharr
+              remote: altmount
               remotePath: "/"
               dir-cache-time: "10s"
               vfs-cache-mode: full
@@ -94,10 +94,12 @@ spec:
               no-checksum: "true"
               read-only: "true"
               configData: |
-                [decypharr]
+                [altmount]
                 type = webdav
-                url = http://decypharr.media.svc.cluster.local:8282/webdav
+                url = http://altmount.media.svc.cluster.local:8080/webdav
                 vendor = other
+                user = usenet
+                pass = e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
         globalMounts:
-          - path: /aio/remote/realdebrid
+          - path: /aio/altmount
             readOnly: true
