@@ -33,24 +33,28 @@ spec:
             probes:
               liveness:
                 enabled: true
-                type: HTTP
+                custom: true
                 spec:
                   httpGet:
                     path: /health
                     port: *port
               readiness:
                 enabled: true
-                type: HTTP
+                custom: true
                 spec:
                   httpGet:
                     path: /health
                     port: *port
             securityContext:
               allowPrivilegeEscalation: false
-              runAsUser: 1000
-              runAsGroup: 1000
+              runAsUser: 0
+              runAsGroup: 0
               capabilities:
                 drop: ["ALL"]
+                add:
+                  - SETUID
+                  - SETGID
+                  - CHOWN
     service:
       app:
         forceRename: nzbdav
