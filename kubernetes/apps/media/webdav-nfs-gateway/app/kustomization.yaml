@@ -6,4 +6,5 @@ resources:
   - ./ocirepository.yaml
   - ./externalsecret.yaml
   - ./pv.yaml
+  - ./pvc-cache.yaml
   - ./helmrelease.yaml

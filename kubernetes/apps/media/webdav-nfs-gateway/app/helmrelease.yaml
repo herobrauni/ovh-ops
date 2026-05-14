@@ -49,13 +49,13 @@ spec:
               - --cache-dir
               - /tmp/rclone
               - --read-only
-              - --dir-cache-time=10s
+              - --use-cookies
               - --vfs-cache-mode=full
-              - --vfs-cache-max-age=504h
-              - --vfs-cache-max-size=10G
-              - --vfs-cache-poll-interval=30s
-              - --vfs-read-chunk-size=32M
-              - --vfs-read-chunk-size-limit=128M
+              - --vfs-cache-max-size=20G
+              - --vfs-cache-max-age=24h
+              - --buffer-size=0M
+              - --vfs-read-ahead=512M
+              - --dir-cache-time=20s
               - --vfs-fast-fingerprint
               - --no-modtime
               - --no-checksum
@@ -127,6 +127,6 @@ spec:
             protocol: TCP
     persistence:
       rclone-cache:
-        type: emptyDir
+        existingClaim: webdav-nfs-gateway-cache
         globalMounts:
           - path: /tmp/rclone
