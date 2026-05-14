@@ -31,10 +31,10 @@ resources:
 
   - ./webdav-nfs-gateway/ks.yaml
   # - ./plex/ks.yaml
-  # - ./radarr/ks.yaml
-  # - ./radarr4k/ks.yaml
-  # - ./sonarr/ks.yaml
-  # - ./sonarr4k/ks.yaml
+  - ./radarr/ks.yaml
+  - ./radarr4k/ks.yaml
+  - ./sonarr/ks.yaml
+  - ./sonarr4k/ks.yaml
 
   - ./symlinks/ks.yaml
   # - ./umlautadaptarr/ks.yaml

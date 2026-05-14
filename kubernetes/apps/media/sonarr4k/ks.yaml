@@ -23,8 +23,8 @@ spec:
       namespace: network
     - name: symlinks
       namespace: media
-    - name: csi-rclone
-      namespace: csi-rclone
+    - name: webdav-nfs-gateway
+      namespace: media
     - name: volsync
       namespace: volsync-system
   interval: 1h

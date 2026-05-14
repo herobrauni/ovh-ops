@@ -78,42 +78,42 @@ spec:
             envFrom:
               - secretRef:
                   name: sonarr4k-secret
-            # probes:
-            #   liveness: &probes
-            #     enabled: true
-            #     custom: true
-            #     spec:
-            #       exec:
-            #         command:
-            #           - /bin/sh
-            #           - -c
-            #           - test -r /aio/altmount/version.txt && cat /aio/altmount/version.txt >/dev/null && curl -fsS http://127.0.0.1:80/ping >/dev/null
-            #       initialDelaySeconds: 30
-            #       periodSeconds: 30
-            #       timeoutSeconds: 10
-            #       failureThreshold: 6
-            #   readiness:
-            #     enabled: true
-            #     custom: true
-            #     spec:
-            #       exec:
-            #         command:
-            #           - /bin/sh
-            #           - -c
-            #           - test -r /aio/altmount/version.txt && cat /aio/altmount/version.txt >/dev/null && curl -fsS http://127.0.0.1:80/ping >/dev/null
-            #       initialDelaySeconds: 30
-            #       periodSeconds: 15
-            #       timeoutSeconds: 10
-            #       failureThreshold: 6
-            #   startup:
-            #     enabled: true
-            #     custom: true
-            #     spec:
-            #       httpGet:
-            #         path: /ping
-            #         port: *port
-            #       failureThreshold: 30
-            #       periodSeconds: 10
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null && curl -fsS http://127.0.0.1:80/ping >/dev/null
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null && curl -fsS http://127.0.0.1:80/ping >/dev/null
+                  initialDelaySeconds: 30
+                  periodSeconds: 15
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                  failureThreshold: 30
+                  periodSeconds: 10
             resources:
               requests:
                 cpu: 100m
@@ -141,33 +141,8 @@ spec:
         existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
-      altmount:
-        type: custom
-        volumeSpec:
-          csi:
-            driver: rclone.csi.veloxpack.io
-            readOnly: true
-            volumeAttributes:
-              remote: altmount
-              remotePath: "/"
-              dir-cache-time: "10s"
-              vfs-cache-mode: full
-              vfs-cache-max-age: "504h"
-              vfs-cache-max-size: "10G"
-              vfs-cache-poll-interval: "30s"
-              vfs-read-chunk-size: "32M"
-              vfs-read-chunk-size-limit: "128M"
-              vfs-fast-fingerprint: "true"
-              no-modtime: "true"
-              no-checksum: "true"
-              read-only: "true"
-              configData: |
-                [altmount]
-                type = webdav
-                url = http://altmount.media.svc.cluster.local:8080/webdav
-                vendor = other
-                user = usenet
-                pass = e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
+      webdav-nfs:
+        existingClaim: webdav-nfs
         globalMounts:
-          - path: /aio/altmount
+          - path: /aio/remote/realdebrid
             readOnly: true
