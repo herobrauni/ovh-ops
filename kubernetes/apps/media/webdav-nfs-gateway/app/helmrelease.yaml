@@ -46,6 +46,8 @@ spec:
               - altmount:/
               - --addr
               - :2049
+              - --cache-dir
+              - /tmp/rclone
               - --read-only
               - --dir-cache-time=10s
               - --vfs-cache-mode=full
