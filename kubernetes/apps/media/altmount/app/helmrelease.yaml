@@ -67,6 +67,36 @@ spec:
         existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
+      altmount:
+        type: custom
+        volumeSpec:
+          csi:
+            driver: rclone.csi.veloxpack.io
+            readOnly: true
+            volumeAttributes:
+              remote: altmount
+              remotePath: "/"
+              dir-cache-time: "10s"
+              vfs-cache-mode: full
+              vfs-cache-max-age: "504h"
+              vfs-cache-max-size: "10G"
+              vfs-cache-poll-interval: "30s"
+              vfs-read-chunk-size: "32M"
+              vfs-read-chunk-size-limit: "128M"
+              vfs-fast-fingerprint: "true"
+              no-modtime: "true"
+              no-checksum: "true"
+              read-only: "true"
+              configData: |
+                [altmount]
+                type = webdav
+                url = http://altmount.media.svc.cluster.local:8080/webdav
+                vendor = other
+                user = usenet
+                pass = e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
+        globalMounts:
+          - path: /aio/altmount
+            readOnly: true
       tmp:
         type: emptyDir
         medium: Memory
