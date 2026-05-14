@@ -1,0 +1,23 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: nzbdav-480p-com
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: Media
+    gethomepage.dev/name: NzbDav
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=nzbdav
+    gethomepage.dev/icon: mdi-download-box-outline
+spec:
+  hostnames:
+    - nzbdav.480p.com
+  parentRefs:
+    - name: envoy-480p-com-public
+      namespace: network
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: nzbdav
+          port: 3000

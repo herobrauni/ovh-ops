@@ -1,0 +1,74 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: nzbdav
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: nzbdav
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    controllers:
+      nzbdav:
+        forceRename: nzbdav
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: nzbdav/nzbdav
+              tag: latest@sha256:fc44a9d33adceddc4397eb660b4fcaf1917e23323fb80dea0645f56db129562f
+            env:
+              PUID: "1000"
+              PGID: "1000"
+              PORT: &port 3000
+            probes:
+              liveness:
+                enabled: true
+                type: HTTP
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *port
+              readiness:
+                enabled: true
+                type: HTTP
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *port
+            securityContext:
+              allowPrivilegeEscalation: false
+              runAsUser: 1000
+              runAsGroup: 1000
+              capabilities:
+                drop: ["ALL"]
+    service:
+      app:
+        forceRename: nzbdav
+        controller: nzbdav
+        ports:
+          http:
+            port: *port
+    persistence:
+      config:
+        existingClaim: nzbdav
+        globalMounts:
+          - path: /config
+      symlinks:
+        existingClaim: symlinks
+        globalMounts:
+          - path: /aio/symlinks
+      tmp:
+        type: emptyDir
+        medium: Memory
+        globalMounts:
+          - path: /tmp
