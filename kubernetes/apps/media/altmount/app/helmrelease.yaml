@@ -16,9 +16,6 @@ spec:
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
-        runAsGroup: 1000
-        runAsNonRoot: true
-        runAsUser: 1000
     controllers:
       altmount:
         forceRename: altmount
@@ -43,9 +40,8 @@ spec:
                 enabled: true
             securityContext:
               allowPrivilegeEscalation: false
-              runAsGroup: 1000
-              runAsNonRoot: true
-              runAsUser: 1000
+              runAsUser: 0
+              runAsGroup: 0
               capabilities:
                 drop: ["ALL"]
     service:
