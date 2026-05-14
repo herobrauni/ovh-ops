@@ -28,7 +28,7 @@ spec:
           setup-user:
             image:
               repository: cy01/blackhole
-              tag: fenrir@sha256:e4378bc43d5607bb1a1118cb2a73d72b4e87edbeb44cad7fc7f2ba45a8488093
+              tag: fenrir@sha256:3f7717427aa8fba9e8b200ebd80eefbd2897e79df69fba22ae0904cdb2b42e42
             command:
               - /bin/sh
               - -ec
