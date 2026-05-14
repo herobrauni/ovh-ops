@@ -17,6 +17,7 @@ resources:
   - ./clonarr/ks.yaml
   # - ./comet/ks.yaml
   - ./decypharr/ks.yaml
+  # - ./decypharr-sync-helper/ks.yaml
   # - ./jellyfin/ks.yaml
   # - ./kometa/ks.yaml
   - ./media-debug/ks.yaml

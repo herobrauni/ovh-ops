@@ -1,0 +1,72 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app decypharr-sync-helper
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: decypharr-sync-helper
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
+    controllers:
+      decypharr-sync-helper:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/herobrauni/decypharr-sync-helper
+              tag: latest@sha256:00ba74e49cadd74dbe74dae79d67b211695668bbeb5ff1278d3a8d41e2064717
+            env:
+              TZ: Europe/Berlin
+              QB_SYNC_BASE_URL: "http://decypharr.media.svc.cluster.local:8282"
+              QB_SYNC_CATEGORY: "other"
+              QB_SYNC_DEST_PATH: "/aio/symlinks/other"
+              QB_SYNC_POLL_INTERVAL: "60s"
+              QB_SYNC_OPERATION: "hardlink"
+              QB_SYNC_CROSS_DEVICE_FALLBACK: "error"
+              QB_SYNC_DELETE_TORRENT: "true"
+              QB_SYNC_DELETE_FILES: "false"
+              QB_SYNC_PRESERVE_SUBFOLDER: "true"
+              QB_SYNC_PLEX_ENABLED: "true"
+              QB_SYNC_PLEX_URL: "http://plex.media.svc.cluster.local:32400"
+              QB_SYNC_PLEX_TOKEN:
+                valueFrom:
+                  secretKeyRef:
+                    name: decypharr-sync-helper-secret
+                    key: QB_SYNC_PLEX_TOKEN
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    persistence:
+      symlinks:
+        existingClaim: symlinks
+        globalMounts:
+          - path: /aio/symlinks
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
