@@ -30,6 +30,7 @@ spec:
               PUID: "1000"
               PGID: "1000"
               PORT: &port 8080
+              COOKIE_DOMAIN: altmount.480p.com
               JWT_SECRET:
                 valueFrom:
                   secretKeyRef:
