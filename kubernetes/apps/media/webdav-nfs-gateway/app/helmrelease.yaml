@@ -101,9 +101,8 @@ spec:
                   timeoutSeconds: 10
                   failureThreshold: 3
             securityContext:
+              privileged: true
               allowPrivilegeEscalation: false
-              seccompProfile:
-                type: Unconfined
               capabilities:
                 drop:
                   - ALL
