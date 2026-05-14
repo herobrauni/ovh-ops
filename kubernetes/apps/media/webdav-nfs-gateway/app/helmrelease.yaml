@@ -102,7 +102,6 @@ spec:
                   failureThreshold: 3
             securityContext:
               privileged: true
-              allowPrivilegeEscalation: false
               capabilities:
                 drop:
                   - ALL
