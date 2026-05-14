@@ -77,42 +77,42 @@ spec:
             envFrom:
               - secretRef:
                   name: radarr-secret
-            # probes:
-            #   liveness: &probes
-            #     enabled: true
-            #     custom: true
-            #     spec:
-            #       exec:
-            #         command:
-            #           - /bin/sh
-            #           - -c
-            #           - test -r /aio/altmount/version.txt && cat /aio/altmount/version.txt >/dev/null && curl -fsS http://127.0.0.1:7878/ping >/dev/null
-            #       initialDelaySeconds: 30
-            #       periodSeconds: 30
-            #       timeoutSeconds: 10
-            #       failureThreshold: 6
-            #   readiness:
-            #     enabled: true
-            #     custom: true
-            #     spec:
-            #       exec:
-            #         command:
-            #           - /bin/sh
-            #           - -c
-            #           - test -r /aio/altmount/version.txt && cat /aio/altmount/version.txt >/dev/null && curl -fsS http://127.0.0.1:7878/ping >/dev/null
-            #       initialDelaySeconds: 30
-            #       periodSeconds: 15
-            #       timeoutSeconds: 10
-            #       failureThreshold: 6
-            #   startup:
-            #     enabled: true
-            #     custom: true
-            #     spec:
-            #       httpGet:
-            #         path: /ping
-            #         port: *port
-            #       failureThreshold: 30
-            #       periodSeconds: 10
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null && curl -fsS http://127.0.0.1:7878/ping >/dev/null
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -r /aio/remote/realdebrid/version.txt && cat /aio/remote/realdebrid/version.txt >/dev/null && curl -fsS http://127.0.0.1:7878/ping >/dev/null
+                  initialDelaySeconds: 30
+                  periodSeconds: 15
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /ping
+                    port: *port
+                  failureThreshold: 30
+                  periodSeconds: 10
             resources:
               requests:
                 cpu: 100m
@@ -141,3 +141,8 @@ spec:
         existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
+      webdav-nfs:
+        existingClaim: webdav-nfs
+        globalMounts:
+          - path: /aio/remote/realdebrid
+            readOnly: true
