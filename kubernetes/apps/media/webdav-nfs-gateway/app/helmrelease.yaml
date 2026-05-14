@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
@@ -18,9 +18,9 @@ spec:
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
-        runAsGroup: 0
-        runAsNonRoot: false
-        runAsUser: 0
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
     controllers:
       webdav-nfs-gateway:
         replicas: 1
@@ -35,30 +35,30 @@ spec:
                         app.kubernetes.io/name: altmount
                     topologyKey: kubernetes.io/hostname
         containers:
-          rclone:
+          app:
             image:
               repository: rclone/rclone
               tag: 1.69.3@sha256:1f497a86a6466395e62a5886613a14b7b18809543566ef9fa35fa1371a7ecc0f
             command:
-              - /bin/sh
-              - -c
-              - |
-                mkdir -p /data/altmount
-                exec rclone mount altmount:/ /data/altmount \
-                  --read-only \
-                  --allow-other \
-                  --dir-cache-time=10s \
-                  --vfs-cache-mode=full \
-                  --vfs-cache-max-age=504h \
-                  --vfs-cache-max-size=10G \
-                  --vfs-cache-poll-interval=30s \
-                  --vfs-read-chunk-size=32M \
-                  --vfs-read-chunk-size-limit=128M \
-                  --vfs-fast-fingerprint \
-                  --no-modtime \
-                  --no-checksum \
-                  --log-level=info \
-                  --log-format=shortfile
+              - rclone
+              - serve
+              - nfs
+              - altmount:/
+              - --addr
+              - :2049
+              - --read-only
+              - --dir-cache-time=10s
+              - --vfs-cache-mode=full
+              - --vfs-cache-max-age=504h
+              - --vfs-cache-max-size=10G
+              - --vfs-cache-poll-interval=30s
+              - --vfs-read-chunk-size=32M
+              - --vfs-read-chunk-size-limit=128M
+              - --vfs-fast-fingerprint
+              - --no-modtime
+              - --no-checksum
+              - --log-level=info
+              - --log-format=shortfile
             env:
               RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
               RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav
@@ -78,89 +78,42 @@ spec:
                 enabled: true
                 custom: true
                 spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - test -r /data/altmount/version.txt && cat /data/altmount/version.txt >/dev/null
+                  tcpSocket:
+                    port: 2049
                   initialDelaySeconds: 10
                   periodSeconds: 30
-                  timeoutSeconds: 10
+                  timeoutSeconds: 5
                   failureThreshold: 6
               readiness:
                 enabled: true
                 custom: true
                 spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - test -r /data/altmount/version.txt && cat /data/altmount/version.txt >/dev/null
+                  tcpSocket:
+                    port: 2049
                   initialDelaySeconds: 5
                   periodSeconds: 15
-                  timeoutSeconds: 10
+                  timeoutSeconds: 5
                   failureThreshold: 3
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 2049
+                  failureThreshold: 30
+                  periodSeconds: 5
             securityContext:
-              privileged: true
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
               capabilities:
                 drop:
                   - ALL
-                add:
-                  - SYS_ADMIN
             resources:
               requests:
                 cpu: 50m
                 memory: 256Mi
               limits:
                 memory: 2Gi
-          nfs:
-            image:
-              repository: ghcr.io/herobrauni/nfs-server
-              tag: latest@sha256:a73c3d88a7a93d9e97aa2e2d93d8a6c8e674dd7968ec86d0fb1ef85e9b5f31aa
-            env:
-              EXPORT_PATH: /data/altmount
-              EXPORT_OPTS: "*(ro,fsid=0,async,no_subtree_check,no_auth_nlm,insecure,no_root_squash)"
-            probes:
-              liveness:
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - exportfs -v | grep -q /data/altmount
-                  initialDelaySeconds: 5
-                  periodSeconds: 30
-                  timeoutSeconds: 5
-                  failureThreshold: 6
-              readiness:
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - exportfs -v | grep -q /data/altmount
-                  initialDelaySeconds: 3
-                  periodSeconds: 15
-                  timeoutSeconds: 5
-                  failureThreshold: 3
-            securityContext:
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop:
-                  - ALL
-                add:
-                  - SYS_ADMIN
-                  - DAC_READ_SEARCH
-            resources:
-              requests:
-                cpu: 50m
-                memory: 128Mi
-              limits:
-                memory: 512Mi
     service:
       app:
         controller: webdav-nfs-gateway
@@ -171,16 +124,6 @@ spec:
             port: 2049
             protocol: TCP
     persistence:
-      dev-fuse:
-        type: hostPath
-        hostPath: /dev/fuse
-        hostPathType: CharDevice
-        globalMounts:
-          - path: /dev/fuse
-      data:
-        type: emptyDir
-        globalMounts:
-          - path: /data
       rclone-cache:
         type: emptyDir
         globalMounts:
