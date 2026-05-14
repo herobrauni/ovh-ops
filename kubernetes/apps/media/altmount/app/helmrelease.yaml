@@ -46,6 +46,10 @@ spec:
               runAsGroup: 0
               capabilities:
                 drop: ["ALL"]
+                add:
+                  - SETUID
+                  - SETGID
+                  - CHOWN
     service:
       app:
         forceRename: altmount
