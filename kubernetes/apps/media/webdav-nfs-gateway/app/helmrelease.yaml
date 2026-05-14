@@ -32,7 +32,7 @@ spec:
                   podAffinityTerm:
                     labelSelector:
                       matchLabels:
-                        app.kubernetes.io/name: altmount
+                        app.kubernetes.io/name: nzbdav
                     topologyKey: kubernetes.io/hostname
         containers:
           app:
@@ -63,7 +63,7 @@ spec:
               - --log-format=shortfile
             env:
               RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
-              RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav
+              RCLONE_CONFIG_ALTMOUNT_URL: http://nzbdav.media.svc.cluster.local:3000
               RCLONE_CONFIG_ALTMOUNT_VENDOR: other
               RCLONE_CONFIG_ALTMOUNT_USER:
                 valueFrom:
