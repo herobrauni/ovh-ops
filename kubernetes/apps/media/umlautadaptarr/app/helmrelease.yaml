@@ -35,16 +35,16 @@ spec:
             env:
               TZ: Europe/Berlin
               # Primary Sonarr instance
-              SONARR__ENABLED: "true"
+              SONARR__ENABLED: "false"
               SONARR__HOST: http://sonarr.media.svc.cluster.local
               # Secondary Sonarr instance (4k)
-              SONARR__0__ENABLED: "true"
+              SONARR__0__ENABLED: "false"
               SONARR__0__HOST: http://sonarr4k.media.svc.cluster.local
               # Primary Radarr instance
-              RADARR__ENABLED: "true"
+              RADARR__ENABLED: "false"
               RADARR__HOST: http://radarr.media.svc.cluster.local
               # Secondary Radarr instance (4k)
-              RADARR__0__ENABLED: "true"
+              RADARR__0__ENABLED: "false"
               RADARR__0__HOST: http://radarr4k.media.svc.cluster.local
               # Readarr / Lidarr not in use
               READARR__ENABLED: "false"
