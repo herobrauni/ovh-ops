@@ -23,16 +23,6 @@ spec:
       media-debug:
         forceRename: media-debug
         replicas: 1
-        pod:
-          affinity:
-            podAntiAffinity:
-              preferredDuringSchedulingIgnoredDuringExecution:
-                - weight: 100
-                  podAffinityTerm:
-                    labelSelector:
-                      matchLabels:
-                        app.kubernetes.io/name: decypharr
-                    topologyKey: kubernetes.io/hostname
         containers:
           app:
             image:
@@ -42,33 +32,6 @@ spec:
               - /bin/sh
               - -c
               - sleep infinity
-            # probes:
-            #   liveness:
-            #     enabled: true
-            #     custom: true
-            #     spec:
-            #       exec:
-            #         command:
-            #           - /bin/sh
-            #           - -c
-            #           - test -r /aio/altmount/version.txt && cat /aio/altmount/version.txt >/dev/null
-            #       initialDelaySeconds: 0
-            #       periodSeconds: 30
-            #       timeoutSeconds: 5
-            #       failureThreshold: 3
-            #   readiness:
-            #     enabled: true
-            #     custom: true
-            #     spec:
-            #       exec:
-            #         command:
-            #           - /bin/sh
-            #           - -c
-            #           - test -r /aio/altmount/version.txt && cat /aio/altmount/version.txt >/dev/null
-            #       initialDelaySeconds: 0
-            #       periodSeconds: 15
-            #       timeoutSeconds: 5
-            #       failureThreshold: 2
             securityContext:
               allowPrivilegeEscalation: false
               capabilities:
@@ -79,7 +42,7 @@ spec:
         existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
-      altmount:
+      altmount-csi:
         type: custom
         volumeSpec:
           csi:
@@ -107,5 +70,10 @@ spec:
                 user = usenet
                 pass = e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
         globalMounts:
-          - path: /aio/altmount
+          - path: /aio/altmount-csi
+            readOnly: true
+      altmount-nfs:
+        existingClaim: webdav-altmount
+        globalMounts:
+          - path: /aio/altmount-nfs
             readOnly: true

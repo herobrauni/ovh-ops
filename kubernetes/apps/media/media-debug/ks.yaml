@@ -11,7 +11,9 @@ spec:
       app.kubernetes.io/name: *app
   dependsOn:
     - name: symlinks
-    - name: decypharr
+      namespace: media
+    - name: webdav-nfs-gateway
+      namespace: media
     - name: csi-rclone
       namespace: csi-rclone
   interval: 1h
