@@ -115,7 +115,7 @@ spec:
           nfs:
             image:
               repository: ghcr.io/herobrauni/nfs-server
-              tag: latest@sha256:TODO
+              tag: latest@sha256:8195072a2fd93980bc42e848f13a346fcd9499b921f451f49460523ea0c4e084
             env:
               EXPORT_PATH: /data/altmount
               EXPORT_OPTS: "*(ro,fsid=0,async,no_subtree_check,no_auth_nlm,insecure,no_root_squash)"
