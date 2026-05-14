@@ -42,8 +42,8 @@ spec:
         existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
-      altmount:
-        existingClaim: webdav-altmount
+      webdav-nfs:
+        existingClaim: webdav-nfs
         globalMounts:
           - path: /aio/remote/realdebrid
             readOnly: true
