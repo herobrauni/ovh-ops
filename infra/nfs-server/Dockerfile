@@ -1,4 +1,4 @@
-FROM alpine:3.22.0
+FROM alpine:3.23.4
 
 RUN apk add --no-cache nfs-utils
 
