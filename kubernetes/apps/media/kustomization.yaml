@@ -12,7 +12,7 @@ resources:
   # - .//ks.yaml
   - ./booklore/ks.yaml
   # - ./cleanuparr/ks.yaml
-  - ./altmount/ks.yaml
+  # - ./altmount/ks.yaml
   - ./clonarr/ks.yaml
   # - ./comet/ks.yaml
   # - .//ks.yaml
