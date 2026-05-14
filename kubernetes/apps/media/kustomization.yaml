@@ -14,7 +14,7 @@ resources:
   # - ./cleanuparr/ks.yaml
   - ./clonarr/ks.yaml
   # - ./comet/ks.yaml
-  - ./decypharr/ks.yaml
+  # - ./decypharr/ks.yaml
   # - ./jellyfin/ks.yaml
   # - ./kometa/ks.yaml
   # - ./media-debug/ks.yaml
@@ -27,9 +27,8 @@ resources:
   # - ./stremthru/ks.yaml
   # - ./swaparr/ks.yaml
 
-
   # - ./plex/ks.yaml
-  # - ./radarr/ks.yaml
+  - ./radarr/ks.yaml
   # - ./radarr4k/ks.yaml
   # - ./sonarr/ks.yaml
   # - ./sonarr4k/ks.yaml
