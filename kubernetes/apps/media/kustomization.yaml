@@ -12,7 +12,8 @@ resources:
   # - ./bitmagnet/ks.yaml
   - ./booklore/ks.yaml
   # - ./cleanuparr/ks.yaml
-  - ./altmount/ks.yaml
+  # - ./altmount/ks.yaml
+  - ./nzbdav/ks.yaml
   # - ./clonarr/ks.yaml
   # - ./comet/ks.yaml
   # - ./decypharr/ks.yaml
