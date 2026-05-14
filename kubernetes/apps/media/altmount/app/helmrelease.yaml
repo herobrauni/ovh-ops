@@ -26,13 +26,15 @@ spec:
             image:
               repository: ghcr.io/javi11/altmount
               tag: v0.2.0@sha256:2592723a519248340e43fa5a564cff01f3faf24f680ba4d8a1ae84f2e87c2cd2
-            args:
-              - serve
-              - --config=/config/config.yaml
             env:
               PUID: "1000"
               PGID: "1000"
               PORT: &port 8080
+              JWT_SECRET:
+                valueFrom:
+                  secretKeyRef:
+                    name: altmount-secret
+                    key: JWT_SECRET
             probes:
               liveness:
                 enabled: true
