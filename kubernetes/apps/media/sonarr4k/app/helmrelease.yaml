@@ -137,6 +137,8 @@ spec:
         existingClaim: sonarr4k
       tmp:
         type: emptyDir
+        globalMounts:
+          - path: /tmp
       symlinks:
         existingClaim: symlinks
         globalMounts:

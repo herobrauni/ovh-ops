@@ -137,6 +137,8 @@ spec:
         existingClaim: radarr4k
       tmp:
         type: emptyDir
+        globalMounts:
+          - path: /tmp
       symlinks:
         existingClaim: symlinks
         globalMounts:
