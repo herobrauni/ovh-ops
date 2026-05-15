@@ -13,7 +13,7 @@ resources:
   - ./booklore/ks.yaml
   # - ./cleanuparr/ks.yaml
   # - ./altmount/ks.yaml
-  # - ./nzbdav/ks.yaml
+  - ./nzbdav/ks.yaml
   - ./clonarr/ks.yaml
   # - ./comet/ks.yaml
   - ./decypharr/ks.yaml
