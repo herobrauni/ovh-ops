@@ -138,13 +138,13 @@ spec:
                 mkdir -p /host-mount/rclone-sonarr
                 exec rclone mount realdebrid:/ /host-mount/rclone-sonarr \
                   --read-only \
-                  --dir-cache-time=10s \
+                  --dir-cache-time=20s \
                   --vfs-cache-mode=full \
-                  --vfs-cache-max-age=504h \
-                  --vfs-cache-max-size=10G \
+                  --vfs-cache-max-age=24h \
+                  --vfs-cache-max-size=20G \
                   --vfs-cache-poll-interval=30s \
-                  --vfs-read-chunk-size=32M \
-                  --vfs-read-chunk-size-limit=128M \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=512M \
                   --vfs-fast-fingerprint \
                   --links \
                   --use-cookies \
