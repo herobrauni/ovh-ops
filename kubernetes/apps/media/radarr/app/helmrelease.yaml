@@ -134,8 +134,10 @@ spec:
               - -c
               - |
                 umount -l /host-mount/rclone-radarr 2>/dev/null || true
-                mkdir -p /host-mount/rclone-radarr
-                exec rclone mount realdebrid:/ /host-mount/rclone-radarr \
+                umount -l /host-mount/rclone-radarr-nzbdav 2>/dev/null || true
+                mkdir -p /host-mount/rclone-radarr /host-mount/rclone-radarr-nzbdav
+
+                rclone mount realdebrid:/ /host-mount/rclone-radarr \
                   --read-only \
                   --dir-cache-time=10s \
                   --vfs-cache-mode=full \
@@ -148,13 +150,35 @@ spec:
                   --no-modtime \
                   --no-checksum \
                   --allow-other \
-                  --cache-dir=/cache
+                  --cache-dir=/cache/realdebrid &
+
+                rclone mount nzbdav:/ /host-mount/rclone-radarr-nzbdav \
+                  --read-only \
+                  --dir-cache-time=10s \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=504h \
+                  --vfs-cache-max-size=10G \
+                  --vfs-cache-poll-interval=30s \
+                  --vfs-read-chunk-size=32M \
+                  --vfs-read-chunk-size-limit=128M \
+                  --vfs-fast-fingerprint \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --cache-dir=/cache/nzbdav &
+
+                wait -n
             env:
               RCLONE_CONFIG_REALDEBRID_TYPE: webdav
               RCLONE_CONFIG_REALDEBRID_URL: http://decypharr.media.svc.cluster.local:8282/webdav
               RCLONE_CONFIG_REALDEBRID_VENDOR: other
               RCLONE_CONFIG_REALDEBRID_USER: usenet
               RCLONE_CONFIG_REALDEBRID_PASS: e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
+              RCLONE_CONFIG_NZBDAV_TYPE: webdav
+              RCLONE_CONFIG_NZBDAV_URL: http://nzbdav.media.svc.cluster.local:3000/
+              RCLONE_CONFIG_NZBDAV_VENDOR: other
+              RCLONE_CONFIG_NZBDAV_USER: usenet
+              RCLONE_CONFIG_NZBDAV_PASS: A5Lb-wn-UvJvVe_WJF5rj3l98Bc9eCQ6dHSG9wWEy7CelesO9gI3SX6AqbfPoQ
             probes:
               liveness: &rclone-probes
                 enabled: true
@@ -178,7 +202,9 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -d /host-mount/rclone-radarr/content
+                      - |
+                        test -d /host-mount/rclone-radarr/content &&
+                        test -d /host-mount/rclone-radarr-nzbdav/content
                   failureThreshold: 30
                   periodSeconds: 5
             securityContext:
@@ -239,4 +265,13 @@ spec:
           radarr:
             app:
               - path: /aio/remote/realdebrid
+                mountPropagation: HostToContainer
+      nzbdav:
+        type: hostPath
+        hostPath: /tmp/rclone-radarr-nzbdav
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          radarr:
+            app:
+              - path: /aio/remote/nzbdav
                 mountPropagation: HostToContainer
