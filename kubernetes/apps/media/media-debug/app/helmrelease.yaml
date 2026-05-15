@@ -67,8 +67,6 @@ spec:
               RCLONE_CONFIG_REALDEBRID_TYPE: webdav
               RCLONE_CONFIG_REALDEBRID_URL: http://decypharr.media.svc.cluster.local:8282/webdav
               RCLONE_CONFIG_REALDEBRID_VENDOR: other
-              RCLONE_CONFIG_REALDEBRID_USER: usenet
-              RCLONE_CONFIG_REALDEBRID_PASS: e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
             probes:
               liveness: &rclone-probes
                 enabled: true
@@ -134,8 +132,6 @@ spec:
               RCLONE_CONFIG_NZBDAV_TYPE: webdav
               RCLONE_CONFIG_NZBDAV_URL: http://nzbdav.media.svc.cluster.local:3000/
               RCLONE_CONFIG_NZBDAV_VENDOR: other
-              RCLONE_CONFIG_NZBDAV_USER: usenet
-              RCLONE_CONFIG_NZBDAV_PASS: A5Lb-wn-UvJvVe_WJF5rj3l98Bc9eCQ6dHSG9wWEy7CelesO9gI3SX6AqbfPoQ
             probes:
               liveness: &rclone-nzbdav-probes
                 enabled: true
