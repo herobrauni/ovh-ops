@@ -16,7 +16,7 @@ resources:
   - ./nzbdav/ks.yaml
   - ./clonarr/ks.yaml
   # - ./comet/ks.yaml
-  # - ./decypharr/ks.yaml
+  - ./decypharr/ks.yaml
   # - ./decypharr-sync-helper/ks.yaml
   # - ./jellyfin/ks.yaml
   # - ./kometa/ks.yaml
