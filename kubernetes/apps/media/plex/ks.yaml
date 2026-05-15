@@ -17,7 +17,6 @@ spec:
     - name: rook-ceph-cluster
       namespace: rook-ceph
     - name: symlinks
-    - name: decypharr
   interval: 1h
   path: ./kubernetes/apps/media/plex/app
   postBuild:

@@ -16,6 +16,7 @@ spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
       securityContext:
+        runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
@@ -53,47 +54,7 @@ spec:
               limits:
                 memory: 1Gi
             securityContext:
-              runAsNonRoot: true
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
-              capabilities:
-                drop:
-                  - ALL
-          rclone:
-            image:
-              repository: docker.io/rclone/rclone
-              tag: 1.69.3@sha256:1f497a86a6466395e62a5886613a14b7b18809543566ef9fa35fa1371a7ecc0f
-            command:
-              - /bin/sh
-              - -c
-              - |
-                umount -l /host-mount/rclone-repair 2>/dev/null || true
-                mkdir -p /host-mount/rclone-repair
-                exec rclone mount altmount:/ /host-mount/rclone-repair \
-                  --read-only \
-                  --dir-cache-time=10s \
-                  --vfs-cache-mode=full \
-                  --vfs-cache-max-age=504h \
-                  --vfs-cache-max-size=10G \
-                  --vfs-cache-poll-interval=30s \
-                  --vfs-read-chunk-size=32M \
-                  --vfs-read-chunk-size-limit=128M \
-                  --vfs-fast-fingerprint \
-                  --no-modtime \
-                  --no-checksum \
-                  --allow-other \
-                  --cache-dir=/cache
-            env:
-              RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
-              RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav
-              RCLONE_CONFIG_ALTMOUNT_VENDOR: other
-              RCLONE_CONFIG_ALTMOUNT_USER: usenet
-              RCLONE_CONFIG_ALTMOUNT_PASS: e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
-            securityContext:
-              runAsUser: 0
-              runAsGroup: 0
-              runAsNonRoot: false
-              privileged: true
               readOnlyRootFilesystem: true
               capabilities:
                 drop:
@@ -112,35 +73,4 @@ spec:
         globalMounts:
           - path: /aio/symlinks
             readOnly: true
-      fuse:
-        type: hostPath
-        hostPath: /dev/fuse
-        hostPathType: CharDevice
-        advancedMounts:
-          repair:
-            rclone:
-              - path: /dev/fuse
-      rclone-cache:
-        type: emptyDir
-        advancedMounts:
-          repair:
-            rclone:
-              - path: /cache
-      host-tmp:
-        type: hostPath
-        hostPath: /tmp
-        hostPathType: Directory
-        advancedMounts:
-          repair:
-            rclone:
-              - path: /host-mount
-                mountPropagation: Bidirectional
-      altmount:
-        type: hostPath
-        hostPath: /tmp/rclone-repair
-        hostPathType: DirectoryOrCreate
-        advancedMounts:
-          repair:
-            app:
-              - path: /aio/altmount
-                mountPropagation: HostToContainer
+

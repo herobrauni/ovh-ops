@@ -14,6 +14,7 @@ spec:
   values:
     defaultPodOptions:
       securityContext:
+        runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
@@ -67,71 +68,6 @@ spec:
             #         port: 32400
             securityContext:
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
-              capabilities:
-                drop:
-                  - ALL
-          rclone:
-            image:
-              repository: docker.io/rclone/rclone
-              tag: 1.69.3@sha256:1f497a86a6466395e62a5886613a14b7b18809543566ef9fa35fa1371a7ecc0f
-            command:
-              - /bin/sh
-              - -c
-              - |
-                umount -l /host-mount/rclone-plex 2>/dev/null || true
-                mkdir -p /host-mount/rclone-plex
-                exec rclone mount altmount:/ /host-mount/rclone-plex \
-                  --read-only \
-                  --dir-cache-time=10s \
-                  --vfs-cache-mode=full \
-                  --vfs-cache-max-age=504h \
-                  --vfs-cache-max-size=10G \
-                  --vfs-cache-poll-interval=30s \
-                  --vfs-read-chunk-size=32M \
-                  --vfs-read-chunk-size-limit=128M \
-                  --vfs-fast-fingerprint \
-                  --no-modtime \
-                  --no-checksum \
-                  --allow-other \
-                  --cache-dir=/cache
-            env:
-              RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
-              RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav
-              RCLONE_CONFIG_ALTMOUNT_VENDOR: other
-              RCLONE_CONFIG_ALTMOUNT_USER: usenet
-              RCLONE_CONFIG_ALTMOUNT_PASS: e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
-            probes:
-              liveness: &rclone-probes
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - test -d /host-mount/rclone-plex
-                  initialDelaySeconds: 10
-                  periodSeconds: 30
-                  timeoutSeconds: 5
-                  failureThreshold: 6
-              readiness: *rclone-probes
-              startup:
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - test -d /host-mount/rclone-plex
-                  failureThreshold: 30
-                  periodSeconds: 5
-            securityContext:
-              runAsUser: 0
-              runAsGroup: 0
-              runAsNonRoot: false
-              privileged: true
               readOnlyRootFilesystem: true
               capabilities:
                 drop:
@@ -195,35 +131,4 @@ spec:
         existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
-      fuse:
-        type: hostPath
-        hostPath: /dev/fuse
-        hostPathType: CharDevice
-        advancedMounts:
-          plex:
-            rclone:
-              - path: /dev/fuse
-      rclone-cache:
-        type: emptyDir
-        advancedMounts:
-          plex:
-            rclone:
-              - path: /cache
-      host-tmp:
-        type: hostPath
-        hostPath: /tmp
-        hostPathType: Directory
-        advancedMounts:
-          plex:
-            rclone:
-              - path: /host-mount
-                mountPropagation: Bidirectional
-      altmount:
-        type: hostPath
-        hostPath: /tmp/rclone-plex
-        hostPathType: DirectoryOrCreate
-        advancedMounts:
-          plex:
-            app:
-              - path: /aio/altmount
-                mountPropagation: HostToContainer
+
