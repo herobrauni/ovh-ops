@@ -48,7 +48,6 @@ spec:
                 umount -l /host-mount/rclone-media-debug 2>/dev/null || true
                 mkdir -p /host-mount/rclone-media-debug
                 exec rclone mount realdebrid:/ /host-mount/rclone-media-debug \
-                  --read-only \
                   --dir-cache-time=20s \
                   --vfs-cache-mode=full \
                   --vfs-cache-max-age=24h \
@@ -113,7 +112,6 @@ spec:
                 umount -l /host-mount/rclone-media-debug-nzbdav 2>/dev/null || true
                 mkdir -p /host-mount/rclone-media-debug-nzbdav
                 exec rclone mount nzbdav:/ /host-mount/rclone-media-debug-nzbdav \
-                  --read-only \
                   --dir-cache-time=20s \
                   --vfs-cache-mode=full \
                   --vfs-cache-max-age=24h \

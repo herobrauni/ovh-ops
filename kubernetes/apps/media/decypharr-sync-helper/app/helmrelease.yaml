@@ -61,6 +61,135 @@ spec:
               capabilities:
                 drop:
                   - ALL
+          rclone-realdebrid:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.74@sha256:eb8788b795f0009324e9572b0e2acb9b56885327c2746b07d67a9d3b893a6602
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-decypharr-sync-helper 2>/dev/null || true
+                mkdir -p /host-mount/rclone-decypharr-sync-helper
+                exec rclone mount realdebrid:/ /host-mount/rclone-decypharr-sync-helper \
+                  --dir-cache-time=20s \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=24h \
+                  --vfs-cache-max-size=20G \
+                  --vfs-cache-poll-interval=30s \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=512M \
+                  --vfs-fast-fingerprint \
+                  --links \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --cache-dir=/cache
+            env:
+              RCLONE_CONFIG_REALDEBRID_TYPE: webdav
+              RCLONE_CONFIG_REALDEBRID_URL: http://decypharr.media.svc.cluster.local:8282/webdav
+              RCLONE_CONFIG_REALDEBRID_VENDOR: other
+            probes:
+              liveness: &rclone-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -f /host-mount/rclone-decypharr-sync-helper/version.txt
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness: *rclone-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -f /host-mount/rclone-decypharr-sync-helper/version.txt
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+          rclone-nzbdav:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.74@sha256:eb8788b795f0009324e9572b0e2acb9b56885327c2746b07d67a9d3b893a6602
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-decypharr-sync-helper-nzbdav 2>/dev/null || true
+                mkdir -p /host-mount/rclone-decypharr-sync-helper-nzbdav
+                exec rclone mount nzbdav:/ /host-mount/rclone-decypharr-sync-helper-nzbdav \
+                  --dir-cache-time=20s \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=24h \
+                  --vfs-cache-max-size=20G \
+                  --vfs-cache-poll-interval=30s \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=512M \
+                  --vfs-fast-fingerprint \
+                  --links \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --cache-dir=/cache
+            env:
+              RCLONE_CONFIG_NZBDAV_TYPE: webdav
+              RCLONE_CONFIG_NZBDAV_URL: http://nzbdav.media.svc.cluster.local:3000/
+              RCLONE_CONFIG_NZBDAV_VENDOR: other
+              RCLONE_CONFIG_NZBDAV_USER: usenet
+            probes:
+              liveness: &rclone-nzbdav-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -f /host-mount/rclone-decypharr-sync-helper-nzbdav/README
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness: *rclone-nzbdav-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -f /host-mount/rclone-decypharr-sync-helper-nzbdav/README
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
     persistence:
       symlinks:
         existingClaim: symlinks
@@ -70,3 +199,55 @@ spec:
         type: emptyDir
         globalMounts:
           - path: /tmp
+      fuse:
+        type: hostPath
+        hostPath: /dev/fuse
+        hostPathType: CharDevice
+        advancedMounts:
+          decypharr-sync-helper:
+            rclone-realdebrid:
+              - path: /dev/fuse
+            rclone-nzbdav:
+              - path: /dev/fuse
+      rclone-cache-realdebrid:
+        type: emptyDir
+        advancedMounts:
+          decypharr-sync-helper:
+            rclone-realdebrid:
+              - path: /cache
+      rclone-cache-nzbdav:
+        type: emptyDir
+        advancedMounts:
+          decypharr-sync-helper:
+            rclone-nzbdav:
+              - path: /cache
+      host-tmp:
+        type: hostPath
+        hostPath: /tmp
+        hostPathType: Directory
+        advancedMounts:
+          decypharr-sync-helper:
+            rclone-realdebrid:
+              - path: /host-mount
+                mountPropagation: Bidirectional
+            rclone-nzbdav:
+              - path: /host-mount
+                mountPropagation: Bidirectional
+      realdebrid:
+        type: hostPath
+        hostPath: /tmp/rclone-decypharr-sync-helper
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          decypharr-sync-helper:
+            app:
+              - path: /aio/remote/realdebrid
+                mountPropagation: HostToContainer
+      nzbdav:
+        type: hostPath
+        hostPath: /tmp/rclone-decypharr-sync-helper-nzbdav
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          decypharr-sync-helper:
+            app:
+              - path: /aio/remote/nzbdav
+                mountPropagation: HostToContainer

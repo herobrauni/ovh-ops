@@ -136,7 +136,6 @@ spec:
                 umount -l /host-mount/rclone-radarr 2>/dev/null || true
                 mkdir -p /host-mount/rclone-radarr
                 exec rclone mount realdebrid:/ /host-mount/rclone-radarr \
-                  --read-only \
                   --dir-cache-time=20s \
                   --vfs-cache-mode=full \
                   --vfs-cache-max-age=24h \
