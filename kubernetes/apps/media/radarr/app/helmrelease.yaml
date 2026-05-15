@@ -128,7 +128,7 @@ spec:
           rclone-realdebrid:
             image:
               repository: docker.io/rclone/rclone
-              tag: 1.69.3@sha256:1f497a86a6466395e62a5886613a14b7b18809543566ef9fa35fa1371a7ecc0f
+              tag: 1.74.1@sha256:eb8788b795f0009324e9572b0e2acb9b56885327c2746b07d67a9d3b893a6602
             command:
               - /bin/sh
               - -c
@@ -193,7 +193,7 @@ spec:
           rclone-nzbdav:
             image:
               repository: docker.io/rclone/rclone
-              tag: 1.69.3@sha256:1f497a86a6466395e62a5886613a14b7b18809543566ef9fa35fa1371a7ecc0f
+              tag: 1.74.1@sha256:eb8788b795f0009324e9572b0e2acb9b56885327c2746b07d67a9d3b893a6602
             command:
               - /bin/sh
               - -c
