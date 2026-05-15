@@ -68,7 +68,7 @@ spec:
                 url = http://nzbdav.media.svc.cluster.local:3000/
                 vendor = other
                 user = usenet
-                pass = e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
+                pass = A5Lb-wn-UvJvVe_WJF5rj3l98Bc9eCQ6dHSG9wWEy7CelesO9gI3SX6AqbfPoQ
         globalMounts:
           - path: /aio/remote/realdebrid
             readOnly: true
