@@ -164,7 +164,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -d /host-mount/rclone-radarr/content
+                      - test -f /host-mount/rclone-radarr/version.txt
                   initialDelaySeconds: 10
                   periodSeconds: 30
                   timeoutSeconds: 5
@@ -178,7 +178,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -d /host-mount/rclone-radarr/content
+                      - test -f /host-mount/rclone-radarr/version.txt
                   failureThreshold: 30
                   periodSeconds: 5
             securityContext:
@@ -229,7 +229,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -d /host-mount/rclone-radarr-nzbdav/content
+                      - test -f /host-mount/rclone-radarr-nzbdav/README
                   initialDelaySeconds: 10
                   periodSeconds: 30
                   timeoutSeconds: 5
@@ -243,7 +243,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -d /host-mount/rclone-radarr-nzbdav/content
+                      - test -f /host-mount/rclone-radarr-nzbdav/README
                   failureThreshold: 30
                   periodSeconds: 5
             securityContext:
