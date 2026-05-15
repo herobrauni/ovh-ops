@@ -95,11 +95,9 @@ spec:
               runAsUser: 0
               runAsGroup: 0
               runAsNonRoot: false
-              allowPrivilegeEscalation: false
+              privileged: true
               readOnlyRootFilesystem: true
               capabilities:
-                add:
-                  - SYS_ADMIN
                 drop:
                   - ALL
     persistence:
