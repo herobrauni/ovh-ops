@@ -76,7 +76,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -d /host-mount/rclone-media-debug/content
+                      - test -f /host-mount/rclone-media-debug/version.txt
                   initialDelaySeconds: 10
                   periodSeconds: 30
                   timeoutSeconds: 5
@@ -90,7 +90,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -d /host-mount/rclone-media-debug/content
+                      - test -f /host-mount/rclone-media-debug/version.txt
                   failureThreshold: 30
                   periodSeconds: 5
             securityContext:
@@ -141,7 +141,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -d /host-mount/rclone-media-debug-nzbdav/content
+                      - test -f /host-mount/rclone-media-debug-nzbdav/README
                   initialDelaySeconds: 10
                   periodSeconds: 30
                   timeoutSeconds: 5
@@ -155,7 +155,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -d /host-mount/rclone-media-debug-nzbdav/content
+                      - test -f /host-mount/rclone-media-debug-nzbdav/README
                   failureThreshold: 30
                   periodSeconds: 5
             securityContext:
