@@ -145,6 +145,8 @@ spec:
                   --vfs-read-chunk-size=32M \
                   --vfs-read-chunk-size-limit=128M \
                   --vfs-fast-fingerprint \
+                  --links \
+                  --use-cookies \
                   --no-modtime \
                   --no-checksum \
                   --allow-other \
