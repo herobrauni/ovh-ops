@@ -201,7 +201,6 @@ spec:
                 umount -l /host-mount/rclone-radarr-nzbdav 2>/dev/null || true
                 mkdir -p /host-mount/rclone-radarr-nzbdav
                 exec rclone mount nzbdav:/ /host-mount/rclone-radarr-nzbdav \
-                  --read-only \
                   --dir-cache-time=20s \
                   --vfs-cache-mode=full \
                   --vfs-cache-max-age=24h \
