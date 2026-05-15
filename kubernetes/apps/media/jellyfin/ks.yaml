@@ -25,8 +25,6 @@ spec:
       namespace: media
     - name: decypharr
       namespace: media
-    - name: csi-rclone
-      namespace: csi-rclone
   interval: 1h
   path: ./kubernetes/apps/media/jellyfin/app
   postBuild:

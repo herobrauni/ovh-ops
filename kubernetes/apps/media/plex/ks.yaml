@@ -18,8 +18,6 @@ spec:
       namespace: rook-ceph
     - name: symlinks
     - name: decypharr
-    - name: csi-rclone
-      namespace: csi-rclone
   interval: 1h
   path: ./kubernetes/apps/media/plex/app
   postBuild:

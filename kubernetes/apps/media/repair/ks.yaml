@@ -16,8 +16,6 @@ spec:
       namespace: rook-ceph
     - name: symlinks
       namespace: media
-    - name: csi-rclone
-      namespace: csi-rclone
   interval: 1h
   path: ./kubernetes/apps/media/repair/app
   postBuild:
