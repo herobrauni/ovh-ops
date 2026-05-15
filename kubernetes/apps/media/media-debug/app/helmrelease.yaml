@@ -45,8 +45,9 @@ spec:
               - /bin/sh
               - -c
               - |
-                umount -l /mnt/realdebrid 2>/dev/null || true
-                exec rclone mount realdebrid:/ /mnt/realdebrid \
+                umount -l /host-mount/rclone-media-debug 2>/dev/null || true
+                mkdir -p /host-mount/rclone-media-debug
+                exec rclone mount realdebrid:/ /host-mount/rclone-media-debug \
                   --read-only \
                   --dir-cache-time=10s \
                   --vfs-cache-mode=full \
@@ -75,7 +76,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -f /mnt/realdebrid/version.txt
+                      - test -f /host-mount/rclone-media-debug/version.txt
                   initialDelaySeconds: 10
                   periodSeconds: 30
                   timeoutSeconds: 5
@@ -89,7 +90,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -f /mnt/realdebrid/version.txt
+                      - test -f /host-mount/rclone-media-debug/version.txt
                   failureThreshold: 30
                   periodSeconds: 5
             securityContext:
@@ -120,16 +121,21 @@ spec:
           media-debug:
             rclone:
               - path: /cache
+      host-tmp:
+        type: hostPath
+        hostPath: /tmp
+        hostPathType: Directory
+        advancedMounts:
+          media-debug:
+            rclone:
+              - path: /host-mount
+                mountPropagation: Bidirectional
       realdebrid:
         type: hostPath
         hostPath: /tmp/rclone-media-debug
         hostPathType: DirectoryOrCreate
         advancedMounts:
           media-debug:
-            rclone:
-              - path: /mnt/realdebrid
-                mountPropagation: Bidirectional
             app:
               - path: /aio/remote/realdebrid
-                readOnly: true
                 mountPropagation: HostToContainer
