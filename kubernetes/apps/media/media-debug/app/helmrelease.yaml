@@ -121,7 +121,9 @@ spec:
             rclone:
               - path: /cache
       realdebrid:
-        type: emptyDir
+        type: hostPath
+        hostPath: /tmp/rclone-media-debug
+        hostPathType: DirectoryOrCreate
         advancedMounts:
           media-debug:
             rclone:
