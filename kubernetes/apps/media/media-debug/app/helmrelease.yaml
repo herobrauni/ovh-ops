@@ -76,7 +76,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -f /host-mount/rclone-media-debug/version.txt
+                      - test -d /host-mount/rclone-media-debug/content
                   initialDelaySeconds: 10
                   periodSeconds: 30
                   timeoutSeconds: 5
@@ -90,7 +90,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -f /host-mount/rclone-media-debug/version.txt
+                      - test -d /host-mount/rclone-media-debug/content
                   failureThreshold: 30
                   periodSeconds: 5
             securityContext:
