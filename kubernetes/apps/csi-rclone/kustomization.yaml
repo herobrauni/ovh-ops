@@ -6,4 +6,4 @@ namespace: csi-rclone
 
 resources:
   - ./namespace.yaml
-  - ./csi-rclone/ks.yaml
+  # - ./csi-rclone/ks.yaml
