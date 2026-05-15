@@ -65,7 +65,7 @@ spec:
               configData: |
                 [realdebrid]
                 type = webdav
-                url = http://decypharr.media.svc.cluster.local:8282/webdav
+                url = http://nzbdav.media.svc.cluster.local:3000/
                 vendor = other
                 user = usenet
                 pass = e4u2vK8IfaSPI_NKEPNbVpgwSqEGXQ
