@@ -220,6 +220,7 @@ spec:
               RCLONE_CONFIG_NZBDAV_TYPE: webdav
               RCLONE_CONFIG_NZBDAV_URL: http://nzbdav.media.svc.cluster.local:3000/
               RCLONE_CONFIG_NZBDAV_VENDOR: other
+              RCLONE_CONFIG_NZBDAV_USER: usenet
             probes:
               liveness: &rclone-nzbdav-probes
                 enabled: true
