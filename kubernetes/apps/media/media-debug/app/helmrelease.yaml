@@ -42,23 +42,24 @@ spec:
               repository: docker.io/rclone/rclone
               tag: 1.69.3@sha256:1f497a86a6466395e62a5886613a14b7b18809543566ef9fa35fa1371a7ecc0f
             command:
-              - rclone
-              - mount
-              - realdebrid:/
-              - /mnt/realdebrid
-              - --read-only
-              - --dir-cache-time=10s
-              - --vfs-cache-mode=full
-              - --vfs-cache-max-age=504h
-              - --vfs-cache-max-size=10G
-              - --vfs-cache-poll-interval=30s
-              - --vfs-read-chunk-size=32M
-              - --vfs-read-chunk-size-limit=128M
-              - --vfs-fast-fingerprint
-              - --no-modtime
-              - --no-checksum
-              - --allow-other
-              - --cache-dir=/cache
+              - /bin/sh
+              - -c
+              - |
+                umount -l /mnt/realdebrid 2>/dev/null || true
+                exec rclone mount realdebrid:/ /mnt/realdebrid \
+                  --read-only \
+                  --dir-cache-time=10s \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=504h \
+                  --vfs-cache-max-size=10G \
+                  --vfs-cache-poll-interval=30s \
+                  --vfs-read-chunk-size=32M \
+                  --vfs-read-chunk-size-limit=128M \
+                  --vfs-fast-fingerprint \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --cache-dir=/cache
             env:
               RCLONE_CONFIG_REALDEBRID_TYPE: webdav
               RCLONE_CONFIG_REALDEBRID_URL: http://nzbdav.media.svc.cluster.local:3000/
