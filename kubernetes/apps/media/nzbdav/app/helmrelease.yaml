@@ -67,6 +67,10 @@ spec:
         existingClaim: nzbdav
         globalMounts:
           - path: /config
+      aio:
+        type: emptyDir
+        globalMounts:
+          - path: /aio
       symlinks:
         existingClaim: symlinks
         globalMounts:
