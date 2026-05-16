@@ -16,8 +16,6 @@ spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
       securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile: { type: RuntimeDefault }
@@ -41,6 +39,8 @@ spec:
               repository: ghcr.io/realzombee/sonarr
               tag: 4.1.1.821@sha256:debeb444b005549ca76f105c44593e54492b49527d092e6bf6212661c1612ee0
             env:
+              PUID: "1000"
+              PGID: "1000"
               ACCEPT_RELEASE_ANY_UPGRADABLE: true
               IGNORE_MATCH_BY_ID_WARNING: true
               FIX_ANIME_SEASON_SEARCH: true
@@ -119,9 +119,7 @@ spec:
               limits:
                 memory: 4Gi
             securityContext:
-              runAsNonRoot: true
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
               capabilities:
                 drop:
                   - ALL

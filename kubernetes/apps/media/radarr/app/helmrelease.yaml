@@ -16,8 +16,6 @@ spec:
       automountServiceAccountToken: false
       enableServiceLinks: false
       securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile: { type: RuntimeDefault }
@@ -41,6 +39,8 @@ spec:
               repository: ghcr.io/realzombee/radarr
               tag: 6.5.1.2021@sha256:ee30d8d6bb7a089da99e6ad2ef4c672b93b06510dfb3b4d63c03b03f847a6bfe
             env:
+              PUID: "1000"
+              PGID: "1000"
               IGNORE_MATCH_BY_ID_WARNING: true
               RADARR__AUTH__METHOD: External
               RADARR__AUTH__REQUIRED: DisabledForLocalAddresses
@@ -116,9 +116,7 @@ spec:
               limits:
                 memory: 4Gi
             securityContext:
-              runAsNonRoot: true
               allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
               capabilities:
                 drop:
                   - ALL
