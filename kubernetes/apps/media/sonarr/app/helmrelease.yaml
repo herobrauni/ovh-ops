@@ -38,9 +38,12 @@ spec:
         containers:
           app:
             image:
-              repository: ghcr.io/home-operations/sonarr
-              tag: 4.0.17.2967@sha256:4ff5667a371e08b098858fa2457a99a5fef5f6a32640eb8567efe979d13ac9fc
+              repository: ghcr.io/realzombee/sonarr
+              tag: 4.1.1.821@sha256:debeb444b005549ca76f105c44593e54492b49527d092e6bf6212661c1612ee0
             env:
+              ACCEPT_RELEASE_ANY_UPGRADABLE: true
+              IGNORE_MATCH_BY_ID_WARNING: true
+              FIX_ANIME_SEASON_SEARCH: true
               SONARR__APP__INSTANCENAME: Sonarr
               SONARR__APP__THEME: dark
               SONARR__AUTH__METHOD: External

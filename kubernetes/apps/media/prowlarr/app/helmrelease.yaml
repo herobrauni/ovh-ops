@@ -42,6 +42,8 @@ spec:
               repository: ghcr.io/realzombee/prowlarr
               tag: 2.10.1.2011@sha256:bb8436b424448a876c3b658d095e95bb8a9cf8bdecf8292738c623cf4b0df2c2
             env:
+              CACHE_TTL_MINS: 10
+              CACHE_MAX_SIZE_MB: 100
               PROWLARR__APP__INSTANCENAME: Prowlarr
               PROWLARR__APP__THEME: dark
               PROWLARR__AUTH__METHOD: External
