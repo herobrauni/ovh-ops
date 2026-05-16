@@ -115,6 +115,9 @@ spec:
                 add:
                   - SETUID
                   - SETGID
+                  - CHOWN
+                  - DAC_OVERRIDE
+                  - FOWNER
     service:
       app:
         controller: prowlarr
