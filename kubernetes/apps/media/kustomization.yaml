@@ -14,6 +14,7 @@ resources:
   # - ./cleanuparr/ks.yaml
   # - ./altmount/ks.yaml
   - ./nzbdav/ks.yaml
+  - ./nzbdav-sync-helper/ks.yaml
   - ./clonarr/ks.yaml
   # - ./comet/ks.yaml
   # - ./decypharr/ks.yaml
@@ -33,7 +34,7 @@ resources:
   - ./plex/ks.yaml
   - ./radarr/ks.yaml
   # - ./radarr4k/ks.yaml
-  # - ./sonarr/ks.yaml
+  - ./sonarr/ks.yaml
   # - ./sonarr4k/ks.yaml
 
   - ./symlinks/ks.yaml
