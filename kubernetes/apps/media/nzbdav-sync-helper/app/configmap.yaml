@@ -1,0 +1,128 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/kubernetes-json-schema/schema.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nzbdav-sync-helper-script
+data:
+  sync.sh: |
+    #!/bin/sh
+    set -e
+
+    WATCH_DIR="${WATCH_DIR:-/aio/remote/nzbdav/other}"
+    DEST_DIR="${DEST_DIR:-/aio/symlinks/other}"
+    STATE_FILE="/tmp/processed.log"
+    POLL_INTERVAL="${POLL_INTERVAL:-60}"
+
+    NZBDAV_URL="${NZBDAV_URL:-http://nzbdav.media.svc.cluster.local:3000}"
+    NZBDAV_API_KEY="${NZBDAV_API_KEY:-}"
+
+    PLEX_URL="${PLEX_URL:-http://plex.media.svc.cluster.local:32400}"
+    PLEX_TOKEN="${PLEX_TOKEN:-}"
+    PLEX_LIBRARY="${PLEX_LIBRARY:-Other}"
+
+    log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+    mkdir -p "$DEST_DIR"
+    touch "$STATE_FILE"
+
+    is_processed() { grep -qFx "$1" "$STATE_FILE" 2>/dev/null; }
+    mark_processed() { echo "$1" >> "$STATE_FILE"; }
+
+    sync_item() {
+        local name="$1"
+        local src="$WATCH_DIR/$name"
+        local dest="$DEST_DIR/$name"
+
+        is_processed "$name" && return 0
+        [ ! -e "$src" ] && return 1
+
+        log "Found new item: $name"
+
+        if [ -d "$src" ]; then
+            mkdir -p "$dest"
+            cp -a "$src/." "$dest/"
+        else
+            cp -a "$src" "$dest"
+        fi
+
+        if [ $? -eq 0 ]; then
+            mark_processed "$name"
+            log "Copied: $name -> $dest"
+            return 0
+        else
+            log "ERROR: Failed to copy: $name"
+            rm -rf "$dest" 2>/dev/null
+            return 1
+        fi
+    }
+
+    cleanup_nzbdav() {
+        [ -z "$NZBDAV_API_KEY" ] && return 0
+
+        local response
+        response=$(wget -qO- "${NZBDAV_URL}/api?mode=history&output=json&apikey=${NZBDAV_API_KEY}" 2>/dev/null) || return 0
+        [ -z "$response" ] && return 0
+
+        # Split JSON on },{ to isolate individual slot objects,
+        # then filter for completed items in the "other" category.
+        echo "$response" \
+            | sed 's/},{/}\n{/g' \
+            | grep '"category":"other"' \
+            | grep '"status":"Completed"' \
+            | while IFS= read -r line; do
+                nzo_id=$(echo "$line" | sed -n 's/.*"nzo_id":"\([^"]*\)".*/\1/p')
+                name=$(echo "$line" | sed -n 's/.*"name":"\([^"]*\)".*/\1/p')
+
+                if [ -n "$nzo_id" ] && is_processed "$name"; then
+                    wget -qO- "${NZBDAV_URL}/api?mode=history&name=delete&value=${nzo_id}&output=json&apikey=${NZBDAV_API_KEY}" >/dev/null 2>&1
+                    log "Removed from nzbdav history: $name ($nzo_id)"
+                fi
+            done
+    }
+
+    plex_refresh() {
+        [ -z "$PLEX_TOKEN" ] && return 0
+
+        local sections
+        sections=$(wget -qO- "${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}" 2>/dev/null) || return 0
+        [ -z "$sections" ] && return 0
+
+        local key
+        key=$(echo "$sections" | sed -n "s/.*key=\"\([0-9]*\)\".*title=\"${PLEX_LIBRARY}\".*/\1/p" | head -1)
+
+        if [ -n "$key" ]; then
+            wget -qO- "${PLEX_URL}/library/sections/${key}/refresh?X-Plex-Token=${PLEX_TOKEN}" >/dev/null 2>&1
+            log "Plex scan triggered: ${PLEX_LIBRARY} (section ${key})"
+        else
+            log "WARN: Plex library '${PLEX_LIBRARY}' not found"
+        fi
+    }
+
+    # --- main ---
+    log "nzbdav-sync-helper starting"
+    log "Watch:  ${WATCH_DIR}"
+    log "Dest:   ${DEST_DIR}"
+    log "Poll:   ${POLL_INTERVAL}s"
+
+    while true; do
+        processed_any=false
+
+        if [ -d "$WATCH_DIR" ]; then
+            for item in "$WATCH_DIR"/*; do
+                [ -e "$item" ] || continue
+                name=$(basename "$item")
+                if sync_item "$name"; then
+                    processed_any=true
+                fi
+            done
+        fi
+
+        cleanup_nzbdav
+
+        if [ "$processed_any" = "true" ]; then
+            plex_refresh
+        fi
+
+        sleep "$POLL_INTERVAL"
+    done
