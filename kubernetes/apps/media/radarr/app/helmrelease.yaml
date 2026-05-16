@@ -123,6 +123,9 @@ spec:
                 add:
                   - SETUID
                   - SETGID
+                  - CHOWN
+                  - DAC_OVERRIDE
+                  - FOWNER
           rclone-nzbdav:
             image:
               repository: docker.io/rclone/rclone
