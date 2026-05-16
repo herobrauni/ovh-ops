@@ -112,6 +112,9 @@ spec:
               capabilities:
                 drop:
                   - ALL
+                add:
+                  - SETUID
+                  - SETGID
     service:
       app:
         controller: prowlarr
