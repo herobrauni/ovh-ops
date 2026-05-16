@@ -123,6 +123,9 @@ spec:
               capabilities:
                 drop:
                   - ALL
+                add:
+                  - SETUID
+                  - SETGID
           rclone-nzbdav:
             image:
               repository: docker.io/rclone/rclone
