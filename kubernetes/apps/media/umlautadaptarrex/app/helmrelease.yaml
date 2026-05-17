@@ -3,11 +3,11 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: &app umlautadaptarr
+  name: &app umlautadaptarrex
 spec:
   chartRef:
     kind: OCIRepository
-    name: umlautadaptarr
+    name: umlautadaptarrex
   interval: 1h
   driftDetection:
     mode: enabled
@@ -23,49 +23,30 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         seccompProfile: { type: RuntimeDefault }
     controllers:
-      umlautadaptarr:
-        annotations:
-          reloader.stakater.com/auto: "true"
-          secret.reloader.stakater.com/reload: umlautadaptarr-secret
+      umlautadaptarrex:
         containers:
           app:
             image:
-              repository: docker.io/pcjones/umlautadaptarr
-              tag: 0.7.5@sha256:2c6689d49afe51fcaa5e8a27e139855e0c8782e1e42ec595d8694b74094f991f
+              repository: lexfi/umlautadaptarrex
+              tag: 1.0.0@sha256:12c6039b3f78c6512cfe7929cf3d4c7cb27130741cec8a31d53bfb1f00432744
             env:
               TZ: Europe/Berlin
-              # Primary Sonarr instance
-              SONARR__ENABLED: "false"
-              SONARR__HOST: http://sonarr.media.svc.cluster.local
-              # Secondary Sonarr instance (4k)
-              SONARR__0__ENABLED: "false"
-              SONARR__0__HOST: http://sonarr4k.media.svc.cluster.local
-              # Primary Radarr instance
-              RADARR__ENABLED: "false"
-              RADARR__HOST: http://radarr.media.svc.cluster.local
-              # Secondary Radarr instance (4k)
-              RADARR__0__ENABLED: "false"
-              RADARR__0__HOST: http://radarr4k.media.svc.cluster.local
-              # Readarr / Lidarr not in use
-              READARR__ENABLED: "false"
-              LIDARR__ENABLED: "false"
-              # Advanced settings
-              SETTINGS__ProxyPort: &proxyPort 5006
-              Kestrel__Endpoints__Http__Url: http://[::]:5005
-            envFrom:
-              - secretRef:
-                  name: umlautadaptarr-secret
+              PUID: "1000"
+              PGID: "1000"
+              LOG_LEVEL: info
+              PORT: &apiPort 5005
+              WEB_PORT: &webPort 5007
             probes:
               liveness: &probes
                 enabled: true
                 custom: true
                 spec:
                   httpGet:
-                    path: /health
-                    port: &port 5005
+                    path: /api/health
+                    port: *apiPort
                   initialDelaySeconds: 0
                   periodSeconds: 10
-                  timeoutSeconds: 1
+                  timeoutSeconds: 5
                   failureThreshold: 3
               readiness: *probes
               startup:
@@ -73,16 +54,16 @@ spec:
                 custom: true
                 spec:
                   httpGet:
-                    path: /health
-                    port: *port
+                    path: /api/health
+                    port: *apiPort
                   failureThreshold: 30
                   periodSeconds: 10
             resources:
               requests:
                 cpu: 10m
-                memory: 128Mi
-              limits:
                 memory: 256Mi
+              limits:
+                memory: 512Mi
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
@@ -91,12 +72,18 @@ spec:
                   - ALL
     service:
       app:
-        controller: umlautadaptarr
+        controller: umlautadaptarrex
         ports:
           http:
-            port: *port
+            port: *webPort
+          api:
+            port: *apiPort
           proxy:
-            port: *proxyPort
+            port: 5006
     persistence:
+      data:
+        existingClaim: umlautadaptarrex
+        globalMounts:
+          - path: /data
       tmp:
         type: emptyDir
