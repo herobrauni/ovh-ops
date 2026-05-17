@@ -51,7 +51,7 @@ spec:
                   secretKeyRef:
                     name: nzbdav-sync-helper-secret
                     key: PLEX_TOKEN
-              PLEX_LIBRARY: "Other"
+              PLEX_LIBRARY: "Other Videos"
             resources:
               requests:
                 cpu: 10m

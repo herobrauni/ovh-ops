@@ -41,9 +41,9 @@ data:
 
         if [ -d "$src" ]; then
             mkdir -p "$dest"
-            cp -a "$src/." "$dest/"
+            cp -r "$src/." "$dest/"
         else
-            cp -a "$src" "$dest"
+            cp -r "$src" "$dest"
         fi
 
         if [ $? -eq 0 ]; then
