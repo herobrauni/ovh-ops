@@ -19,6 +19,7 @@
     ":timezone(Europe/Berlin)",
   ],
   dependencyDashboardTitle: "Renovate Dashboard 🤖",
+  minimumReleaseAge: "7 days",
   suppressNotifications: [
     "prEditedNotification",
     "prIgnoreNotification",
