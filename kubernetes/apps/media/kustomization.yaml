@@ -37,4 +37,4 @@ resources:
   # - ./sonarr4k/ks.yaml
 
   - ./symlinks/ks.yaml
-  # - ./umlautadaptarr/ks.yaml
+  - ./umlautadaptarrex/ks.yaml
