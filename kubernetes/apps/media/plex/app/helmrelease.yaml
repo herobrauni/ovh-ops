@@ -164,7 +164,7 @@ spec:
                   --cache-dir=/cache
             env:
               RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
-              RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/
+              RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav/
               RCLONE_CONFIG_ALTMOUNT_VENDOR: other
               RCLONE_CONFIG_ALTMOUNT_USER: usenet
             probes:
