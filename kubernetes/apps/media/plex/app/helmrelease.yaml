@@ -176,7 +176,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -f /host-mount/rclone-plex-altmount/README
+                      - test -d /host-mount/rclone-plex-altmount/complete
                   initialDelaySeconds: 10
                   periodSeconds: 30
                   timeoutSeconds: 5
@@ -190,7 +190,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -f /host-mount/rclone-plex-altmount/README
+                      - test -d /host-mount/rclone-plex-altmount/complete
                   failureThreshold: 30
                   periodSeconds: 5
             securityContext:
