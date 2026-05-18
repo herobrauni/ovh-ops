@@ -57,6 +57,7 @@ spec:
                   - SETUID
                   - SETGID
                   - CHOWN
+                  - SYS_ADMIN
     service:
       app:
         forceRename: altmount
