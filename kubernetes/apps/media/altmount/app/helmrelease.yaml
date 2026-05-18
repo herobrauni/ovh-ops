@@ -24,8 +24,8 @@ spec:
         containers:
           app:
             image:
-              repository: ghcr.io/herobrauni/altmount
-              tag: main-webdav-fix@sha256:dadf62b096606d6cbb791b8f29b5b27c90ed076a891955146a763462ced82c3e
+              repository: ghcr.io/javi11/altmount
+              tag: latest@sha256:2592723a519248340e43fa5a564cff01f3faf24f680ba4d8a1ae84f2e87c2cd2
             env:
               PUID: "1000"
               PGID: "1000"

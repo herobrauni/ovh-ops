@@ -219,7 +219,9 @@ spec:
               RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
               RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav/
               RCLONE_CONFIG_ALTMOUNT_VENDOR: other
-              RCLONE_CONFIG_ALTMOUNT_USER: usenet
+            envFrom:
+              - secretRef:
+                  name: rclone-altmount-secret
             probes:
               liveness: &rclone-altmount-probes
                 enabled: true
