@@ -102,6 +102,71 @@ spec:
               capabilities:
                 drop:
                   - ALL
+          rclone-altmount:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.74@sha256:eb8788b795f0009324e9572b0e2acb9b56885327c2746b07d67a9d3b893a6602
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-media-debug-altmount 2>/dev/null || true
+                mkdir -p /host-mount/rclone-media-debug-altmount
+                exec rclone mount altmount:/ /host-mount/rclone-media-debug-altmount \
+                  --dir-cache-time=20s \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=24h \
+                  --vfs-cache-max-size=20G \
+                  --vfs-cache-poll-interval=30s \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=512M \
+                  --vfs-fast-fingerprint \
+                  --links \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --cache-dir=/cache
+            env:
+              RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
+              RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav/
+              RCLONE_CONFIG_ALTMOUNT_VENDOR: other
+              RCLONE_CONFIG_ALTMOUNT_USER: usenet
+            probes:
+              liveness: &rclone-altmount-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -d /host-mount/rclone-media-debug-altmount/complete
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness: *rclone-altmount-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -d /host-mount/rclone-media-debug-altmount/complete
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
     persistence:
       fuse:
         type: hostPath
@@ -110,6 +175,8 @@ spec:
         advancedMounts:
           media-debug:
             rclone-nzbdav:
+              - path: /dev/fuse
+            rclone-altmount:
               - path: /dev/fuse
       symlinks:
         existingClaim: symlinks
@@ -121,6 +188,12 @@ spec:
           media-debug:
             rclone-nzbdav:
               - path: /cache
+      rclone-cache-altmount:
+        type: emptyDir
+        advancedMounts:
+          media-debug:
+            rclone-altmount:
+              - path: /cache
       host-tmp:
         type: hostPath
         hostPath: /tmp
@@ -128,6 +201,9 @@ spec:
         advancedMounts:
           media-debug:
             rclone-nzbdav:
+              - path: /host-mount
+                mountPropagation: Bidirectional
+            rclone-altmount:
               - path: /host-mount
                 mountPropagation: Bidirectional
       nzbdav:
@@ -138,4 +214,13 @@ spec:
           media-debug:
             app:
               - path: /aio/remote/nzbdav
+                mountPropagation: HostToContainer
+      altmount:
+        type: hostPath
+        hostPath: /tmp/rclone-media-debug-altmount
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          media-debug:
+            app:
+              - path: /aio/remote/altmount
                 mountPropagation: HostToContainer

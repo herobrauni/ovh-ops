@@ -129,6 +129,71 @@ spec:
               capabilities:
                 drop:
                   - ALL
+          rclone-altmount:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.74@sha256:eb8788b795f0009324e9572b0e2acb9b56885327c2746b07d67a9d3b893a6602
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-nzbdav-sync-helper-altmount 2>/dev/null || true
+                mkdir -p /host-mount/rclone-nzbdav-sync-helper-altmount
+                exec rclone mount altmount:/ /host-mount/rclone-nzbdav-sync-helper-altmount \
+                  --dir-cache-time=20s \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=24h \
+                  --vfs-cache-max-size=20G \
+                  --vfs-cache-poll-interval=30s \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=512M \
+                  --vfs-fast-fingerprint \
+                  --links \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --cache-dir=/cache
+            env:
+              RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
+              RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav/
+              RCLONE_CONFIG_ALTMOUNT_VENDOR: other
+              RCLONE_CONFIG_ALTMOUNT_USER: usenet
+            probes:
+              liveness: &rclone-altmount-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -d /host-mount/rclone-nzbdav-sync-helper-altmount/complete
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness: *rclone-altmount-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -d /host-mount/rclone-nzbdav-sync-helper-altmount/complete
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
     persistence:
       symlinks:
         existingClaim: symlinks
@@ -152,11 +217,19 @@ spec:
           nzbdav-sync-helper:
             rclone-nzbdav:
               - path: /dev/fuse
+            rclone-altmount:
+              - path: /dev/fuse
       rclone-cache:
         type: emptyDir
         advancedMounts:
           nzbdav-sync-helper:
             rclone-nzbdav:
+              - path: /cache
+      rclone-cache-altmount:
+        type: emptyDir
+        advancedMounts:
+          nzbdav-sync-helper:
+            rclone-altmount:
               - path: /cache
       host-tmp:
         type: hostPath
@@ -167,6 +240,9 @@ spec:
             rclone-nzbdav:
               - path: /host-mount
                 mountPropagation: Bidirectional
+            rclone-altmount:
+              - path: /host-mount
+                mountPropagation: Bidirectional
       nzbdav:
         type: hostPath
         hostPath: /tmp/rclone-nzbdav-sync-helper
@@ -175,4 +251,13 @@ spec:
           nzbdav-sync-helper:
             app:
               - path: /aio/remote/nzbdav
+                mountPropagation: HostToContainer
+      altmount:
+        type: hostPath
+        hostPath: /tmp/rclone-nzbdav-sync-helper-altmount
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          nzbdav-sync-helper:
+            app:
+              - path: /aio/remote/altmount
                 mountPropagation: HostToContainer
