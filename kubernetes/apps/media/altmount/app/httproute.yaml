@@ -18,6 +18,15 @@ spec:
       namespace: network
       sectionName: https
   rules:
+    # WebDAV path — no TinyAuth, uses altmount's own Basic Auth / JWT
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /webdav
+      backendRefs:
+        - name: altmount
+          port: 8080
+    # Everything else — protected by TinyAuth
     - backendRefs:
         - name: altmount
           port: 8080
