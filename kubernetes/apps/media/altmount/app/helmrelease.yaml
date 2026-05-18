@@ -73,6 +73,12 @@ spec:
         existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
+      fuse:
+        type: hostPath
+        hostPath: /dev/fuse
+        hostPathType: CharDevice
+        globalMounts:
+          - path: /dev/fuse
       tmp:
         type: emptyDir
         medium: Memory
