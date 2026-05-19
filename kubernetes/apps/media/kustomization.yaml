@@ -34,9 +34,9 @@ resources:
 
   - ./plex/ks.yaml
   - ./radarr/ks.yaml
-  # - ./radarr4k/ks.yaml
+  - ./radarr4k/ks.yaml
   - ./sonarr/ks.yaml
-  # - ./sonarr4k/ks.yaml
+  - ./sonarr4k/ks.yaml
 
   - ./symlinks/ks.yaml
   - ./umlautadaptarrex/ks.yaml
