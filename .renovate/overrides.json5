@@ -21,5 +21,10 @@
       ],
       overridePackageName: "ghcr.io/siderolabs/installer",
     },
+    {
+      description: "Cooldown for mise tool updates",
+      matchManagers: ["mise"],
+      stabilityDays: 7,
+    },
   ],
 }
