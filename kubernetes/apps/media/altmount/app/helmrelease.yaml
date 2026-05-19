@@ -24,8 +24,8 @@ spec:
         containers:
           app:
             image:
-              repository: ghcr.io/javi11/altmount
-              tag: dev@sha256:c8a5e2efd0f473f96fd3e25ebcd0a9a96235b6876ca4b78be2bf7a30d00c5eda
+              repository: ghcr.io/drondeseries/altmount
+              tag: dev@sha256:dca94139df221288041059e8897def53f5544385b5d7be40041aea67f5b8b0fe
             env:
               PUID: "1000"
               PGID: "1000"
