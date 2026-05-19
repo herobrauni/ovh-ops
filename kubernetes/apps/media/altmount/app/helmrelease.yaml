@@ -25,7 +25,7 @@ spec:
           app:
             image:
               repository: ghcr.io/javi11/altmount
-              tag: latest@sha256:2592723a519248340e43fa5a564cff01f3faf24f680ba4d8a1ae84f2e87c2cd2
+              tag: dev@sha256:c8a5e2efd0f473f96fd3e25ebcd0a9a96235b6876ca4b78be2bf7a30d00c5eda
             env:
               PUID: "1000"
               PGID: "1000"
