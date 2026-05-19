@@ -1,0 +1,104 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/kubernetes-json-schema/schema.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: altmount-sync-helper-script
+data:
+  sync.sh: |
+    #!/bin/sh
+    set -e
+
+    WATCH_DIR="${WATCH_DIR:-/aio/symlinks/complete/other}"
+    DEST_DIR="${DEST_DIR:-/aio/symlinks/other}"
+    STATE_FILE="/tmp/processed.log"
+    POLL_INTERVAL="${POLL_INTERVAL:-60}"
+
+    PLEX_URL="${PLEX_URL:-http://plex.media.svc.cluster.local:32400}"
+    PLEX_TOKEN="${PLEX_TOKEN:-}"
+    PLEX_LIBRARY="${PLEX_LIBRARY:-Other Videos}"
+
+    log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+    mkdir -p "$DEST_DIR"
+    touch "$STATE_FILE"
+
+    is_processed() { grep -qFx "$1" "$STATE_FILE" 2>/dev/null; }
+    mark_processed() { echo "$1" >> "$STATE_FILE"; }
+
+    sync_item() {
+        local name="$1"
+        local src="$WATCH_DIR/$name"
+        local dest="$DEST_DIR/$name"
+
+        is_processed "$name" && return 0
+        [ ! -e "$src" ] && return 1
+
+        log "Found new item: $name"
+
+        if [ -d "$src" ]; then
+            mkdir -p "$dest"
+            cp -r "$src/." "$dest/"
+        else
+            cp -r "$src" "$dest"
+        fi
+
+        if [ $? -eq 0 ]; then
+            log "Copied: $name -> $dest"
+
+            # Remove from altmount queue by deleting the source
+            rm -rf "$src"
+            log "Removed from altmount queue: $name"
+
+            mark_processed "$name"
+            return 0
+        else
+            log "ERROR: Failed to copy: $name"
+            rm -rf "$dest" 2>/dev/null
+            return 1
+        fi
+    }
+
+    plex_refresh() {
+        [ -z "$PLEX_TOKEN" ] && return 0
+
+        local sections
+        sections=$(wget -qO- "${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}" 2>/dev/null) || return 0
+        [ -z "$sections" ] && return 0
+
+        local key
+        key=$(echo "$sections" | sed -n "s/.*key=\"\([0-9]*\)\".*title=\"${PLEX_LIBRARY}\".*/\1/p" | head -1)
+
+        if [ -n "$key" ]; then
+            wget -qO- "${PLEX_URL}/library/sections/${key}/refresh?X-Plex-Token=${PLEX_TOKEN}" >/dev/null 2>&1
+            log "Plex scan triggered: ${PLEX_LIBRARY} (section ${key})"
+        else
+            log "WARN: Plex library '${PLEX_LIBRARY}' not found"
+        fi
+    }
+
+    # --- main ---
+    log "altmount-sync-helper starting"
+    log "Watch:  ${WATCH_DIR}"
+    log "Dest:   ${DEST_DIR}"
+    log "Poll:   ${POLL_INTERVAL}s"
+
+    while true; do
+        processed_any=false
+
+        if [ -d "$WATCH_DIR" ]; then
+            for item in "$WATCH_DIR"/*; do
+                [ -e "$item" ] || continue
+                name=$(basename "$item")
+                if sync_item "$name"; then
+                    processed_any=true
+                fi
+            done
+        fi
+
+        if [ "$processed_any" = "true" ]; then
+            plex_refresh
+        fi
+
+        sleep "$POLL_INTERVAL"
+    done
