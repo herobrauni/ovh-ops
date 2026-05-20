@@ -36,7 +36,7 @@ spec:
             fsGroupChangePolicy: OnRootMismatch
           containers:
             - name: pgdumpall
-              image: ghcr.io/cloudnative-pg/postgresql:18@sha256:5e30290fba3d990b08a9caea6ddb49c661ad8246cbb2688adad7e6cc78df6c3f
+              image: ghcr.io/cloudnative-pg/postgresql:18@sha256:7a9a68272eb5f192c5826fdd72b1ebc81c185fea21678993c5583610c7e59739
               command:
                 - /bin/bash
                 - -ec
@@ -182,7 +182,7 @@ spec:
             fsGroupChangePolicy: OnRootMismatch
           containers:
             - name: pgdumpall
-              image: ghcr.io/cloudnative-pg/postgresql:18@sha256:5e30290fba3d990b08a9caea6ddb49c661ad8246cbb2688adad7e6cc78df6c3f
+              image: ghcr.io/cloudnative-pg/postgresql:18@sha256:7a9a68272eb5f192c5826fdd72b1ebc81c185fea21678993c5583610c7e59739
               command:
                 - /bin/bash
                 - -ec
