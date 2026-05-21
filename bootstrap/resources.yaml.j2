@@ -30,3 +30,12 @@ metadata:
   namespace: network
 stringData:
   CLOUDFLARE_TUNNEL_BRAUNI_DEV_ID: {{ cloudflare_tunnel_brauni_dev_id }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infisical-credentials
+  namespace: external-secrets
+stringData:
+  clientId: {{ infisical_clientId }}
+  clientSecret: {{ infisical_clientSecret }}
