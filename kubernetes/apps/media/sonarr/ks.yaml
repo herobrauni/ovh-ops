@@ -17,6 +17,8 @@ spec:
       namespace: dbms
     - name: bitwarden
       namespace: external-secrets
+    - name: infisical
+      namespace: external-secrets
     - name: rook-ceph-cluster
       namespace: rook-ceph
     - name: tinyauth-480p-com
