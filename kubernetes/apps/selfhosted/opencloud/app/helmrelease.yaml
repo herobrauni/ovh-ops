@@ -29,7 +29,20 @@ spec:
             command:
               - /bin/sh
               - -c
-              - test -f /etc/opencloud/opencloud.yaml || opencloud init --insecure=true
+              - |
+                if [ -f /etc/opencloud/opencloud.yaml ]; then
+                  echo "Config exists, checking for upgrades..."
+                  opencloud init --diff --insecure=true
+                  if [ -f /etc/opencloud/opencloud.config.patch ]; then
+                    echo "Applying config patch..."
+                    patch --no-backup-if-mismatch /etc/opencloud/opencloud.yaml /etc/opencloud/opencloud.config.patch
+                  else
+                    echo "No config changes needed."
+                  fi
+                else
+                  echo "No config found, initializing..."
+                  opencloud init --insecure=true
+                fi
             envFrom:
               - secretRef:
                   name: opencloud-secret
