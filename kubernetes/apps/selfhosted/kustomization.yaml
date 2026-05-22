@@ -23,3 +23,4 @@ resources:
   - ./firefly3/ks.yaml
   - ./paperless/ks.yaml
   - ./patchmon/ks.yaml
+  - ./vaultwarden/ks.yaml
