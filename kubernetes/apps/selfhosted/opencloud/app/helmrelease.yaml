@@ -32,12 +32,12 @@ spec:
               - |
                 if [ -f /etc/opencloud/opencloud.yaml ]; then
                   echo "Config exists, checking for upgrades..."
-                  opencloud init --diff --insecure=true
-                  if [ -f /etc/opencloud/opencloud.config.patch ]; then
+                  rm -f /etc/opencloud/opencloud.config.patch
+                  if opencloud init --diff --insecure=true 2>&1 | grep -q "no changes"; then
+                    echo "No config changes needed."
+                  else
                     echo "Applying config patch..."
                     patch --no-backup-if-mismatch /etc/opencloud/opencloud.yaml /etc/opencloud/opencloud.config.patch
-                  else
-                    echo "No config changes needed."
                   fi
                 else
                   echo "No config found, initializing..."
