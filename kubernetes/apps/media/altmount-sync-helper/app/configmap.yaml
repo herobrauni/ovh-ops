@@ -64,21 +64,21 @@ data:
     plex_refresh() {
         [ -z "$PLEX_TOKEN" ] && { log "WARN: PLEX_TOKEN not set — skipping Plex refresh"; return 0; }
 
-        local sections
-        sections=$(wget -qO- "${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}" 2>/dev/null) || {
+        local response
+        response=$(wget -qO- "${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}" 2>/dev/null) || {
             log "WARN: Failed to reach Plex at ${PLEX_URL}"
             return 0
         }
-        [ -z "$sections" ] && { log "WARN: Empty response from Plex"; return 0; }
+        [ -z "$response" ] && { log "WARN: Empty response from Plex"; return 0; }
 
-        # Validate we got a real Plex response (not an error page)
-        if ! echo "$sections" | grep -q 'MediaContainer'; then
-            log "WARN: Plex response doesn't look valid — check PLEX_URL and PLEX_TOKEN"
+        # Validate we got a real Plex response (not an error page or empty container)
+        if ! echo "$response" | grep -q 'MediaContainer' || echo "$response" | grep -q 'size="0"'; then
+            log "WARN: Plex response invalid — check PLEX_URL and PLEX_TOKEN"
             return 0
         fi
 
         local key
-        key=$(echo "$sections" | sed -n "s/.*key=\"\([0-9]*\)\".*title=\"${PLEX_LIBRARY}\".*/\1/p" | head -1)
+        key=$(echo "$response" | sed -n "s/.*key=\"\([0-9]*\)\".*title=\"${PLEX_LIBRARY}\".*/\1/p" | head -1)
 
         if [ -n "$key" ]; then
             wget -qO- "${PLEX_URL}/library/sections/${key}/refresh?X-Plex-Token=${PLEX_TOKEN}" >/dev/null 2>&1
@@ -97,7 +97,8 @@ data:
     # Validate Plex connectivity on startup
     if [ -n "$PLEX_TOKEN" ]; then
         log "Validating Plex connection..."
-        if wget -qO- "${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}" 2>/dev/null | grep -q 'MediaContainer'; then
+        response=$(wget -qO- "${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}" 2>/dev/null)
+        if echo "$response" | grep -q 'MediaContainer' && ! echo "$response" | grep -q 'size="0"'; then
             log "Plex connection OK"
         else
             log "WARN: Plex validation failed — check PLEX_URL (${PLEX_URL}) and PLEX_TOKEN"
