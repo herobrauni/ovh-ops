@@ -58,6 +58,43 @@ spec:
               capabilities:
                 drop:
                   - ALL
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -f /tmp/heartbeat && test $(($(date +%s) - $(date -r /tmp/heartbeat +%s))) -lt 180
+                  initialDelaySeconds: 60
+                  periodSeconds: 30
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -d /aio/symlinks/complete/other && test -d /aio/symlinks/other
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                  failureThreshold: 3
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -f /tmp/heartbeat
+                  initialDelaySeconds: 2
+                  periodSeconds: 2
+                  failureThreshold: 30
     persistence:
       symlinks:
         existingClaim: symlinks

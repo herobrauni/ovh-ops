@@ -38,33 +38,44 @@ data:
 
         if [ -d "$src" ]; then
             mkdir -p "$dest"
-            cp -r "$src/." "$dest/"
+            cp -r "$src/." "$dest/" || {
+                log "ERROR: Failed to copy directory: $name"
+                rm -rf "$dest" 2>/dev/null || true
+                return 1
+            }
         else
-            cp -r "$src" "$dest"
+            cp -r "$src" "$dest" || {
+                log "ERROR: Failed to copy file: $name"
+                rm -rf "$dest" 2>/dev/null || true
+                return 1
+            }
         fi
 
-        if [ $? -eq 0 ]; then
-            log "Copied: $name -> $dest"
+        log "Copied: $name -> $dest"
 
-            # Remove from altmount queue by deleting the source
-            rm -rf "$src"
-            log "Removed from altmount queue: $name"
+        # Remove from altmount queue by deleting the source
+        rm -rf "$src"
+        log "Removed from altmount queue: $name"
 
-            mark_processed "$name"
-            return 0
-        else
-            log "ERROR: Failed to copy: $name"
-            rm -rf "$dest" 2>/dev/null
-            return 1
-        fi
+        mark_processed "$name"
+        return 0
     }
 
     plex_refresh() {
-        [ -z "$PLEX_TOKEN" ] && return 0
+        [ -z "$PLEX_TOKEN" ] && { log "WARN: PLEX_TOKEN not set — skipping Plex refresh"; return 0; }
 
         local sections
-        sections=$(wget -qO- "${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}" 2>/dev/null) || return 0
-        [ -z "$sections" ] && return 0
+        sections=$(wget -qO- "${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}" 2>/dev/null) || {
+            log "WARN: Failed to reach Plex at ${PLEX_URL}"
+            return 0
+        }
+        [ -z "$sections" ] && { log "WARN: Empty response from Plex"; return 0; }
+
+        # Validate we got a real Plex response (not an error page)
+        if ! echo "$sections" | grep -q 'MediaContainer'; then
+            log "WARN: Plex response doesn't look valid — check PLEX_URL and PLEX_TOKEN"
+            return 0
+        fi
 
         local key
         key=$(echo "$sections" | sed -n "s/.*key=\"\([0-9]*\)\".*title=\"${PLEX_LIBRARY}\".*/\1/p" | head -1)
@@ -83,7 +94,20 @@ data:
     log "Dest:   ${DEST_DIR}"
     log "Poll:   ${POLL_INTERVAL}s"
 
+    # Validate Plex connectivity on startup
+    if [ -n "$PLEX_TOKEN" ]; then
+        log "Validating Plex connection..."
+        if wget -qO- "${PLEX_URL}/library/sections?X-Plex-Token=${PLEX_TOKEN}" 2>/dev/null | grep -q 'MediaContainer'; then
+            log "Plex connection OK"
+        else
+            log "WARN: Plex validation failed — check PLEX_URL (${PLEX_URL}) and PLEX_TOKEN"
+        fi
+    else
+        log "WARN: PLEX_TOKEN is empty — Plex refresh disabled"
+    fi
+
     while true; do
+        touch /tmp/heartbeat
         processed_any=false
 
         if [ -d "$WATCH_DIR" ]; then
