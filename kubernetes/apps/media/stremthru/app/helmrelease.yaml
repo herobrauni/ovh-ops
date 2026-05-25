@@ -40,7 +40,7 @@ spec:
           app:
             image:
               repository: docker.io/muniftanjim/stremthru
-              tag: 0.101.6@sha256:edb37a92d17d6b63a6fa553c2fa7d216479f0c2245dbf34ddc23af597651c0e2
+              tag: 0.101.7@sha256:2c81b7d3d3083b8fb1f85c5734c56cc2b924b44e149f033102f7e000f8ea1fa6
             env:
               STREMTHRU_BASE_URL: https://stremthru.480p.com
               STREMTHRU_PORT: &targetPort 8080
