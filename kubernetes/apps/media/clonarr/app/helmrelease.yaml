@@ -23,7 +23,7 @@ spec:
           app:
             image:
               repository: ghcr.io/prophetse7en/clonarr
-              tag: v2.5.9@sha256:7541c15ad2400553e03ed2897ac79affb20bb622e9d2d8c296581c8ff0bd729b
+              tag: v3.0.0@sha256:8d53bf74aa9c59ee1f7b2bab99d69e678f3a7c891c302d84723cef50e87ec5ee
             env:
               PORT: &port 6060
               PUID: "1000"
