@@ -20,7 +20,7 @@ spec:
           mariadb:
             image:
               repository: docker.io/library/mariadb
-              tag: 12.2.2@sha256:350261292d0129fd4b24f537dcf05ecd3ebe34d39d5b592af551f38310e7a167
+              tag: 12.2.2@sha256:6a4c4bbf0447c2247801309513fcc0dd17c3f35390368139ce419387fdd1144d
             args:
               - --character-set-server=utf8mb4
               - --collation-server=utf8mb4_unicode_ci
@@ -49,7 +49,7 @@ spec:
           wait-for-mariadb:
             image:
               repository: docker.io/library/mariadb
-              tag: 12.2.2@sha256:350261292d0129fd4b24f537dcf05ecd3ebe34d39d5b592af551f38310e7a167
+              tag: 12.2.2@sha256:6a4c4bbf0447c2247801309513fcc0dd17c3f35390368139ce419387fdd1144d
             command:
               - /bin/sh
               - -c
