@@ -7,7 +7,7 @@ metadata:
 spec:
   dependsOn:
     - name: kube-prometheus-stack
-    - name: bitwarden
+    - name: infisical
       namespace: external-secrets
   interval: 1h
   path: ./kubernetes/apps/observability/proxmox-exporter/app

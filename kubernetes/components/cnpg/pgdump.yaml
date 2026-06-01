@@ -49,7 +49,7 @@ metadata:
 spec:
   secretStoreRef:
     kind: ClusterSecretStore
-    name: bitwarden
+    name: infisical
   target:
     name: "${APP}-pgdump-volsync-secret"
     template:
@@ -61,13 +61,32 @@ spec:
         SFTP_USERNAME: "{{ .SFTP_USERNAME }}"
         SFTP_PATH: "{{ .SFTP_PATH }}"
         SFTP_KEY_FILE: "{{ .SFTP_KEY_FILE }}"
-        SFTP_KNOWN_HOSTS_DATA: |-
-          {{ .SFTP_KNOWN_HOSTS_DATA | replace "\\n" "\n" | replace " [" "\n[" }}
-  dataFrom:
-    - extract:
-        key: volsync-template
-    - extract:
-        key: kopia_known_hosts
+        SFTP_KNOWN_HOSTS_DATA: "{{ .SFTP_KNOWN_HOSTS_DATA }}"
+  data:
+    - secretKey: KOPIA_REPOSITORY
+      remoteRef:
+        key: /volsync-template/KOPIA_REPOSITORY
+    - secretKey: KOPIA_PASSWORD
+      remoteRef:
+        key: /volsync-template/KOPIA_PASSWORD
+    - secretKey: SFTP_HOST
+      remoteRef:
+        key: /volsync-template/SFTP_HOST
+    - secretKey: SFTP_PORT
+      remoteRef:
+        key: /volsync-template/SFTP_PORT
+    - secretKey: SFTP_USERNAME
+      remoteRef:
+        key: /volsync-template/SFTP_USERNAME
+    - secretKey: SFTP_PATH
+      remoteRef:
+        key: /volsync-template/SFTP_PATH
+    - secretKey: SFTP_KEY_FILE
+      remoteRef:
+        key: /volsync-template/SFTP_KEY_FILE
+    - secretKey: SFTP_KNOWN_HOSTS_DATA
+      remoteRef:
+        key: /kopia_known_hosts/SFTP_KNOWN_HOSTS_DATA
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/volsync.backube/replicationsource_v1alpha1.json
 apiVersion: volsync.backube/v1alpha1

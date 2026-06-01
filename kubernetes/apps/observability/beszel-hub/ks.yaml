@@ -16,7 +16,7 @@ spec:
       namespace: rook-ceph
     - name: volsync
       namespace: volsync-system
-    - name: bitwarden
+    - name: infisical
       namespace: external-secrets
     - name: envoy-gateway-riki-boo
       namespace: network

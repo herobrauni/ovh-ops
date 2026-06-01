@@ -15,7 +15,7 @@ spec:
   dependsOn:
     - name: cloudnative-pg-cluster
       namespace: dbms
-    - name: bitwarden
+    - name: infisical
       namespace: external-secrets
     - name: openebs
       namespace: openebs-system
@@ -28,6 +28,7 @@ spec:
   postBuild:
     substitute:
       APP: *app
+      CNPG_SECRET_FOLDER: JELLYFIN
       CNPG_NAME: postgres18
       VOLSYNC_CAPACITY: 25Gi
       VOLSYNC_CACHE_CAPACITY: 25Gi

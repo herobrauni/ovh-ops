@@ -15,8 +15,6 @@ spec:
   dependsOn:
     - name: cloudnative-pg-cluster
       namespace: dbms
-    - name: bitwarden
-      namespace: external-secrets
     - name: infisical
       namespace: external-secrets
     - name: rook-ceph-cluster
@@ -32,6 +30,7 @@ spec:
   postBuild:
     substitute:
       APP: *app
+      CNPG_SECRET_FOLDER: SONARR
       CNPG_NAME: postgres18
       VOLSYNC_CAPACITY: 5Gi
   prune: true
