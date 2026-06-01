@@ -1,0 +1,47 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vaultwarden
+  annotations:
+    gatus.home-operations.com/endpoint: |-
+      conditions: ["[STATUS] == 200"]
+      url: https://vaultwarden.brauni.dev
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: Selfhosted
+    gethomepage.dev/name: Vaultwarden
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=vaultwarden
+    gethomepage.dev/icon: si-bitwarden-#175DDC
+spec:
+  hostnames:
+    - vaultwarden.brauni.dev
+  parentRefs:
+    - name: envoy-brauni-dev-public
+      namespace: network
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: vaultwarden
+          port: 80
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vaultwarden-admin
+spec:
+  hostnames:
+    - vaultwarden.brauni.dev
+  parentRefs:
+    - name: envoy-brauni-dev-public
+      namespace: network
+      sectionName: https
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /admin
+      backendRefs:
+        - name: vaultwarden
+          port: 80
