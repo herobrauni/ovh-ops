@@ -57,8 +57,66 @@ The repo is YAML-heavy and declarative.
 - When adding or changing apps/features in this repo, use those two repos as primary structural and naming references unless this repository has an explicit conflicting requirement.
 - Common expected adaptations from those upstream templates in this repo:
     - URLs and domains.
-    - Password/secret source: use Bitwarden resources instead of 1Password equivalents.
+    - Password/secret source: use Infisical ExternalSecrets instead of 1Password/Bitwarden equivalents.
     - Envoy names.
+
+## Secrets Management with Infisical
+This repo uses Infisical (EU region) as the central secret store, accessed via external-secrets-operator.
+
+### ClusterSecretStore
+- **Name:** `infisical`
+- **Location:** `kubernetes/apps/external-secrets/external-secrets/infisical/clustersecretstore.yaml`
+- **Host:** `https://eu.infisical.com`
+- **Project:** `ovh-ops-u1ua`, environment `prod`
+- **Auth:** Universal Auth credentials bootstrapped from `bootstrap/secrets.sops.yaml`
+
+### Secret Path Convention
+Secrets are organized by app folder: `/<app-name>/SECRET_NAME`. Common paths:
+- `/authentik/` — Authentik identity provider
+- `/cloudnative-pg/` — Per-app PostgreSQL credentials (for example `/cloudnative-pg/sonarr_postgres_username`)
+- `/servarr/` — Shared API key for Sonarr/Radarr/Prowlarr
+- `/volsync-template/` — Kopia backup repository credentials
+- `/rclone/` — Rclone remote mount credentials
+- `/<app>/` — App-specific secrets
+
+### ExternalSecret Pattern
+When adding an app that needs secrets, create `externalsecret.yaml` following this template:
+
+```yaml
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/external-secrets.io/externalsecret_v1.json
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: <app>
+spec:
+  refreshInterval: 12h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: infisical
+  target:
+    name: <app>-secret
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      data:
+        ENV_VAR_NAME: "{{ .SECRET_KEY }}"
+  data:
+    - secretKey: SECRET_KEY
+      remoteRef:
+        key: /<app>/SECRET_NAME
+```
+
+### Flux Dependency
+Apps using Infisical secrets must declare the dependency in their `ks.yaml`:
+```yaml
+spec:
+  dependsOn:
+    - name: infisical
+```
+
+### Reusable Components
+The shared `kubernetes/components/cnpg` component uses variable substitution (`${APP}`) to pull per-app PostgreSQL credentials from `/cloudnative-pg/${APP}_postgres_username` and `/cloudnative-pg/${APP}_postgres_password`.
 
 ## Repository Findings
 - Record durable repo-specific implementation findings in this file when they are discovered during work, especially when they are not obvious from the existing high-level structure. Future agents should continue updating this section with short, actionable notes.
@@ -77,7 +135,6 @@ The repo is YAML-heavy and declarative.
 - Ceph `osd.1` was manually reweighted to `0.96002` on 2026-04-26 with `ceph osd reweight-by-utilization 105 0.02 2 --no-increasing` to relieve nearfull pressure while old CNPG S3 backups age out. Recheck after backup cleanup and normalize `osd.1` back toward `1.00000` if utilization allows.
 - Do not configure CoreDNS to answer `AAAA` queries with `NXDOMAIN` globally. Musl/libpq clients (for example `ghcr.io/home-operations/postgres-init`) can treat the failed IPv6 lookup as full hostname resolution failure and stay stuck waiting for PostgreSQL. If suppressing IPv6 answers is required, return empty `NOERROR` instead.
 - Niks3 uses an in-cluster Rook Ceph ObjectBucketClaim plus `NIKS3_ENABLE_READ_PROXY=true` for public cache reads at `niks3.brauni.dev`; its write path still returns presigned URLs for `rook-ceph-rgw-proxmox-s3.rook-ceph.svc:80`, so `niks3 push` clients must run where that endpoint is reachable or the S3 endpoint must be changed/exposed. While using `ghcr.io/mic92/niks3:v1.4.0`, keep the Gateway route's exact-root redirect to `/index.html`; upstream added the same read-proxy-aware root behavior after v1.4.0.
-- The Bitwarden SDK server TLS setup uses a two-layer cert-manager chain: a `selfSigned` bootstrap ClusterIssuer issues a CA Certificate (`isCA: true`) in `cert-manager` namespace, then a `CA` ClusterIssuer reads that CA to issue the server Certificate in `external-secrets` namespace. Both the CA and server cert are stored in secrets named `bitwarden-tls-certs` in their respective namespaces. When cert-manager renews the bootstrap CA, it updates the CA in `cert-manager/bitwarden-tls-certs` but does **not** automatically update the `ca.crt` copy in `external-secrets/bitwarden-tls-certs`. If the CA expires while the server cert is still valid, external-secrets breaks with expired-CA errors. The fix is to delete both `bitwarden-tls-certs` secrets and let cert-manager regenerate the full chain, then restart `bitwarden-sdk-server` and `external-secrets` deployments to pick up the new certs.
 
 ## Testing Guidelines
 Primary validation is CI-based:
