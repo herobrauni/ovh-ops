@@ -21,6 +21,9 @@ spec:
     - group: gateway.envoyproxy.io
       kind: SecurityPolicy
       namespace: volsync-system
+    - group: gateway.envoyproxy.io
+      kind: SecurityPolicy
+      namespace: selfhosted
   to:
     - group: ""
       kind: Service
