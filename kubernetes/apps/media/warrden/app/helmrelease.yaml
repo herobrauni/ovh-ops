@@ -15,11 +15,6 @@ spec:
     defaultPodOptions:
       automountServiceAccountToken: false
       enableServiceLinks: false
-      securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-        runAsNonRoot: true
     controllers:
       warrden:
         annotations:
@@ -48,11 +43,9 @@ spec:
               limits:
                 memory: 256Mi
             securityContext:
-              allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
               capabilities:
                 drop:
-                  - ALL
+                  - NET_RAW
     persistence:
       data:
         existingClaim: warrden
