@@ -18,7 +18,7 @@ spec:
       namespace: dbms
     - name: dragonfly
       namespace: dbms
-    - name: bitwarden
+    - name: infisical
       namespace: external-secrets
     - name: rook-ceph-cluster
       namespace: rook-ceph
@@ -29,6 +29,7 @@ spec:
   postBuild:
     substitute:
       APP: *app
+      CNPG_SECRET_FOLDER: PAPERLESS
       VOLSYNC_CAPACITY: 8Gi
   prune: true
   sourceRef:

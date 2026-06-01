@@ -14,7 +14,7 @@ spec:
   dependsOn:
     - name: cloudnative-pg-cluster
       namespace: dbms
-    - name: bitwarden
+    - name: infisical
       namespace: external-secrets
     - name: rook-ceph-cluster
       namespace: rook-ceph
@@ -25,6 +25,7 @@ spec:
   postBuild:
     substitute:
       APP: *app
+      CNPG_SECRET_FOLDER: ATUIN
   prune: true
   sourceRef:
     kind: GitRepository

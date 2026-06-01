@@ -25,7 +25,7 @@ spec:
     - name: actions-runner-controller
     - name: openebs
       namespace: openebs-system
-    - name: bitwarden
+    - name: infisical
       namespace: external-secrets
     - name: rook-ceph-cluster
       namespace: rook-ceph
