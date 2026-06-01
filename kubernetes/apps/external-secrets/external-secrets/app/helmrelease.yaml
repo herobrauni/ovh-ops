@@ -27,5 +27,3 @@ spec:
             matchLabels:
               app.kubernetes.io/name: external-secrets-webhook
               app.kubernetes.io/instance: external-secrets
-    bitwarden-sdk-server:
-      enabled: true

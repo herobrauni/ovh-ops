@@ -78,17 +78,6 @@ releases:
         events:
           - postsync
         showlogs: true
-      - # Apply Bitwarden Certificate
-        command: kubectl
-        args:
-          - apply
-          - --namespace=external-secrets
-          - --server-side
-          - --field-manager=kustomize-controller
-          - --filename=../../kubernetes/apps/external-secrets/external-secrets/app/bitwarden-certificate.yaml
-        events:
-          - postsync
-        showlogs: true
     needs:
       - kube-system/spegel
 
@@ -107,15 +96,7 @@ releases:
         events:
           - postsync
         showlogs: true
-      - # Wait for Bitwarden certificate to be ready
-        command: bash
-        args:
-          - -c
-          - until kubectl get certificate bitwarden-tls-certs -n external-secrets -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' | grep -q "True"; do sleep 5; done
-        events:
-          - postsync
-        showlogs: true
-      - # Apply cluster secret store
+      - # Apply Infisical cluster secret store
         events:
           - postsync
         command: kubectl
@@ -125,7 +106,7 @@ releases:
           - --server-side
           - --field-manager=kustomize-controller
           - --filename
-          - ../../kubernetes/apps/external-secrets/external-secrets/bitwarden/clustersecretstore.yaml
+          - ../../kubernetes/apps/external-secrets/external-secrets/infisical/clustersecretstore.yaml
           - --wait=true
         showlogs: true
     needs: ["cert-manager/cert-manager"]
