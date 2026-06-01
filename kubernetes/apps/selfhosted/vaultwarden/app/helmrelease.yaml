@@ -78,28 +78,6 @@ spec:
           http:
             port: *port
 
-    route:
-      app:
-        annotations:
-          gatus.home-operations.com/endpoint: |-
-            conditions: ["[STATUS] == 200"]
-            url: https://vaultwarden.brauni.dev
-          gethomepage.dev/enabled: "true"
-          gethomepage.dev/group: Selfhosted
-          gethomepage.dev/name: Vaultwarden
-          gethomepage.dev/pod-selector: app.kubernetes.io/name=vaultwarden
-          gethomepage.dev/icon: si-bitwarden-#175DDC
-        hostnames:
-          - vaultwarden.brauni.dev
-        parentRefs:
-          - name: envoy-brauni-dev-public
-            namespace: network
-            sectionName: https
-        rules:
-          - backendRefs:
-              - name: *app
-                port: *port
-
     persistence:
       data:
         existingClaim: *app
