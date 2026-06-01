@@ -27,7 +27,7 @@ spec:
             env:
               PUID: "1000"
               PGID: "1000"
-              CONFIG_PATH: /app/config.yaml
+              CONFIG_PATH: /config/config.yaml
               DATABASE_PATH: /app/data/warrden.db
             probes:
               liveness:
@@ -55,6 +55,6 @@ spec:
         type: secret
         name: warrden-secret
         globalMounts:
-          - path: /app/config.yaml
+          - path: /config/config.yaml
             subPath: config.yaml
             readOnly: true
