@@ -31,7 +31,6 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      CNPG_SECRET_FOLDER: AUTHENTIK
       CNPG_NAME: postgres18
       VOLSYNC_CAPACITY: 5Gi
       VOLSYNC_ACCESSMODES: ReadWriteMany

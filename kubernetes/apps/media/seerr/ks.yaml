@@ -26,7 +26,6 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      CNPG_SECRET_FOLDER: SEERR
       CNPG_NAME: postgres18
       VOLSYNC_CAPACITY: 5Gi
   prune: true

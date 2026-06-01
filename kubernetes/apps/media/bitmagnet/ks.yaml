@@ -28,7 +28,6 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      CNPG_SECRET_FOLDER: BITMAGNET
       CNPG_NAME: postgres18
       VOLSYNC_CAPACITY: 10Gi
   prune: true
