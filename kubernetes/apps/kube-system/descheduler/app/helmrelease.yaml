@@ -22,9 +22,6 @@ spec:
           pluginConfig:
             - name: DefaultEvictor
               args:
-                namespaces:
-                  exclude:
-                    - kube-system
                 podProtections:
                   defaultDisabled:
                     - FailedBarePods
@@ -34,17 +31,17 @@ spec:
               args:
                 metricsUtilization:
                   source: KubernetesMetrics
-                namespaces:
+                evictableNamespaces:
                   exclude:
                     - kube-system
                 thresholds:
-                  cpu: 40
-                  memory: 40
-                  pods: 40
+                  cpu: 20
+                  memory: 20
+                  pods: 20
                 targetThresholds:
-                  cpu: 75
-                  memory: 75
-                  pods: 75
+                  cpu: 50
+                  memory: 50
+                  pods: 50
             - name: RemoveFailedPods
               args:
                 reasons:
