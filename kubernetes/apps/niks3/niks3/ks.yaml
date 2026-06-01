@@ -23,7 +23,6 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      CNPG_SECRET_FOLDER: NIKS3
   prune: true
   sourceRef:
     kind: GitRepository

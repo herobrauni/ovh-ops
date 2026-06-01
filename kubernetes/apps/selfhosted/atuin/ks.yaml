@@ -25,7 +25,6 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      CNPG_SECRET_FOLDER: ATUIN
   prune: true
   sourceRef:
     kind: GitRepository

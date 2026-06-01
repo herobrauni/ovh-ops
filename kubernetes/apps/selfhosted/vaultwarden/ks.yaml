@@ -26,7 +26,6 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      CNPG_SECRET_FOLDER: VAULTWARDEN
       VOLSYNC_CAPACITY: 10Gi
   prune: true
   sourceRef:

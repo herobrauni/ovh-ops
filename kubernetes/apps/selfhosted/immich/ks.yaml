@@ -31,7 +31,6 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      CNPG_SECRET_FOLDER: IMMICH
       CNPG_NAME: immich
       VOLSYNC_CAPACITY: 100Gi
   prune: true
