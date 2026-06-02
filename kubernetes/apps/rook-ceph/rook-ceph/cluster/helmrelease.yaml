@@ -28,9 +28,10 @@ spec:
     keepHistory: false
   values:
     operatorNamespace: rook-ceph
+    cephImage:
+      repository: quay.io/ceph/ceph
+      tag: v20.2.1@sha256:0bae386bc859cd9a05b804d1ca16cca8853a64f90809044e2bf43095419dc337
     cephClusterSpec:
-      cephVersion:
-        image: quay.io/ceph/ceph:v20.2.1@sha256:0bae386bc859cd9a05b804d1ca16cca8853a64f90809044e2bf43095419dc337
       external:
         enable: true
       crashCollector:
