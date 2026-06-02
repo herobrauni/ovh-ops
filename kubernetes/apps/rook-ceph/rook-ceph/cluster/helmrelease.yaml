@@ -29,6 +29,8 @@ spec:
   values:
     operatorNamespace: rook-ceph
     cephClusterSpec:
+      cephVersion:                             # <-- ADD THIS
+        image: quay.io/ceph/ceph:v20.2.1       # <-- ADD THIS
       external:
         enable: true
       crashCollector:
