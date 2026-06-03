@@ -1,0 +1,23 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/gateway.networking.k8s.io/httproute_v1.json
+# Separate HTTPRoute for /api/sabnzbd — intentionally NOT targeted by any SecurityPolicy
+# so that sabnzbd API requests bypass TinyAuth.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: altmount-480p-com-sabnzbd
+spec:
+  hostnames:
+    - altmount.480p.com
+  parentRefs:
+    - name: envoy-480p-com-public
+      namespace: network
+      sectionName: https
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api/sabnzbd
+      backendRefs:
+        - name: altmount
+          port: 8080
