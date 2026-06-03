@@ -33,13 +33,7 @@ spec:
       rbd:
         enabled: true
         name: rook-ceph.rbd.csi.ceph.com
-        clusterName: rook-ceph
-        fsGroupPolicy: File
-        imageSet:
-          name: rook-csi-operator-image-set-configmap
         controllerPlugin:
-          replicas: 2
-          priorityClassName: system-cluster-critical
           resources:
             attacher:
               limits:
@@ -77,7 +71,6 @@ spec:
                 cpu: 100m
                 memory: 128Mi
         nodePlugin:
-          priorityClassName: system-node-critical
           resources:
             plugin:
               limits:
@@ -96,17 +89,10 @@ spec:
       cephfs:
         enabled: true
         name: rook-ceph.cephfs.csi.ceph.com
-        clusterName: rook-ceph
-        fsGroupPolicy: File
         snapshotPolicy: volumeGroupSnapshot
-        cephFsClientType: kernel
         kernelMountOptions:
           ms_mode: prefer-crc
-        imageSet:
-          name: rook-csi-operator-image-set-configmap
         controllerPlugin:
-          replicas: 2
-          priorityClassName: system-cluster-critical
           resources:
             attacher:
               limits:
@@ -139,7 +125,6 @@ spec:
                 cpu: 100m
                 memory: 128Mi
         nodePlugin:
-          priorityClassName: system-node-critical
           resources:
             plugin:
               limits:
