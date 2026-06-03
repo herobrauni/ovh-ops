@@ -1,0 +1,161 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: ceph-csi-drivers
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: ceph-csi-drivers
+  interval: 1h
+  values:
+    # OperatorConfig defaults (inherited by all drivers)
+    operatorConfig:
+      driverSpecDefaults:
+        clusterName: rook-ceph
+        cephFsClientType: kernel
+        fsGroupPolicy: File
+        imageSet:
+          name: rook-csi-operator-image-set-configmap
+        controllerPlugin:
+          hostNetwork: true
+          replicas: 2
+          priorityClassName: system-cluster-critical
+          deploymentStrategy:
+            type: Recreate
+        nodePlugin:
+          priorityClassName: system-node-critical
+          kubeletDirPath: /var/lib/kubelet
+
+    drivers:
+      # RBD driver
+      rbd:
+        enabled: true
+        name: rook-ceph.rbd.csi.ceph.com
+        clusterName: rook-ceph
+        fsGroupPolicy: File
+        imageSet:
+          name: rook-csi-operator-image-set-configmap
+        controllerPlugin:
+          replicas: 2
+          priorityClassName: system-cluster-critical
+          resources:
+            attacher:
+              limits:
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+            omapGenerator:
+              limits:
+                memory: 1Gi
+              requests:
+                cpu: 250m
+                memory: 512Mi
+            plugin:
+              limits:
+                memory: 1Gi
+              requests:
+                memory: 512Mi
+            provisioner:
+              limits:
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+            resizer:
+              limits:
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+            snapshotter:
+              limits:
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+        nodePlugin:
+          priorityClassName: system-node-critical
+          resources:
+            plugin:
+              limits:
+                memory: 1Gi
+              requests:
+                cpu: 250m
+                memory: 512Mi
+            registrar:
+              limits:
+                memory: 256Mi
+              requests:
+                cpu: 50m
+                memory: 128Mi
+
+      # CephFS driver
+      cephfs:
+        enabled: true
+        name: rook-ceph.cephfs.csi.ceph.com
+        clusterName: rook-ceph
+        fsGroupPolicy: File
+        snapshotPolicy: volumeGroupSnapshot
+        cephFsClientType: kernel
+        kernelMountOptions:
+          ms_mode: prefer-crc
+        imageSet:
+          name: rook-csi-operator-image-set-configmap
+        controllerPlugin:
+          replicas: 2
+          priorityClassName: system-cluster-critical
+          resources:
+            attacher:
+              limits:
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+            plugin:
+              limits:
+                memory: 1Gi
+              requests:
+                cpu: 250m
+                memory: 512Mi
+            provisioner:
+              limits:
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+            resizer:
+              limits:
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+            snapshotter:
+              limits:
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+        nodePlugin:
+          priorityClassName: system-node-critical
+          resources:
+            plugin:
+              limits:
+                memory: 1Gi
+              requests:
+                cpu: 250m
+                memory: 512Mi
+            registrar:
+              limits:
+                memory: 256Mi
+              requests:
+                cpu: 50m
+                memory: 128Mi
+
+      # Disable unused drivers
+      nfs:
+        enabled: false
+      nvmeof:
+        enabled: false
