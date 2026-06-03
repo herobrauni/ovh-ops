@@ -35,12 +35,15 @@ spec:
         name: rook-ceph.rbd.csi.ceph.com
         controllerPlugin:
           resources:
+            addons: {}
             attacher:
               limits:
                 memory: 256Mi
               requests:
                 cpu: 100m
                 memory: 128Mi
+            liveness: {}
+            logRotator: {}
             omapGenerator:
               limits:
                 memory: 1Gi
@@ -72,6 +75,9 @@ spec:
                 memory: 128Mi
         nodePlugin:
           resources:
+            addons: {}
+            liveness: {}
+            logRotator: {}
             plugin:
               limits:
                 memory: 1Gi
@@ -94,12 +100,15 @@ spec:
           ms_mode: prefer-crc
         controllerPlugin:
           resources:
+            addons: {}
             attacher:
               limits:
                 memory: 256Mi
               requests:
                 cpu: 100m
                 memory: 128Mi
+            liveness: {}
+            logRotator: {}
             plugin:
               limits:
                 memory: 1Gi
@@ -126,6 +135,9 @@ spec:
                 memory: 128Mi
         nodePlugin:
           resources:
+            addons: {}
+            liveness: {}
+            logRotator: {}
             plugin:
               limits:
                 memory: 1Gi
