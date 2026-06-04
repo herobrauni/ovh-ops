@@ -37,7 +37,7 @@ spec:
           app:
             image:
               repository: ghcr.io/realzombee/radarr
-              tag: 6.5.1.2021@sha256:ee30d8d6bb7a089da99e6ad2ef4c672b93b06510dfb3b4d63c03b03f847a6bfe
+              tag: 6.5.1.2032@sha256:7bb4717312a0ede252af10a9bfc12aa6005c71d3352482f552193215fee44a5b
             env:
               PUID: "1000"
               PGID: "1000"
