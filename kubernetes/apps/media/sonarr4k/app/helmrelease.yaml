@@ -37,7 +37,7 @@ spec:
           app:
             image:
               repository: ghcr.io/realzombee/sonarr
-              tag: 4.1.1.821@sha256:debeb444b005549ca76f105c44593e54492b49527d092e6bf6212661c1612ee0
+              tag: 4.1.1.824@sha256:41496344eaba38f679f238a1bb7a2aa79ea2c627e20eec8716582cc518a89554
             env:
               PUID: "1000"
               PGID: "1000"
