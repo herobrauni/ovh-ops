@@ -35,7 +35,6 @@ spec:
               - /bin/sh
               - /scripts/sync.sh
             env:
-              TZ: Europe/Berlin
               WATCH_DIR: /aio/remote/nzbdav/completed-symlinks/other
               DEST_DIR: /aio/symlinks/other
               POLL_INTERVAL: "60"
