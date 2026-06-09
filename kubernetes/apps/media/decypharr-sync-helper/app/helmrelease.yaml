@@ -32,7 +32,6 @@ spec:
               repository: ghcr.io/herobrauni/decypharr-sync-helper
               tag: latest@sha256:00ba74e49cadd74dbe74dae79d67b211695668bbeb5ff1278d3a8d41e2064717
             env:
-              TZ: Europe/Berlin
               QB_SYNC_BASE_URL: "http://decypharr.media.svc.cluster.local:8282"
               QB_SYNC_CATEGORY: "other"
               QB_SYNC_DEST_PATH: "/aio/symlinks/other"

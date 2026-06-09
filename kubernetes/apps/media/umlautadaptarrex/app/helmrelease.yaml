@@ -27,7 +27,6 @@ spec:
               repository: lexfi/umlautadaptarrex
               tag: 1.2.3@sha256:706d768d551c48e978bdcde6790f811248c2bf01929f711e2af8b3d81039da77
             env:
-              TZ: Europe/Berlin
               PUID: "1000"
               PGID: "1000"
               LOG_LEVEL: info
