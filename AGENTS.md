@@ -135,6 +135,7 @@ The shared `kubernetes/components/cnpg` component uses variable substitution (`$
 - Ceph `osd.1` was manually reweighted to `0.96002` on 2026-04-26 with `ceph osd reweight-by-utilization 105 0.02 2 --no-increasing` to relieve nearfull pressure while old CNPG S3 backups age out. Recheck after backup cleanup and normalize `osd.1` back toward `1.00000` if utilization allows.
 - Do not configure CoreDNS to answer `AAAA` queries with `NXDOMAIN` globally. Musl/libpq clients (for example `ghcr.io/home-operations/postgres-init`) can treat the failed IPv6 lookup as full hostname resolution failure and stay stuck waiting for PostgreSQL. If suppressing IPv6 answers is required, return empty `NOERROR` instead.
 - Niks3 uses an in-cluster Rook Ceph ObjectBucketClaim plus `NIKS3_ENABLE_READ_PROXY=true` for public cache reads at `niks3.brauni.dev`; its write path still returns presigned URLs for `rook-ceph-rgw-proxmox-s3.rook-ceph.svc:80`, so `niks3 push` clients must run where that endpoint is reachable or the S3 endpoint must be changed/exposed. While using `ghcr.io/mic92/niks3:v1.4.0`, keep the Gateway route's exact-root redirect to `/index.html`; upstream added the same read-proxy-aware root behavior after v1.4.0.
+- Do not set `TZ` env var manually in app manifests. k8tz (`kubernetes/apps/kube-system/k8tz/`) injects `TZ=Europe/Paris` cluster-wide via a mutating webhook. Manual `TZ` overrides create inconsistency and should be removed.
 
 ## Testing Guidelines
 Primary validation is CI-based:
