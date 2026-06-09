@@ -198,6 +198,10 @@ spec:
         existingClaim: jellyfin
       cache:
         existingClaim: jellyfin-cache
+        advancedMounts:
+          jellyfin:
+            app:
+              - path: /cache
       logs:
         type: emptyDir
       transcode:
