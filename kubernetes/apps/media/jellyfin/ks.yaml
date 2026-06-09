@@ -23,6 +23,8 @@ spec:
       namespace: rook-ceph
     - name: symlinks
       namespace: media
+    - name: volsync
+      namespace: volsync-system
   interval: 1h
   path: ./kubernetes/apps/media/jellyfin/app
   postBuild:
