@@ -20,10 +20,10 @@ spec:
 
         - alert: VolSyncVolumeOutOfSync
           expr: |-
-            volsync_volume_out_of_sync == 1
+            volsync_volume_out_of_sync{role="source"} == 1
           annotations:
             summary: >-
               {{ $labels.obj_namespace }}/{{ $labels.obj_name }} volume is out of sync
-          for: 5m
+          for: 15m
           labels:
             severity: critical
