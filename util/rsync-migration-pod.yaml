@@ -10,7 +10,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: rsyncd
-      image: alpine:3.23
+      image: alpine:3.24
       command:
         - /bin/sh
         - -c
