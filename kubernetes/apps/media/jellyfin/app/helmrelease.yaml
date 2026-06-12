@@ -38,7 +38,7 @@ spec:
           app:
             image:
               repository: ghcr.io/jpvenson/jellyfin.pgsql
-              tag: 10.11.8-1@sha256:1a0364bf1e8dff72df30bdbbb3efedfdf4a5b224790220ead0a4709f964fdf4e
+              tag: 10.11.11-1@sha256:67ffa31823880bd76b9dbe3cde57ed3d31e06f6a955d544247cd370c67d58306
             env:
               JELLYFIN_PublishedServerUrl: https://jellyfin.480p.com
               POSTGRES_HOST:
