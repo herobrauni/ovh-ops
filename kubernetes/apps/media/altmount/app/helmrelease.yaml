@@ -25,7 +25,7 @@ spec:
           app:
             image:
               repository: ghcr.io/drondeseries/altmount
-              tag: dev@sha256:1efd547eefe0f91dfc8af14027240a2a9e5d76142014f0e9364abd037fdd585b
+              tag: dev@sha256:6abccb09b8491250b1038cc9c7c5aa0dc9c0b38c006c98d12d9a8ed909573c3d
             env:
               PUID: "1000"
               PGID: "1000"
