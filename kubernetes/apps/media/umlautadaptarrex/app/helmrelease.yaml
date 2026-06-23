@@ -25,7 +25,7 @@ spec:
           app:
             image:
               repository: lexfi/umlautadaptarrex
-              tag: 1.2.3@sha256:706d768d551c48e978bdcde6790f811248c2bf01929f711e2af8b3d81039da77
+              tag: 1.2.4@sha256:29897b0157a3f0c8577e5a4b083368b1eeee119e5643e2e45b169752efe9db67
             env:
               PUID: "1000"
               PGID: "1000"
