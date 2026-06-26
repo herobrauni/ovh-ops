@@ -31,7 +31,7 @@ spec:
           app:
             image:
               repository: docker.io/kometateam/kometa
-              tag: v2.4.3@sha256:9ae79894a328d53b51789fcd5c502d22fc5f1d417dc2479ca819892f67e9eca3
+              tag: v2.4.4@sha256:90e53a6bdf9343d63702767f8f6d6da09902e7bd174850120ac50d39a0722ff1
             env:
               PMM_READ_ONLY_CONFIG: "true"
               PMM_TIME: "00:00,01:00,02:00,03:00,04:00,05:00,06:00,07:00,08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00,21:00,22:00,23:00"
