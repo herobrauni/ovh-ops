@@ -31,6 +31,8 @@ spec:
               tag: 12.3.2@sha256:628f228f0fd5913a220438693576b29b6fe4dc1fa0a1298c0e98579fae28635f
             args:
               - --collation-server=utf8mb4_general_ci
+              - --character-set-server=utf8mb4
+              - --collation-database=utf8mb4_general_ci
             env:
               MARIADB_DATABASE: booklore
               MARIADB_PASSWORD:
