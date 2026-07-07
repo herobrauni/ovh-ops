@@ -60,7 +60,7 @@ spec:
           app:
             image:
               repository: ghcr.io/herobrauni/my-idlers
-              tag: latest@sha256:d341c6d456b5c830271256822c2b5aad543d9c19e543b39352af985d6a564df7
+              tag: latest@sha256:1474d11bd2a615c59c4f8067e6f261ce16ff49a86f4f96778ff1ebca6a0a63ca
             env:
               DB_HOST: 127.0.0.1
             envFrom: *envFrom
