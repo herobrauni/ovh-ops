@@ -106,6 +106,10 @@ spec:
                 enabled: true
               startup:
                 enabled: true
+                spec:
+                  # Allow ample time to download/load ONNX models on a cold cache
+                  failureThreshold: 30
+                  periodSeconds: 10
             resources:
               requests:
                 cpu: 100m
