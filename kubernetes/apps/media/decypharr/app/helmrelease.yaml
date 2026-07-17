@@ -28,7 +28,7 @@ spec:
           setup-user:
             image:
               repository: cy01/blackhole
-              tag: v2.3@sha256:c4518e0e593d4363e78af11647a6b40623f14f228bf5142444011aeece4e39aa
+              tag: v2.4@sha256:21cbef95c9fd2625573d3e364b608d8ba912f58dd36d96b38c0c25c57064f098
             command:
               - /bin/sh
               - -ec
@@ -47,7 +47,7 @@ spec:
           app:
             image:
               repository: cy01/blackhole
-              tag: v2.3@sha256:c4518e0e593d4363e78af11647a6b40623f14f228bf5142444011aeece4e39aa
+              tag: v2.4@sha256:21cbef95c9fd2625573d3e364b608d8ba912f58dd36d96b38c0c25c57064f098
             probes:
               liveness:
                 enabled: true
