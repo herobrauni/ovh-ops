@@ -1,0 +1,51 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-skeleton
+data:
+  .stignore: |
+    .git
+    .trash
+    .stfolder
+    .stversions
+    .obsidian/workspace*.json
+    *.sync-conflict-*
+  .gitignore: |
+    .stfolder/
+    .stversions/
+    .obsidian/workspace*
+  README.md: |
+    # Obsidian vault
+
+    This vault is plain Markdown, synced with Syncthing and snapshotted hourly
+    with local `git` commits (see the `vault-git` CronJob). There is no remote
+    git push — the git history here is a local undo mechanism only.
+
+    ## Agent / human contract
+
+    - The vault is human-owned prose. The agent (hermes) may create new notes,
+      but for existing notes it only ever touches:
+      - the YAML frontmatter block at the top of a note, and
+      - a single `## Agent notes` section.
+    - The agent never rewrites, reformats, or deletes human-authored prose
+      outside of those two areas.
+    - Setting `human_edited: true` in a note's frontmatter tells the agent to
+      leave that note alone entirely — it will not refile, retag, or
+      otherwise touch it again until the flag is removed.
+
+    ## Folder layout
+
+    - `00-inbox/` — raw, unfiled captures. Anything new lands here first.
+    - `10-notes/` — notes that have been filed/organized.
+    - `20-refs/` — reference material (articles, sources, external material).
+    - `90-archive/` — retired notes.
+      - `90-archive/conflicts/` — Syncthing `*.sync-conflict-*` files that
+        were pulled out of the live tree for manual review.
+    - `.attachments/` — binary/attachment files referenced from notes.
+
+    ## Undo
+
+    `vault-git` commits the whole vault to a local git repo every hour. To
+    undo an unwanted change (human or agent), use normal git history/checkout
+    against this local repo — nothing is ever pushed off-cluster.

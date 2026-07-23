@@ -1,0 +1,54 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/batch/v1/job.json
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-seed
+  labels:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vault-seed
+        app.kubernetes.io/instance: vault
+        app.kubernetes.io/component: seed
+    spec:
+      restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: seed
+          image: ghcr.io/home-operations/busybox:1.38.0@sha256:7e2c04dd50ede647bf4a7a4c8dbd629dd4971cd139b9b88fb22bfc3c7a6c13df
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              mkdir -p /vault/00-inbox /vault/10-notes /vault/20-refs /vault/90-archive/conflicts /vault/.attachments
+
+              [ -f /vault/.stignore ] || cp /skeleton/.stignore /vault/.stignore
+              [ -f /vault/.gitignore ] || cp /skeleton/.gitignore /vault/.gitignore
+              [ -f /vault/README.md ] || cp /skeleton/README.md /vault/README.md
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: vault
+              mountPath: /vault
+            - name: skeleton
+              mountPath: /skeleton
+              readOnly: true
+      volumes:
+        - name: vault
+          persistentVolumeClaim:
+            claimName: vault
+        - name: skeleton
+          configMap:
+            name: vault-skeleton

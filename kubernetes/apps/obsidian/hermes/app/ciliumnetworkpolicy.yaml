@@ -1,0 +1,65 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: hermes
+spec:
+  # This pod is deliberately treated as partially untrusted: it holds
+  # long-lived API credentials (OpenRouter, Groq, Telegram), can write files
+  # and execute code on the agent's own behalf (skill_manage, terminal,
+  # execute_code), and ingests text from Telegram that may include
+  # forwarded articles/links from arbitrary third parties -- so prompt
+  # injection against the agent is assumed possible. Egress is therefore an
+  # explicit allow-list, not a default-open pod: DNS (required for the
+  # toFQDNs rules below to resolve at all), the in-namespace `retrieval`
+  # service for vault-search, the in-namespace `syncthing` REST API for the
+  # daily sync-health check, and exactly the three external hosts this
+  # workload has any legitimate reason to reach. There is no ingress
+  # section: this workload has no inbound path at all -- Telegram is
+  # reached by outbound long polling only.
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: hermes
+      app.kubernetes.io/instance: hermes
+      app.kubernetes.io/controller: hermes
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: obsidian
+            app.kubernetes.io/name: retrieval
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: obsidian
+            app.kubernetes.io/name: syncthing
+      toPorts:
+        - ports:
+            # Read-only REST call from the daily digest job, to detect a phone
+            # that has silently stopped syncing. Not the sync port (22000).
+            - port: "8384"
+              protocol: TCP
+    - toFQDNs:
+        - matchName: api.telegram.org
+        - matchName: openrouter.ai
+        - matchName: api.groq.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

@@ -1,0 +1,169 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: retrieval
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: retrieval
+  interval: 30m
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
+
+    controllers:
+      retrieval:
+        strategy: Recreate
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: retrieval-pguser-secret
+        initContainers:
+          # Creates the `retrieval` role/database in the shared `obsidian`
+          # CNPG cluster from retrieval-initdb-secret (see components/cnpg).
+          # This is the only thing that creates them -- there is no
+          # postgresql.cnpg.io/v1 Database resource for this app.
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.4@sha256:ebd9d30add17acdf935d73eb004758c7dfd9388aaa605fda70ad74378ab92aec
+            envFrom:
+              - secretRef:
+                  name: retrieval-initdb-secret
+          02-deps:
+            image:
+              repository: docker.io/library/python
+              tag: 3.13-slim@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91
+            env:
+              HOME: /tmp
+            command:
+              - /bin/sh
+              - -c
+              - |
+                set -eu
+
+                REQ1="psycopg[binary]==3.3.4"
+                REQ2="httpx==0.28.1"
+                REQ3="fastapi==0.139.2"
+                REQ4="uvicorn==0.51.0"
+
+                HASH=$(printf '%s\n' "$REQ1" "$REQ2" "$REQ3" "$REQ4" | sha256sum | cut -d' ' -f1)
+                MARKER=/deps/.install-hash
+
+                if [ -f "$MARKER" ] && [ "$(cat "$MARKER")" = "$HASH" ]; then
+                  echo "deps unchanged (hash ${HASH}), skipping install"
+                  exit 0
+                fi
+
+                echo "installing deps (hash ${HASH})"
+                pip install --no-cache-dir --target /deps "$REQ1" "$REQ2" "$REQ3" "$REQ4"
+                echo "$HASH" > "$MARKER"
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+        containers:
+          app:
+            image:
+              repository: docker.io/library/python
+              tag: 3.13-slim@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91
+            command:
+              - python3
+            args:
+              - /app/app.py
+            env:
+              HOME: /tmp
+              PYTHONPATH: /deps
+              PYTHONUNBUFFERED: "1"
+              PYTHONDONTWRITEBYTECODE: "1"
+              EMBEDDINGS_URL: http://embeddings:8080
+              VAULT_PATH: /vault
+              DATABASE_URL:
+                valueFrom:
+                  secretKeyRef:
+                    name: retrieval-pguser-secret
+                    key: uri_no_ssl
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 8080
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 8080
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 8080
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 30
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 2Gi
+
+    service:
+      app:
+        controller: retrieval
+        ports:
+          http:
+            port: 8080
+
+    persistence:
+      vault:
+        existingClaim: vault
+        globalMounts:
+          - path: /vault
+            readOnly: true
+      deps:
+        existingClaim: retrieval-deps
+        globalMounts:
+          - path: /deps
+      app:
+        type: configMap
+        name: retrieval-app
+        globalMounts:
+          - path: /app
+            readOnly: true
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp

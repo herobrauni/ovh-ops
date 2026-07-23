@@ -1,0 +1,55 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/batch/v1/cronjob.json
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vault-git
+spec:
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: vault-git
+            app.kubernetes.io/instance: vault
+            app.kubernetes.io/component: cron
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+          containers:
+            - name: vault-git
+              image: docker.io/alpine/git:2.54.0@sha256:77418e6e7c7f434c4a98eaff04ef16840cf03649c881c03948e3e213923e3136
+              env:
+                - name: HOME
+                  value: /tmp
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  cd /vault
+                  git config --global --add safe.directory /vault
+                  git rev-parse --git-dir >/dev/null 2>&1 || git init -q
+                  git add -A
+                  git -c user.name=hermes -c user.email=hermes@local commit -q -m "vault snapshot $(date -Is)" || true
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: vault
+                  mountPath: /vault
+          volumes:
+            - name: vault
+              persistentVolumeClaim:
+                claimName: vault

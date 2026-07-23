@@ -1,0 +1,368 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/kubernetes-json-schema/schema.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: retrieval-app
+data:
+  app.py: |
+    #!/usr/bin/env python3
+    """Retrieval service for the Obsidian vault.
+
+    A single process that both maintains a pgvector index of the vault and
+    serves semantic search over it:
+
+      GET /healthz          -> 200 once the process is up
+      GET /search?q=..&k=5  -> JSON list of {path, title, score, excerpt}
+
+    A background thread walks VAULT_PATH once at startup and then every
+    REINDEX_INTERVAL_SECONDS (default 6h), chunks changed markdown notes,
+    embeds them via the TEI service at EMBEDDINGS_URL, and upserts them into
+    Postgres. The index is fully disposable and rebuilt from the vault on
+    every pass -- nothing here is backed up separately.
+    """
+
+    from __future__ import annotations
+
+    import hashlib
+    import logging
+    import os
+    import re
+    import threading
+    import time
+    from contextlib import asynccontextmanager
+    from pathlib import Path
+    from typing import Iterable
+
+    import httpx
+    import psycopg
+    from fastapi import FastAPI, HTTPException, Query
+    from fastapi.responses import JSONResponse
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
+    log = logging.getLogger("retrieval")
+
+    DATABASE_URL = os.environ["DATABASE_URL"]
+    EMBEDDINGS_URL = os.environ.get("EMBEDDINGS_URL", "http://embeddings:8080")
+    VAULT_PATH = Path(os.environ.get("VAULT_PATH", "/vault"))
+    EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "1024"))
+    REINDEX_INTERVAL_SECONDS = int(os.environ.get("REINDEX_INTERVAL_SECONDS", str(6 * 3600)))
+    CHUNK_TARGET_CHARS = int(os.environ.get("CHUNK_TARGET_CHARS", "1000"))
+    EMBED_BATCH_SIZE = int(os.environ.get("EMBED_BATCH_SIZE", "16"))
+
+    # Directories to never walk into, matched against any path component.
+    SKIP_DIR_NAMES = {".git", ".obsidian", ".attachments", "90-archive"}
+    SYNC_CONFLICT_RE = re.compile(r"\.sync-conflict-")
+
+    FRONTMATTER_RE = re.compile(r"\A---\n(.*?\n)---\n?", re.DOTALL)
+    HEADING_RE = re.compile(r"^(#{1,6})\s+.*$", re.MULTILINE)
+
+    # ---------- Postgres ----------
+
+    def db_connect(retries: int = 20, delay: float = 3.0) -> psycopg.Connection:
+        """Connect with retries -- the CNPG cluster / postgres-init initContainer
+        may still be settling right after rollout."""
+        last_exc: Exception | None = None
+        for attempt in range(1, retries + 1):
+            try:
+                return psycopg.connect(DATABASE_URL, autocommit=True)
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                log.warning("db connect attempt %d/%d failed: %s", attempt, retries, exc)
+                time.sleep(delay)
+        raise last_exc  # type: ignore[misc]
+
+    def init_schema() -> None:
+        with db_connect() as conn:
+            with conn.cursor() as cur:
+                # Harmless if the extension already exists.
+                cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+                cur.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS notes (
+                        path text NOT NULL,
+                        chunk_idx int NOT NULL,
+                        sha256 text NOT NULL,
+                        title text,
+                        content text NOT NULL,
+                        embedding vector({EMBEDDING_DIM}) NOT NULL,
+                        updated_at timestamptz NOT NULL DEFAULT now(),
+                        PRIMARY KEY (path, chunk_idx)
+                    );
+                    """
+                )
+                cur.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS notes_embedding_cosine_idx
+                        ON notes USING hnsw (embedding vector_cosine_ops);
+                    """
+                )
+        log.info("schema ready: table=notes index=notes_embedding_cosine_idx (hnsw/cosine)")
+
+    def vector_literal(values: list[float]) -> str:
+        """Render a Python list as a pgvector text literal, e.g. '[0.1,0.2]'.
+        Avoids depending on the separate `pgvector` python package."""
+        return "[" + ",".join(repr(float(v)) for v in values) + "]"
+
+    # ---------- embeddings client ----------
+
+    def embed_texts(texts: list[str], retries: int = 5, base_delay: float = 2.0) -> list[list[float]]:
+        """POST a batch of texts to the TEI /embed endpoint, retrying on
+        connection errors. TEI's /embed accepts {"inputs": [...]} and returns
+        a bare JSON array of embedding vectors, one per input, in order."""
+        if not texts:
+            return []
+        last_exc: Exception | None = None
+        for attempt in range(1, retries + 1):
+            try:
+                resp = httpx.post(
+                    f"{EMBEDDINGS_URL}/embed",
+                    json={"inputs": texts},
+                    timeout=httpx.Timeout(120.0),
+                )
+                resp.raise_for_status()
+                return resp.json()
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                delay = min(base_delay * (2 ** (attempt - 1)), 60.0)
+                log.warning(
+                    "embed request attempt %d/%d failed (%s), retrying in %.0fs",
+                    attempt, retries, exc, delay,
+                )
+                if attempt < retries:
+                    time.sleep(delay)
+        raise last_exc  # type: ignore[misc]
+
+    def embed_texts_forever(texts: list[str]) -> list[list[float]]:
+        """Like embed_texts but never gives up. Used by the background reindex
+        loop so a still-downloading-its-model or momentarily unavailable
+        embeddings service causes patient retries instead of a crash loop."""
+        delay = 5.0
+        while True:
+            try:
+                return embed_texts(texts, retries=1)
+            except Exception as exc:  # noqa: BLE001
+                delay = min(delay * 1.5, 120.0)
+                log.warning("embeddings service unavailable (%s), retrying in %.0fs", exc, delay)
+                time.sleep(delay)
+
+    # ---------- markdown chunking ----------
+
+    def strip_frontmatter(text: str) -> tuple[str, dict[str, str]]:
+        m = FRONTMATTER_RE.match(text)
+        if not m:
+            return text, {}
+        body = text[m.end():]
+        meta: dict[str, str] = {}
+        for line in m.group(1).splitlines():
+            if ":" in line:
+                key, _, value = line.partition(":")
+                meta[key.strip()] = value.strip().strip('"').strip("'")
+        return body, meta
+
+    def derive_title(meta: dict[str, str], body: str, path: Path) -> str:
+        if meta.get("title"):
+            return meta["title"]
+        for line in body.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                return stripped.lstrip("#").strip()
+        return path.stem
+
+    def chunk_markdown(body: str, target_chars: int = CHUNK_TARGET_CHARS) -> list[str]:
+        """Split on markdown headings, then greedily merge adjacent sections
+        to land around `target_chars` characters per chunk. Oversized single
+        sections are further split on blank lines."""
+        headings = list(HEADING_RE.finditer(body))
+        if not headings:
+            sections = [body]
+        else:
+            sections = []
+            prev_end = 0
+            for h in headings:
+                if h.start() > prev_end:
+                    sections.append(body[prev_end:h.start()])
+                prev_end = h.start()
+            sections.append(body[prev_end:])
+            sections = [s for s in sections if s.strip()]
+        if not sections:
+            return []
+
+        chunks: list[str] = []
+        buf = ""
+        for section in sections:
+            if buf and len(buf) + len(section) > target_chars:
+                chunks.append(buf.strip())
+                buf = section
+            else:
+                buf += section
+            while len(buf) > target_chars * 2:
+                split_at = buf.rfind("\n\n", 0, target_chars * 2)
+                if split_at <= 0:
+                    break
+                chunks.append(buf[:split_at].strip())
+                buf = buf[split_at:]
+        if buf.strip():
+            chunks.append(buf.strip())
+        return [c for c in chunks if c]
+
+    # ---------- vault walking ----------
+
+    def iter_vault_files() -> Iterable[Path]:
+        for root, dirnames, filenames in os.walk(VAULT_PATH):
+            dirnames[:] = [d for d in dirnames if d not in SKIP_DIR_NAMES]
+            for name in filenames:
+                if not name.endswith(".md"):
+                    continue
+                if SYNC_CONFLICT_RE.search(name):
+                    continue
+                yield Path(root) / name
+
+    def file_sha256(path: Path) -> str:
+        h = hashlib.sha256()
+        with path.open("rb") as f:
+            for block in iter(lambda: f.read(65536), b""):
+                h.update(block)
+        return h.hexdigest()
+
+    # ---------- reindex ----------
+
+    def reindex_once() -> None:
+        started = time.monotonic()
+        seen_paths: set[str] = set()
+        scanned = 0
+        unchanged = 0
+        reembedded = 0
+        errors = 0
+        deleted = 0
+
+        with db_connect() as conn:
+            for file_path in iter_vault_files():
+                rel_path = str(file_path.relative_to(VAULT_PATH))
+                seen_paths.add(rel_path)
+                scanned += 1
+                try:
+                    sha = file_sha256(file_path)
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT sha256 FROM notes WHERE path = %s LIMIT 1",
+                            (rel_path,),
+                        )
+                        row = cur.fetchone()
+                    if row is not None and row[0] == sha:
+                        unchanged += 1
+                        continue
+
+                    raw = file_path.read_text(encoding="utf-8", errors="replace")
+                    body, meta = strip_frontmatter(raw)
+                    title = derive_title(meta, body, file_path)
+                    chunks = chunk_markdown(body)
+
+                    with conn.cursor() as cur:
+                        cur.execute("DELETE FROM notes WHERE path = %s", (rel_path,))
+
+                    if not chunks:
+                        continue
+
+                    embeddings: list[list[float]] = []
+                    for i in range(0, len(chunks), EMBED_BATCH_SIZE):
+                        batch = chunks[i : i + EMBED_BATCH_SIZE]
+                        embeddings.extend(embed_texts_forever(batch))
+
+                    with conn.cursor() as cur:
+                        for idx, (chunk, emb) in enumerate(zip(chunks, embeddings)):
+                            cur.execute(
+                                """
+                                INSERT INTO notes (path, chunk_idx, sha256, title, content, embedding)
+                                VALUES (%s, %s, %s, %s, %s, %s::vector)
+                                """,
+                                (rel_path, idx, sha, title, chunk, vector_literal(emb)),
+                            )
+                    reembedded += 1
+                    log.info("indexed %s (%d chunks)", rel_path, len(chunks))
+                except Exception as exc:  # noqa: BLE001
+                    errors += 1
+                    log.exception("failed to index %s: %s", rel_path, exc)
+
+            with conn.cursor() as cur:
+                cur.execute("SELECT DISTINCT path FROM notes")
+                db_paths = {r[0] for r in cur.fetchall()}
+            stale = db_paths - seen_paths
+            if stale:
+                with conn.cursor() as cur:
+                    for path in stale:
+                        cur.execute("DELETE FROM notes WHERE path = %s", (path,))
+                deleted = len(stale)
+                log.info("removed %d deleted note(s): %s", deleted, sorted(stale))
+
+        duration = time.monotonic() - started
+        log.info(
+            "reindex pass complete: scanned=%d unchanged=%d reembedded=%d deleted=%d "
+            "errors=%d duration=%.1fs",
+            scanned, unchanged, reembedded, deleted, errors, duration,
+        )
+
+    def reindex_loop() -> None:
+        log.info(
+            "reindex loop starting: vault=%s interval=%ds", VAULT_PATH, REINDEX_INTERVAL_SECONDS
+        )
+        while True:
+            try:
+                reindex_once()
+            except Exception as exc:  # noqa: BLE001
+                log.exception("reindex pass crashed: %s", exc)
+            time.sleep(REINDEX_INTERVAL_SECONDS)
+
+    # ---------- HTTP API ----------
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        init_schema()
+        threading.Thread(target=reindex_loop, daemon=True, name="reindex").start()
+        yield
+
+    app = FastAPI(lifespan=lifespan)
+
+    @app.get("/healthz")
+    def healthz() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.get("/search")
+    def search(q: str = Query(..., min_length=1), k: int = Query(5, ge=1, le=50)):
+        try:
+            [query_embedding] = embed_texts([q], retries=5)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=503, detail=f"embeddings service unavailable: {exc}")
+
+        with db_connect(retries=3) as conn:
+            with conn.cursor() as cur:
+                literal = vector_literal(query_embedding)
+                cur.execute(
+                    """
+                    SELECT path, title, content, 1 - (embedding <=> %s::vector) AS score
+                    FROM notes
+                    ORDER BY embedding <=> %s::vector
+                    LIMIT %s
+                    """,
+                    (literal, literal, k),
+                )
+                rows = cur.fetchall()
+
+        results = [
+            {
+                "path": path,
+                "title": title,
+                "score": float(score),
+                "excerpt": " ".join(content.split())[:300],
+            }
+            for path, title, content, score in rows
+        ]
+        return JSONResponse(results)
+
+    if __name__ == "__main__":
+        import uvicorn
+
+        uvicorn.run(app, host="0.0.0.0", port=8080)

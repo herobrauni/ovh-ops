@@ -1,0 +1,65 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: retrieval
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: retrieval
+      app.kubernetes.io/instance: retrieval
+      app.kubernetes.io/controller: retrieval
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: obsidian
+            app.kubernetes.io/name: hermes
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+  # This pod is deliberately allowed wider egress than the hermes agent pod:
+  # it processes no untrusted input (it only reads the vault it already has
+  # full filesystem access to, and text it embeds/searches never reaches an
+  # LLM) and it makes no LLM calls itself, so there is no prompt-injection or
+  # data-exfiltration surface to constrain here. The only reason this needs
+  # any internet egress at all is the pip install of pinned dependencies in
+  # the `02-deps` initContainer.
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: obsidian
+            app.kubernetes.io/name: embeddings
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: dbms
+            cnpg.io/cluster: obsidian
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    - toFQDNs:
+        - matchName: pypi.org
+        - matchName: files.pythonhosted.org
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
