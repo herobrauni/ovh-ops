@@ -1,0 +1,49 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/postgresql.cnpg.io/cluster_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: obsidian
+spec:
+  instances: 2
+  imageName: ghcr.io/tensorchord/cloudnative-vectorchord:18.3-1.1.1
+  primaryUpdateStrategy: unsupervised
+  primaryUpdateMethod: switchover
+  storage:
+    size: 10Gi
+    storageClass: openebs-hostpath
+  superuserSecret:
+    name: cloudnative-pg-secret
+  enableSuperuserAccess: true
+  # pgvector's `vector` extension is not a trusted extension, so the plain
+  # (non-superuser) role that ghcr.io/home-operations/postgres-init creates
+  # cannot run CREATE EXTENSION itself. Installing it into template1 at
+  # bootstrap makes every database created afterwards inherit it: postgres-init
+  # calls `createdb --owner` without --template, which defaults to template1.
+  # This keeps the app role unprivileged and avoids a hand-rolled Database CR.
+  bootstrap:
+    initdb:
+      postInitTemplateSQL:
+        - CREATE EXTENSION IF NOT EXISTS vector;
+  postgresql:
+    shared_preload_libraries:
+      - vchord.so
+    parameters:
+      max_connections: "400"
+      max_locks_per_transaction: "128"
+      shared_buffers: 256MB
+  nodeMaintenanceWindow:
+    inProgress: false
+    reusePVC: true
+  affinity:
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: required
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      memory: 4Gi
+  monitoring:
+    enablePodMonitor: true
