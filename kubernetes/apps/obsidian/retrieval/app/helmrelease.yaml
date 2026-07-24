@@ -4,6 +4,14 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: retrieval
+  annotations:
+    # The 02-deps initContainer uses runtime `${PSYCOPG_VERSION}` (etc.) shell
+    # vars; Flux postBuild substitution would empty them (uv got
+    # `psycopg[binary]==` and failed). This HR has no ${APP}/${CNPG_NAME} tokens
+    # of its own (DB creds come via secretKeyRef), so disabling Flux
+    # substitution here is safe. The Renovate annotations still work -- they
+    # match the VAR= lines, which are untouched.
+    kustomize.toolkit.fluxcd.io/substitute: disabled
 spec:
   chartRef:
     kind: OCIRepository
