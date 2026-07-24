@@ -35,6 +35,11 @@ spec:
               - --model-id=BAAI/bge-m3
               - --port=8080
               - --auto-truncate
+              # bge-m3's startup "warm up" runs a batch of --max-batch-tokens
+              # through the model; the 16384 default OOMKilled the pod even at a
+              # 10Gi limit. Our note chunks are ~250 tokens, so cap it low --
+              # this is the actual memory driver, not the RAM limit.
+              - --max-batch-tokens=4096
             env:
               HF_HOME: /data
             securityContext:
