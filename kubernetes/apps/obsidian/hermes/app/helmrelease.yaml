@@ -1,0 +1,261 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: hermes
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: hermes
+  interval: 30m
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      # No cluster credentials for this workload -- it never talks to the
+      # Kubernetes API.
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        # Deliberately NOT runAsNonRoot/runAsUser. The image's s6-overlay
+        # stage2 hook (docker/stage2-hook.sh) requires root to do the UID
+        # remap, data-volume chown and config seeding, and explicitly rejects
+        # a pinned non-root start with EACCES. The supported mechanism is to
+        # start as root and pass HERMES_UID/HERMES_GID, which s6 then drops to
+        # via s6-setuidgid -- so the agent still runs as 1000:1000. Same
+        # pattern the repo already uses for other s6 images (see
+        # kubernetes/apps/media/radarr/app/helmrelease.yaml).
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
+
+    controllers:
+      hermes:
+        # RWO PVC (ceph-block, via components/volsync defaults) backs
+        # /opt/data -- state.db is SQLite/WAL and must never see two writers.
+        strategy: Recreate
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: hermes-secret
+        initContainers:
+          # Copies config.yaml, SOUL.md, and the four managed skills from
+          # the git-owned ConfigMap into /opt/data on every pod start, so
+          # git always wins over in-container drift. Only these specific
+          # paths are overwritten -- any *other* skill directory the agent
+          # creates for itself under /opt/data/skills/ is left untouched.
+          01-seed-config:
+            image:
+              repository: docker.io/nousresearch/hermes-agent
+              tag: v2026.7.20@sha256:f7b35053268f532f98955195c909f15a230470fbcbdacaa9fdecb95707dad04a
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                echo "seed-config: copying config.yaml, SOUL.md, and managed skills into /opt/data"
+                cp /config-src/config.yaml /opt/data/config.yaml
+                cp /config-src/SOUL.md /opt/data/SOUL.md
+
+                mkdir -p /opt/data/skills
+                for skill in vault-capture vault-search vault-file vault-enrich; do
+                  rm -rf "/opt/data/skills/${skill}"
+                  mkdir -p "/opt/data/skills/${skill}"
+                  cp -r "/config-src/skills/${skill}/." "/opt/data/skills/${skill}/"
+                done
+                echo "seed-config: done"
+            env:
+              HERMES_HOME: /opt/data
+            # Stays root (writes into the fsGroup-owned /opt/data PVC), but
+            # needs no capabilities to do so -- the volume is group-writable
+            # via the pod fsGroup 1000. Strip everything and block escalation.
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+          # Idempotent cron bootstrap -- see seed-cron.sh (in the ConfigMap)
+          # for the full rationale, including a verified gap in the
+          # upstream `hermes cron` CLI around pinning provider/model.
+          02-seed-cron:
+            image:
+              repository: docker.io/nousresearch/hermes-agent
+              tag: v2026.7.20@sha256:f7b35053268f532f98955195c909f15a230470fbcbdacaa9fdecb95707dad04a
+            command:
+              - /bin/sh
+              - /config-src/seed-cron.sh
+            envFrom:
+              - secretRef:
+                  name: hermes-secret
+            env:
+              HERMES_HOME: /opt/data
+            # Runs the `hermes` CLI + a python patch that only write into
+            # HERMES_HOME (/opt/data, fsGroup-owned) -- no capabilities needed.
+            # Kept as root to avoid a missing-$HOME surprise from the CLI; caps
+            # dropped and escalation blocked.
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+        containers:
+          app:
+            image:
+              repository: docker.io/nousresearch/hermes-agent
+              tag: v2026.7.20@sha256:f7b35053268f532f98955195c909f15a230470fbcbdacaa9fdecb95707dad04a
+            # IMPORTANT: do not set `command` here. The image ENTRYPOINT is
+            # ["/init", "/opt/hermes/docker/main-wrapper.sh"] (s6-overlay);
+            # overriding it breaks s6 init and the gateway will not work.
+            # `args` alone selects the "run the gateway" path.
+            args:
+              - gateway
+              - run
+            envFrom:
+              - secretRef:
+                  name: hermes-secret
+            env:
+              HERMES_HOME: /opt/data
+              # Remaps the s6-managed internal `hermes` user (default UID
+              # 10000) to match the pod's runAsUser/fsGroup below.
+              HERMES_UID: "1000"
+              HERMES_GID: "1000"
+              # Hard-blocks write_file/patch outside these two roots -- both
+              # are inside the sandbox, so nothing here restricts normal
+              # vault/skill/memory/cron operation.
+              HERMES_WRITE_SAFE_ROOT: /opt/data:/vault
+              # Env-var model override for the Groq STT provider (see
+              # reference/environment-variables.md) -- there is no
+              # config.yaml key for this.
+              STT_GROQ_MODEL: whisper-large-v3-turbo
+            securityContext:
+              # s6 starts as root, chowns /opt/data, then drops to
+              # HERMES_UID/HERMES_GID via s6-setuidgid -- which needs these
+              # capabilities. Everything else is dropped.
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+                add:
+                  - SETUID
+                  - SETGID
+                  - CHOWN
+                  - DAC_OVERRIDE
+                  - FOWNER
+            # The gateway has no inbound path and no HTTP health surface
+            # (HERMES_DASHBOARD/API_SERVER_HOST deliberately unset), so this
+            # is an exec probe rather than httpGet: it confirms the s6-managed
+            # `hermes gateway run` child is actually alive. This catches the
+            # failure that matters for a capture-only, run-for-months workload
+            # -- the gateway process dying while s6/pid1 stays up, which no
+            # process-based restart would otherwise notice. It cannot detect a
+            # wedged-but-running long-poll; there is no health endpoint to ask.
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - 'for f in /proc/[0-9]*/cmdline; do grep -aq gateway "$f" 2>/dev/null && exit 0; done; exit 1'
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 3
+              # Startup guards the liveness probe during boot: the two seed
+              # initContainers plus s6 stage2 (UID remap, chown) run before the
+              # gateway child appears, so allow up to ~5 min before liveness
+              # begins evaluating.
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - 'for f in /proc/[0-9]*/cmdline; do grep -aq gateway "$f" 2>/dev/null && exit 0; done; exit 1'
+                  periodSeconds: 10
+                  failureThreshold: 30
+              # No readiness probe: this workload has no Service and nothing
+              # routes to it, so readiness would gate nothing.
+              readiness:
+                enabled: false
+            resources:
+              requests:
+                cpu: 200m
+                memory: 1Gi
+              limits:
+                memory: 4Gi
+          # Versions the agent's SELF-WRITTEN skills (upstream Hermes writes
+          # its own skills via skill_manage) so the user can see what it
+          # wrote. Runs as a sidecar rather than a CronJob because the
+          # backing PVC is RWO -- a separate CronJob pod could not mount it
+          # alongside the running gateway.
+          git:
+            image:
+              repository: docker.io/alpine/git
+              tag: 2.54.0@sha256:77418e6e7c7f434c4a98eaff04ef16840cf03649c881c03948e3e213923e3136
+            env:
+              HOME: /tmp
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                while true; do cd /opt/data/skills && (git rev-parse --git-dir >/dev/null 2>&1 || git init -q) && git add -A && git -c user.name=hermes -c user.email=hermes@local commit -q -m "skills $(date -Is)" || true; sleep 3600; done
+            securityContext:
+              # Plain git, no s6 -- so it can be pinned non-root outright.
+              # 1000:1000 matches what the agent writes into skills/.
+              allowPrivilegeEscalation: false
+              runAsUser: 1000
+              runAsGroup: 1000
+              runAsNonRoot: true
+              capabilities:
+                drop:
+                  - ALL
+
+    persistence:
+      data:
+        existingClaim: hermes
+        globalMounts:
+          - path: /opt/data
+      vault:
+        existingClaim: vault
+        advancedMounts:
+          hermes:
+            app:
+              - path: /vault
+      config:
+        type: configMap
+        name: hermes-config
+        items:
+          - key: config.yaml
+            path: config.yaml
+          - key: SOUL.md
+            path: SOUL.md
+          - key: seed-cron.sh
+            path: seed-cron.sh
+          - key: skill-vault-capture-SKILL.md
+            path: skills/vault-capture/SKILL.md
+          - key: skill-vault-capture-capture.py
+            path: skills/vault-capture/scripts/capture.py
+          - key: skill-vault-search-SKILL.md
+            path: skills/vault-search/SKILL.md
+          - key: skill-vault-file-SKILL.md
+            path: skills/vault-file/SKILL.md
+          - key: skill-vault-file-resolve_conflicts.py
+            path: skills/vault-file/scripts/resolve_conflicts.py
+          - key: skill-vault-enrich-SKILL.md
+            path: skills/vault-enrich/SKILL.md
+        advancedMounts:
+          hermes:
+            01-seed-config:
+              - path: /config-src
+                readOnly: true
+            02-seed-cron:
+              - path: /config-src
+                readOnly: true
+
+    # No route/ingress/DNSEndpoint: this workload has no inbound path at
+    # all -- it reaches Telegram by outbound long polling only. No
+    # dashboard (HERMES_DASHBOARD unset) and no API_SERVER_HOST -- both
+    # would open an HTTP surface this app has no business exposing.

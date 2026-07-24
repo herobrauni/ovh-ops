@@ -1,0 +1,26 @@
+---
+# Standalone core Ingress (not templated through app-template) consumed by
+# the Tailscale Kubernetes operator's IngressClass. Verified against current
+# docs at https://tailscale.com/docs/kubernetes-operator/ingress/expose-workload-to-tailnet-l7:
+# ingressClassName: tailscale + spec.tls[].hosts provisions a MagicDNS name
+# (https://obsidian.<tailnet>.ts.net) with an automatic Let's Encrypt
+# certificate. No public Envoy HTTPRoute/DNSEndpoint is created for this app.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: obsidian-web
+spec:
+  ingressClassName: tailscale
+  tls:
+    - hosts:
+        - obsidian
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: obsidian-web
+                port:
+                  number: 3000

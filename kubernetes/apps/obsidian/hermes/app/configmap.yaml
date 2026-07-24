@@ -1,0 +1,861 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hermes-config
+data:
+  config.yaml: |
+    # Hermes Agent config.yaml — declarative, git-owned.
+    #
+    # This file is copied into /opt/data on every pod start by the seed-config
+    # initContainer, so git always wins over any in-container drift an agent
+    # session might introduce (agents are only allowed to self-write skills and
+    # memory, never config.yaml).
+    #
+    # Every key below is verified against the Hermes docs at
+    # https://hermes-agent.nousresearch.com/user-guide/configuration and
+    # https://raw.githubusercontent.com/NousResearch/hermes-agent/main/cli-config.yaml.example
+    # as of 2026-07-23. See the deployment report for the model choice rationale.
+
+    model:
+      # ACTIVE: z.ai GLM Coding Plan via the OpenAI-compatible `custom` provider.
+      # Configured as `custom` (not the native `zai` provider) on purpose: the
+      # coding-plan key is ONLY valid on the coding endpoint below -- the native
+      # zai provider / standard https://api.z.ai/api/paas/v4 endpoint returns
+      # HTTP 429 "Insufficient balance or no resource package" for a coding-plan
+      # subscription (verified 2026-07). glm-4.6 is the proven agentic tool-use
+      # model for this plan (200K context, reliable function-calling), a good
+      # fit for an all-day capture/file/retrieve agent. Alternatives available
+      # on the same plan/endpoint: glm-4.7 (newer), glm-5 / glm-5.1 / glm-5.2
+      # (flagship, reasoning-heavy -> slower for quick capture acks),
+      # glm-5-turbo (faster/cheaper). Bump `default` to switch.
+      provider: custom
+      base_url: https://api.z.ai/api/coding/paas/v4
+      default: glm-4.6
+      # ZAI_API_KEY is injected into the process env via hermes-secret (envFrom).
+      # `custom` has no automatic env-var fallback tied to this key, so the
+      # ${VAR} substitution here is what wires the credential in.
+      api_key: ${ZAI_API_KEY}
+      # ALTERNATIVE (previous default): anthropic/claude-sonnet-5 via OpenRouter.
+      # To switch back, comment out the four `custom` lines above and uncomment
+      # these; OPENROUTER_API_KEY is still synced into hermes-secret. Keep
+      # seed-cron.sh's CRON_PROVIDER/CRON_MODEL in sync with whichever is active.
+      # provider: openrouter
+      # default: anthropic/claude-sonnet-5
+      # api_key: ${OPENROUTER_API_KEY}
+
+    # No sandboxing needed/available in this pod (no Docker-in-Docker); the
+    # container itself is already the sandbox boundary (non-root, dropped caps,
+    # tight CiliumNetworkPolicy egress).
+    terminal:
+      backend: local
+
+    # The vault (git-backed plain markdown under /vault) is the memory, not
+    # Hermes' own memory store. Keep Hermes' built-in memory deliberately thin so
+    # the agent is not tempted to duplicate vault content into MEMORY.md/USER.md.
+    memory:
+      memory_enabled: true
+      memory_char_limit: 500 # default is 2200 (~800 tokens); thinned deliberately
+      user_char_limit: 300 # default is 1375 (~500 tokens); thinned deliberately
+
+    # Voice notes are auto-transcribed via Groq's Whisper-compatible endpoint.
+    # STT_GROQ_MODEL=whisper-large-v3-turbo is set as a container env var (see
+    # helmrelease.yaml) rather than here, per reference/environment-variables.md
+    # — the per-provider model override is documented as an env var, not a
+    # config.yaml key.
+    stt:
+      enabled: true
+      echo_transcripts: true
+      provider: groq
+
+    skills:
+      # Scan agent-created/edited skill content for dangerous keyword patterns
+      # (credential harvesting, obvious prompt injection, exfil instructions)
+      # before accepting the write. Off by default upstream; this workload
+      # ingests untrusted forwarded Telegram content, so turn it on.
+      guard_agent_created: true
+  SOUL.md: |
+    You are Hermes, the caretaker of a single plain-markdown Obsidian vault for
+    one person, reachable only over Telegram. This file is your contract with
+    that person. It is git-owned; do not edit it. You may create new notes in
+    the vault freely, but for any existing note you only ever touch two things:
+
+    1. the YAML frontmatter block at the top of the note, and
+    2. a single section titled `## Agent notes`.
+
+    You never rewrite, reformat, summarise, or delete prose a human wrote,
+    anywhere else in any file, ever. If you think a human note is wrong, badly
+    titled, or badly organised, that is not your call to fix by editing their
+    words — add a note under `## Agent notes` instead.
+
+    ## Capture vs. retrieval
+
+    Every inbound Telegram message is one of exactly two things. Decide which
+    one it is before you do anything else.
+
+    **Not a question -> CAPTURE.** Any message that is not a question (a
+    thought, a link, a forwarded article, a voice-note transcript, a photo
+    caption, a half-sentence) is a capture. Immediately run the `vault-capture`
+    skill. Do not rewrite, summarise, correct, or "improve" the user's words —
+    store them verbatim. Capture must require zero decisions from the user:
+    never ask which folder, which tag, or which title to use. There is exactly
+    one place a capture goes (`00-inbox/`) and exactly one shape it takes; the
+    skill handles both. Acknowledge briefly and move on.
+
+    **A question -> RETRIEVAL.** Run the `vault-search` skill and ground your
+    answer in what it returns. Always cite the vault paths of the notes you
+    used, so the user can open them. If search finds nothing relevant, say so
+    plainly instead of guessing.
+
+    When in doubt whether something is a question, treat it as a capture. Losing
+    a stray thought is worse than an unnecessary retrieval attempt.
+
+    ## Filing is yours, review queues are not
+
+    The nightly `vault-file` skill files inbox notes, resolves Syncthing
+    conflicts, and tags/titles/summarises without asking. This is deliberate.
+
+    Never present the user with a queue of suggestions to review or approve —
+    no "here are 5 notes I'd like to file, confirm?", no batches of proposed
+    tags waiting on a thumbs up. A review queue is a failure of this system: the
+    entire point is that the user can dump thoughts into Telegram and never
+    think about the vault's organisation again. Act, then report what you did
+    (counts, not confirmations) in the daily digest. If you are ever tempted to
+    ask "should I..." about routine filing, capture, or tagging, don't — just do
+    it and mention it afterwards.
+
+    The one legitimate exception is `vault-enrich`, which is human-triggered by
+    definition: the user asked you to look into something, so reporting back
+    with what you found is the retrieval answer, not a review queue.
+
+    ## `human_edited: true`
+
+    If a note's frontmatter has `human_edited: true`, never refile it, never
+    retitle it, never move it. The human has claimed that note; your job there
+    is done except for one thing — you may still add links to and from it, since
+    links do not change the note's location or its human-authored content.
+
+    ## Linking — not active yet
+
+    Do not create links between notes yet. This section documents the rule for
+    a later stage so it is ready when linking is turned on:
+
+    - create a link only when BOTH cosine similarity >= 0.80 AND you have
+      explicitly confirmed a real semantic relationship (not just topical
+      overlap) between the two notes,
+    - maximum 3 links per note.
+
+    Until you are told this stage is active, do not add links on your own
+    initiative.
+
+    ## Language
+
+    The user is a German speaker; German and English notes coexist in this
+    vault. Reply in the language the user wrote in — if they message in German,
+    reply in German; if English, reply in English. Do not translate captures;
+    store them in whatever language they arrived in.
+
+    ## Vault layout
+
+    - `00-inbox/` — raw, unfiled captures. Everything new lands here first via
+      `vault-capture`.
+    - `10-notes/` — notes that `vault-file` has titled, tagged, summarised, and
+      filed.
+    - `20-refs/` — reference material: articles, sources, external material.
+    - `90-archive/` — retired notes.
+      - `90-archive/conflicts/` — Syncthing `*.sync-conflict-*` copies that
+        `vault-file` pulled out of the live tree after folding anything
+        agent-owned back into the live file.
+    - `.attachments/` — binary/attachment files referenced from notes.
+
+    ## Scheduled work
+
+    Cron jobs run in fresh sessions with no memory of any chat — their prompts
+    are self-contained by construction. Do not assume a cron session knows
+    anything this file didn't tell it or its prompt didn't spell out.
+  seed-cron.sh: |
+    #!/bin/sh
+    # Idempotent cron bootstrap for Hermes Agent, run by the seed-cron
+    # initContainer on every pod start. Lists existing jobs and creates only the
+    # ones that are missing. Deliberately tolerant: no `set -e`, every mutating
+    # step is best-effort so one failed create/pin never aborts the pod.
+    #
+    # --- The fail-closed gotcha (why every job is pinned) -----------------------
+    # A cron job created WITHOUT an explicit provider/model snapshots the
+    # CURRENT global default (config.yaml `model.*`) at creation time. If the
+    # global default later changes, the job "fails closed": it skips its run
+    # rather than silently switching to a new (possibly paid) model. See
+    # https://hermes-agent.nousresearch.com/user-guide/features/cron
+    #
+    # --- A verified CLI gap (please read before "fixing" this) ------------------
+    # `hermes cron create` / `hermes cron edit` do NOT expose --provider/--model
+    # flags in this image (verified against hermes_cli/subcommands/cron.py in
+    # NousResearch/hermes-agent @ v2026.7.20 -- the argparse definitions for both
+    # subcommands simply have no such options). Only the agent-facing `cronjob`
+    # tool (used from inside a live chat/cron session) accepts provider=/model=
+    # kwargs, via the internal `cron.jobs.create_job()` Python function. This
+    # script has no LLM session to call that tool from, so it works around the
+    # gap: create the job via the CLI (schedule/prompt/name/deliver only, which
+    # the CLI does support), then patch the job's "provider"/"model" fields
+    # directly into cron/jobs.json to match what create_job() would have
+    # written for an explicitly-pinned job.
+    #
+    # The docs warn against direct jobs.json edits for AGENT-driven mutations
+    # (they can be silently dropped by the write-safety/verifier layer). That
+    # warning does not apply here: this initContainer always runs to completion
+    # BEFORE the main gateway container starts (initContainers are sequential
+    # and block the pod's main containers), so there is no running cron ticker
+    # or gateway process to race with, and no HERMES_WRITE_SAFE_ROOT agent-tool
+    # path is involved -- this is a plain file write by a shell script.
+    #
+    # If a future Hermes release adds --provider/--model to `hermes cron
+    # create`/`edit`, switch this script to use them and delete the Python
+    # patch step.
+    set -u
+
+    HERMES_HOME="${HERMES_HOME:-/opt/data}"
+    JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
+
+    # Must match config.yaml's `model.provider` / `model.default` exactly.
+    # (Active: z.ai GLM Coding Plan via the custom/OpenAI-compatible provider;
+    # the base_url lives in config.yaml, jobs only pin provider + model.)
+    CRON_PROVIDER="custom"
+    CRON_MODEL="glm-4.6"
+
+    log() {
+      echo "seed-cron: $*"
+    }
+
+    job_exists() {
+      name="$1"
+      hermes cron list 2>/dev/null | grep -qF -- "$name"
+    }
+
+    pin_job_provider_model() {
+      name="$1"
+      python3 - "$JOBS_FILE" "$name" "$CRON_PROVIDER" "$CRON_MODEL" <<'PYEOF'
+    import json
+    import os
+    import sys
+
+    path, name, provider, model = sys.argv[1:5]
+
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        print(f"seed-cron: WARN could not read {path}: {exc}", file=sys.stderr)
+        raise SystemExit(0)
+
+    jobs = data if isinstance(data, list) else data.get("jobs", [])
+    changed = False
+    for job in jobs:
+        if job.get("name") == name:
+            job["provider"] = provider
+            job["model"] = model
+            # Clear snapshot fields: these only apply to unpinned jobs (see
+            # cron/jobs.py _compute_provider_model_snapshots). A pinned job
+            # created by create_job() always has both snapshots set to None.
+            job["provider_snapshot"] = None
+            job["model_snapshot"] = None
+            changed = True
+
+    if not changed:
+        print(f"seed-cron: WARN job '{name}' not found in {path}, could not pin provider/model", file=sys.stderr)
+        raise SystemExit(0)
+
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(data, fh, indent=2)
+    os.replace(tmp, path)
+    print(f"seed-cron: pinned provider={provider} model={model} on job '{name}'")
+    PYEOF
+    }
+
+    create_job() {
+      schedule="$1"
+      name="$2"
+      prompt="$3"
+      deliver="$4"
+
+      if job_exists "$name"; then
+        log "job '$name' already exists, skipping create"
+        return 0
+      fi
+
+      log "creating job '$name'"
+      if hermes cron create "$schedule" "$prompt" --name "$name" --deliver "$deliver"; then
+        pin_job_provider_model "$name"
+      else
+        log "WARN failed to create job '$name' (continuing)"
+      fi
+    }
+
+    # --- Job 1: nightly vault filing pass ---------------------------------------
+    VAULT_FILE_PROMPT="Run the vault-file skill now. This is a self-contained scheduled task -- you have no memory of any previous chat. Load and follow the vault-file skill exactly: (a) resolve Syncthing conflicts first via its script, (b) file everything in 00-inbox/ that does not have human_edited: true, (c) leave human_edited: true notes untouched. Do not ask the user any questions and do not present a review queue -- act, then report counts only (conflicts resolved, notes filed, notes skipped). Your reply is read by the 07:00 digest job, not a human, so keep it terse and factual."
+
+    create_job "0 4 * * *" "vault-file-nightly" "$VAULT_FILE_PROMPT" "local"
+
+    # --- Job 2: daily digest to the Telegram home channel -----------------------
+    DAILY_DIGEST_PROMPT="Compose the daily digest. This is a self-contained scheduled task -- you have no memory of any previous chat, so gather everything you need right now. 1) Look at recent activity under /vault (the hourly vault-git commits, and/or file mtimes/frontmatter state) to summarize the last 24 hours: notes captured to 00-inbox/, notes filed to 10-notes//20-refs/ by the vault-file-nightly job, and Syncthing conflicts resolved. 2) Check whether the Syncthing phone device has been disconnected for more than 48 hours by calling: curl -s -H \"X-API-Key: \$SYNCTHING_API_KEY\" http://syncthing:8384/rest/system/connections -- inspect each remote device's connected flag and lastSeen timestamp. If the call fails for ANY reason, say so briefly in one line and move on, do not treat it as fatal. 3) If nothing notable happened in the last 24h AND the phone device is not stalled beyond 48h, reply with EXACTLY: [SILENT] -- nothing else on that line. 4) Otherwise send a short digest. The one thing you must always report even on an otherwise quiet day is a Syncthing phone device stalled beyond 48h -- a silently stuck sync is the one failure the user must hear about, so it overrides the [SILENT] rule by itself. 5) Reply in German unless the day's content makes English clearly more natural -- the user is a German speaker."
+
+    create_job "0 7 * * *" "daily-digest" "$DAILY_DIGEST_PROMPT" "telegram"
+
+    log "done"
+  skill-vault-capture-SKILL.md: |
+    ---
+    name: vault-capture
+    description: Append an inbound Telegram message verbatim to the vault inbox as a new raw note. Use for every non-question message.
+    version: 1.0.0
+    author: ovh-ops
+    license: MIT
+    metadata:
+      hermes:
+        tags: [Obsidian, Vault, Capture, Telegram]
+        related_skills: [vault-file, vault-search]
+    ---
+
+    # vault-capture
+
+    Store an inbound message verbatim, with zero decisions asked of the user.
+
+    ## When to Use
+
+    Any inbound Telegram message that is not a question: a thought, a link, a
+    forwarded article, a voice-note transcript, a photo caption. See SOUL.md for
+    the capture-vs-retrieval decision — this skill only covers what to do once
+    you have decided a message is a capture.
+
+    ## Procedure
+
+    1. Take the raw message text exactly as received. If it was a voice note,
+       use the already-transcribed text (do not re-summarise it). If it
+       included a caption plus a forwarded article body, pass through everything
+       you were given.
+    2. Run the capture script with the message body on stdin:
+
+       ```bash
+       python3 /opt/data/skills/vault-capture/scripts/capture.py <<'CAPTURE_EOF'
+       <the message body, verbatim, no edits>
+       CAPTURE_EOF
+       ```
+
+    3. The script prints the vault-relative path it wrote to, e.g.
+       `00-inbox/20260723T153045Z.md`. Do not construct this path yourself —
+       the script owns filename/collision handling so this step is idempotent.
+    4. Acknowledge briefly to the user (e.g. "Captured." or "Gespeichert.",
+       matching their language) and stop. Do not ask which folder, tag, or
+       title to use — there is only one destination for a capture and the
+       script handles the rest.
+
+    ## Pitfalls
+
+    - Never edit, correct, or summarise the message text before handing it to
+      the script — the script's whole job is verbatim storage.
+    - Never call this skill for a question. Questions are retrieval
+      (`vault-search`), not captures.
+    - If the script reports an error, tell the user the capture failed — do not
+      silently drop the message or fabricate a success path.
+
+    ## Verification
+
+    The script's stdout line starting with `CAPTURED:` confirms the file was
+    written; a non-zero exit code means it was not.
+  skill-vault-capture-capture.py: |
+    #!/usr/bin/env python3
+    """Append a Telegram message verbatim to the vault inbox as a new raw note.
+
+    Stdlib only (no PyPI egress in this pod). Reads the message body from
+    stdin, writes it byte-for-byte unmodified into
+    ``/vault/00-inbox/<UTC-ISO8601-compact>.md`` with a small YAML frontmatter
+    block prepended.
+
+    Idempotency: if this exact body has already been captured under today's
+    filename (or a collision suffix of it), no new file is written -- running
+    the same capture twice never produces two notes. If the timestamp collides
+    with a *different* body (two messages in the same second), a numeric
+    suffix is appended until a free slot is found.
+    """
+    from __future__ import annotations
+
+    import datetime
+    import os
+    import sys
+
+    VAULT_INBOX = "/vault/00-inbox"
+
+
+    def utc_stamp() -> str:
+        return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+    def frontmatter(created_iso: str) -> str:
+        return (
+            "---\n"
+            f"created: {created_iso}\n"
+            "source: telegram\n"
+            "state: raw\n"
+            "human_edited: false\n"
+            "---\n\n"
+        )
+
+
+    def main() -> int:
+        body = sys.stdin.read()
+        if not body.strip():
+            print("capture.py: ERROR empty message body, nothing to capture", file=sys.stderr)
+            return 1
+
+        os.makedirs(VAULT_INBOX, exist_ok=True)
+
+        stamp = utc_stamp()
+        created_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        base_name = f"{stamp}.md"
+        candidate = os.path.join(VAULT_INBOX, base_name)
+
+        content = frontmatter(created_iso) + body
+
+        suffix = 0
+        while os.path.exists(candidate):
+            with open(candidate, "r", encoding="utf-8", errors="replace") as fh:
+                existing = fh.read()
+            # Compare only the body (everything after the frontmatter's closing
+            # "---\n\n") so a capture retried with the exact same message is a
+            # true no-op even though `created` timestamps would otherwise differ
+            # by a few seconds.
+            existing_body = existing.split("---\n\n", 2)[-1] if "---\n\n" in existing else existing
+            if existing_body == body:
+                print(f"CAPTURED: 00-inbox/{os.path.basename(candidate)} (already captured, no-op)")
+                return 0
+            suffix += 1
+            candidate = os.path.join(VAULT_INBOX, f"{stamp}-{suffix}.md")
+
+        tmp_path = candidate + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+        os.replace(tmp_path, candidate)
+
+        rel = os.path.relpath(candidate, "/vault")
+        print(f"CAPTURED: {rel}")
+        return 0
+
+
+    if __name__ == "__main__":
+        raise SystemExit(main())
+  skill-vault-search-SKILL.md: |
+    ---
+    name: vault-search
+    description: Query the in-cluster retrieval service and ground an answer in the returned vault notes, citing their paths. Use for any question about the vault's contents.
+    version: 1.0.0
+    author: ovh-ops
+    license: MIT
+    metadata:
+      hermes:
+        tags: [Obsidian, Vault, Search, Retrieval]
+        related_skills: [vault-capture]
+    ---
+
+    # vault-search
+
+    Answer questions using the vault as ground truth, with citations.
+
+    ## When to Use
+
+    Any inbound Telegram message that is a question. See SOUL.md for the
+    capture-vs-retrieval decision.
+
+    ## Quick Reference
+
+    This skill is deliberately HTTP-only — no database driver, no vector-store
+    client library, nothing beyond `curl` and stdlib text handling, because this
+    pod has no PyPI egress and the CiliumNetworkPolicy only opens the
+    in-namespace `retrieval` service plus three external API hosts.
+
+    ```bash
+    curl -s "http://retrieval:8080/search?q=<urlencoded query>&k=5"
+    ```
+
+    The response is a bare JSON array of result objects, each with `path`,
+    `title`, `score` (cosine similarity, 0-1, higher is closer), and `excerpt`
+    (up to 300 chars):
+
+    ```json
+    [
+      {"path": "10-notes/example.md", "title": "Example", "score": 0.83, "excerpt": "..."}
+    ]
+    ```
+
+    A `503` response means the embeddings service is unavailable -- treat that
+    the same as a connection failure (step 2 below), not as "zero results".
+
+    ## Procedure
+
+    1. URL-encode the user's question (or a short reformulation of it) and
+       `curl` the endpoint above with `k=5`.
+    2. If the call fails (connection error, non-2xx, empty body), tell the user
+       retrieval is unavailable right now rather than guessing at an answer.
+    3. If it succeeds but returns zero results, say plainly that nothing in the
+       vault matches — do not fabricate an answer from general knowledge and
+       present it as if it came from the vault.
+    4. Otherwise, read the top results' excerpts, compose an answer grounded in
+       them, and list the vault paths you drew from (e.g. `10-notes/example.md`)
+       so the user can open the source notes.
+    5. Reply in the language the user asked in.
+
+    ## Pitfalls
+
+    - Do not treat this skill's results as authorization to edit or refile the
+      notes it returns -- that is `vault-file`'s job, not this skill's.
+    - Do not silently drop the citation list; an answer without paths is not
+      grounded, it's a guess wearing a citation's clothes.
+
+    ## Verification
+
+    Every factual claim in your reply should trace back to at least one cited
+    path from the search response.
+  skill-vault-file-SKILL.md: |
+    ---
+    name: vault-file
+    description: Nightly filing pass -- resolve Syncthing conflicts, then title/tag/summarise and file everything in 00-inbox/ that is not human_edited. Never surface a review queue.
+    version: 1.0.0
+    author: ovh-ops
+    license: MIT
+    metadata:
+      hermes:
+        tags: [Obsidian, Vault, Filing, Cron]
+        related_skills: [vault-capture, vault-enrich]
+    ---
+
+    # vault-file
+
+    The nightly housekeeping pass. Order matters -- follow the steps in order.
+
+    ## When to Use
+
+    Triggered by the `0 4 * * *` cron job. Can also be run on demand if asked.
+    This is a fresh session with no memory of any prior chat -- do not assume
+    context beyond what this skill and the calling prompt give you.
+
+    ## Procedure
+
+    ### Step a -- resolve Syncthing conflicts (do this FIRST, always)
+
+    Run the conflict-resolution script:
+
+    ```bash
+    python3 /opt/data/skills/vault-file/scripts/resolve_conflicts.py
+    ```
+
+    It finds every `*.sync-conflict-*.md` file anywhere in the vault, folds any
+    agent-owned frontmatter and `## Agent notes` content from each conflict copy
+    back into the live original (the original path always stays the live
+    file -- never the conflict copy), and moves the conflict copy into
+    `90-archive/conflicts/`. It prints a JSON summary. Read it, but do not
+    surface individual conflicts to the user as a task list -- just remember
+    the count for your final report.
+
+    ### Step b -- file everything in 00-inbox/ without human_edited: true
+
+    For each note in `00-inbox/`:
+
+    1. Read the note. If its frontmatter has `human_edited: true`, skip it
+       entirely -- go to step c logic (leave it alone) and move on to the next
+       note.
+    2. Otherwise, decide a short descriptive title, a small set of tags, and
+       write a short summary. Add these into the note's frontmatter and a
+       `## Agent notes` section -- do not touch the raw captured body text
+       above/around your additions; the original capture stays verbatim.
+    3. Set `state: filed` in the frontmatter.
+    4. Move the file into `10-notes/` (or `20-refs/` if the content is clearly
+       reference material -- an article, a source, external material -- rather
+       than a personal note).
+    5. Do this for every eligible note. Do not ask the user for confirmation,
+       preferred titles, or preferred tags -- decide and act. If a note is
+       ambiguous, make a reasonable decision anyway; a slightly-off tag is
+       cheap to fix later (via `vault-enrich` or a future edit), but a pile of
+       unfiled notes waiting on human review is exactly the failure this system
+       exists to avoid.
+
+    ### Step c -- notes with human_edited: true
+
+    Leave them exactly where they are, exactly as they are. Do not refile,
+    retitle, retag, or move them. (You already skipped these in step b; this is
+    just the explicit statement of the rule.)
+
+    ### No linking in this stage
+
+    Do not add links between notes as part of this pass. See SOUL.md's Linking
+    section -- that capability is not active yet.
+
+    ## Reporting
+
+    Your final reply is read by the `daily-digest` cron job, not a human
+    directly. Report counts only: conflicts resolved, notes filed (with a
+    one-line list of new titles is fine), notes skipped because
+    `human_edited: true`. No task list, no "please confirm" -- this run is
+    already done by the time you report it.
+
+    ## Pitfalls
+
+    - Never run step b logic on a note before checking `human_edited` first.
+    - Never invent a folder beyond `10-notes/`, `20-refs/`, or leaving a note in
+      place -- there is no fourth destination in this stage.
+    - If `resolve_conflicts.py` reports an error for a specific conflict, do not
+      let that block filing the rest of the inbox -- note the error in your
+      report and continue.
+  skill-vault-file-resolve_conflicts.py: |
+    #!/usr/bin/env python3
+    """Deterministic step (a) of the vault-file nightly pass: resolve Syncthing
+    sync-conflict copies.
+
+    Stdlib only (no PyPI egress in this pod). This script performs the
+    mechanical, well-defined part of conflict resolution -- it never makes a
+    judgement call about note content. The rest of vault-file (titling,
+    tagging, summarising, filing 00-inbox/ notes) is done by the agent itself
+    via its normal file tools, guided by SKILL.md, AFTER this script has run.
+
+    Rule: the human-side file at the ORIGINAL path always stays the live file.
+    This script only:
+      1. finds every *.sync-conflict-*.md file anywhere under /vault,
+      2. folds agent-owned frontmatter keys and the "## Agent notes" section
+         from the conflict copy back into the live original (never touching
+         human-authored keys or prose),
+      3. moves the conflict copy into 90-archive/conflicts/, preserving its
+         relative directory so same-named conflicts in different folders don't
+         collide.
+
+    Prints a single JSON object to stdout summarising what happened, intended
+    to be read by the calling agent and reported as a COUNT in the nightly
+    run's own summary -- never as a per-conflict task list for the user.
+    """
+    from __future__ import annotations
+
+    import json
+    import os
+    import re
+    import sys
+    from datetime import datetime, timezone
+
+    VAULT_ROOT = "/vault"
+    ARCHIVE_ROOT = os.path.join(VAULT_ROOT, "90-archive", "conflicts")
+
+    # Syncthing's default conflict-marker shape:
+    #   <name>.sync-conflict-YYYYMMDD-HHMMSS-<deviceid>.<ext>
+    CONFLICT_RE = re.compile(
+        r"^(?P<base>.+)\.sync-conflict-\d{8}-\d{6}-[0-9A-Za-z]+(?P<ext>\.[^.]+)$"
+    )
+
+    # Frontmatter keys the agent owns and may refile/refresh from a conflict
+    # copy. Anything not in this set (created, source, human_edited, and any
+    # other human-authored key) is left exactly as the original has it.
+    AGENT_OWNED_KEYS = {"title", "tags", "state", "summary", "filed_at"}
+
+    FRONTMATTER_RE = re.compile(r"\A---\n(?P<fm>.*?)\n---\n\n?(?P<body>.*)\Z", re.DOTALL)
+    AGENT_NOTES_RE = re.compile(
+        r"(^|\n)## Agent notes\n(?P<content>.*?)(?=\n## |\Z)", re.DOTALL
+    )
+
+
+    def parse_frontmatter(text: str):
+        m = FRONTMATTER_RE.match(text)
+        if not m:
+            return {}, text, None
+        fm_lines = m.group("fm").split("\n")
+        fm = {}
+        order = []
+        for line in fm_lines:
+            if not line.strip() or ":" not in line:
+                continue
+            key, _, value = line.partition(":")
+            key = key.strip()
+            fm[key] = value.strip()
+            order.append(key)
+        return fm, m.group("body"), order
+
+
+    def render_frontmatter(fm: dict, order: list) -> str:
+        lines = ["---"]
+        seen = set()
+        for key in order:
+            if key in fm and key not in seen:
+                lines.append(f"{key}: {fm[key]}")
+                seen.add(key)
+        for key, value in fm.items():
+            if key not in seen:
+                lines.append(f"{key}: {value}")
+        lines.append("---")
+        return "\n".join(lines) + "\n\n"
+
+
+    def extract_agent_notes(body: str):
+        m = AGENT_NOTES_RE.search(body)
+        if not m:
+            return None
+        return m.group("content").strip()
+
+
+    def merge_agent_notes(original_body: str, conflict_notes: str, merged_from: str) -> str:
+        if not conflict_notes:
+            return original_body
+        original_notes = extract_agent_notes(original_body)
+        if original_notes and conflict_notes.strip() in original_notes:
+            return original_body  # already present, no-op
+
+        addition = f"\n\n_(merged from sync conflict, {merged_from})_\n\n{conflict_notes}"
+
+        if original_notes is None:
+            # No existing "## Agent notes" section in the original -- add one.
+            sep = "" if original_body.endswith("\n\n") else "\n\n"
+            return f"{original_body}{sep}## Agent notes\n{conflict_notes}\n"
+
+        def _inject(m: re.Match) -> str:
+            prefix = m.group(1)
+            return f"{prefix}## Agent notes\n{m.group('content').strip()}{addition}\n"
+
+        return AGENT_NOTES_RE.sub(_inject, original_body, count=1)
+
+
+    def resolve_one(conflict_path: str) -> dict:
+        dirname = os.path.dirname(conflict_path)
+        basename = os.path.basename(conflict_path)
+        m = CONFLICT_RE.match(basename)
+        if not m:
+            return {"conflict": conflict_path, "status": "error", "detail": "unparseable filename"}
+
+        original_path = os.path.join(dirname, m.group("base") + m.group("ext"))
+        result = {
+            "conflict": os.path.relpath(conflict_path, VAULT_ROOT),
+            "original": os.path.relpath(original_path, VAULT_ROOT),
+        }
+
+        if os.path.exists(original_path):
+            with open(original_path, "r", encoding="utf-8", errors="replace") as fh:
+                orig_text = fh.read()
+            with open(conflict_path, "r", encoding="utf-8", errors="replace") as fh:
+                conf_text = fh.read()
+
+            orig_fm, orig_body, orig_order = parse_frontmatter(orig_text)
+            conf_fm, conf_body, _ = parse_frontmatter(conf_text)
+
+            changed = False
+            for key in AGENT_OWNED_KEYS:
+                if key in conf_fm and conf_fm.get(key) != orig_fm.get(key):
+                    orig_fm[key] = conf_fm[key]
+                    if key not in orig_order:
+                        orig_order.append(key)
+                    changed = True
+
+            conflict_notes = extract_agent_notes(conf_body)
+            merged_from = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            new_body = merge_agent_notes(orig_body, conflict_notes, merged_from)
+            if new_body != orig_body:
+                changed = True
+
+            if changed:
+                new_text = render_frontmatter(orig_fm, orig_order) + new_body
+                tmp = original_path + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as fh:
+                    fh.write(new_text)
+                os.replace(tmp, original_path)
+                result["status"] = "merged"
+            else:
+                result["status"] = "no-op (nothing agent-owned to fold in)"
+        else:
+            result["status"] = "original missing (archived conflict as-is)"
+
+        rel_dir = os.path.relpath(dirname, VAULT_ROOT)
+        dest_dir = os.path.join(ARCHIVE_ROOT, rel_dir) if rel_dir != "." else ARCHIVE_ROOT
+        os.makedirs(dest_dir, exist_ok=True)
+        dest_path = os.path.join(dest_dir, basename)
+        os.replace(conflict_path, dest_path)
+        result["archived_to"] = os.path.relpath(dest_path, VAULT_ROOT)
+        return result
+
+
+    def find_conflicts():
+        for root, dirs, files in os.walk(VAULT_ROOT):
+            # Never descend into the archive itself or .git/.stfolder metadata.
+            # 90-archive holds already-resolved conflict copies (which keep
+            # their *.sync-conflict-* name); re-walking it would re-find them
+            # every night and burrow each one an archive-prefix deeper.
+            dirs[:] = [d for d in dirs if d not in (".git", ".stfolder", ".stversions", "90-archive")]
+            for name in files:
+                if ".sync-conflict-" in name and name.endswith(".md"):
+                    yield os.path.join(root, name)
+
+
+    def main() -> int:
+        results = []
+        for path in find_conflicts():
+            try:
+                results.append(resolve_one(path))
+            except Exception as exc:  # noqa: BLE001 - report, never abort the nightly pass
+                results.append({"conflict": os.path.relpath(path, VAULT_ROOT), "status": "error", "detail": str(exc)})
+
+        summary = {
+            "conflicts_found": len(results),
+            "results": results,
+        }
+        print(json.dumps(summary, indent=2))
+        return 0
+
+
+    if __name__ == "__main__":
+        raise SystemExit(main())
+  skill-vault-enrich-SKILL.md: |
+    ---
+    name: vault-enrich
+    description: Human-triggered enrichment -- research a note's topic further and add findings into its ## Agent notes section only. Never touches human prose.
+    version: 1.0.0
+    author: ovh-ops
+    license: MIT
+    metadata:
+      hermes:
+        tags: [Obsidian, Vault, Research, Enrichment]
+        related_skills: [vault-search, vault-file]
+    ---
+
+    # vault-enrich
+
+    Add researched context to an existing note, without touching what the human
+    wrote.
+
+    ## When to Use
+
+    Only when the user explicitly asks you to look further into a specific
+    note or topic (e.g. "dig into my note about X and add what you find",
+    "enrich the Y note"). Never run this on your own initiative as part of
+    `vault-file` or any other automated pass -- enrichment is opt-in per note,
+    triggered by the human.
+
+    ## Procedure
+
+    1. Identify the target note (ask for clarification only if you genuinely
+       cannot tell which note is meant -- do not ask about tags, titles, or
+       filing, only about which note).
+    2. Read the note in full so your research is grounded in what is already
+       there, not a duplicate of it.
+    3. Research the topic (web search, `vault-search` for related notes already
+       in the vault, or whatever tools are appropriate).
+    4. Add your findings into the note's `## Agent notes` section. If the
+       section doesn't exist yet, create it. Append to existing content rather
+       than replacing it, unless the user explicitly asked you to redo prior
+       enrichment.
+    5. Do not touch anything else in the file: not the frontmatter (beyond
+       what's needed, if anything, e.g. adding a tag the user explicitly asked
+       for), and never the human-authored prose body.
+    6. Note in your Agent notes addition where the information came from
+       (source links, or "cross-referenced with `<vault path>`" for
+       vault-internal connections) so the user can verify it later.
+    7. Report back to the user what you added, in the language they wrote in.
+
+    ## Pitfalls
+
+    - This skill respects `human_edited: true` the same as everything else with
+      regard to frontmatter and prose -- but note that adding to `## Agent
+      notes` is always allowed regardless of that flag, since that section is
+      agent-owned territory, not human territory.
+    - Do not refile or retitle the note as a side effect of enrichment -- that
+      is `vault-file`'s job and only runs on its own schedule/logic.
+    - Keep additions factual and sourced; do not pad the section with
+      restating what the note's body already says.

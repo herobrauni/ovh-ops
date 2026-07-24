@@ -1,0 +1,23 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: obsidian-web
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: Tools
+    gethomepage.dev/name: Obsidian
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=obsidian-web
+    gethomepage.dev/icon: obsidian.png
+spec:
+  hostnames:
+    - obsidian.brauni.dev
+  parentRefs:
+    - name: envoy-brauni-dev-public
+      namespace: network
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: obsidian-web
+          port: 3000
