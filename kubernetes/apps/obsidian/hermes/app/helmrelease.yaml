@@ -4,6 +4,12 @@ apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: hermes
+  annotations:
+    # The seed-config initContainer script uses a runtime `${skill}` loop var;
+    # Flux postBuild substitution would empty it (rm -rf on the skills root).
+    # This HR has no ${APP}/${CNPG_NAME} tokens of its own, so disabling Flux
+    # substitution for it is safe. Runtime env expansion is unaffected.
+    kustomize.toolkit.fluxcd.io/substitute: disabled
 spec:
   chartRef:
     kind: OCIRepository

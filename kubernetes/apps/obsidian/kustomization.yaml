@@ -13,5 +13,4 @@ resources:
   - ./embeddings/ks.yaml
   - ./retrieval/ks.yaml
   - ./hermes/ks.yaml
-  - ./syncthing/ks.yaml
   - ./obsidian-web/ks.yaml

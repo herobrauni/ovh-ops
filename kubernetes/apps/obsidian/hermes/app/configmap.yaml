@@ -3,6 +3,13 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: hermes-config
+  annotations:
+    # This ConfigMap is intentionally full of ${VAR} tokens meant for RUNTIME
+    # expansion, not Flux: config.yaml's `api_key: ${ZAI_API_KEY}` (Hermes' own
+    # env substitution) and seed-cron.sh's `${HERMES_HOME}` etc. Without this,
+    # Flux postBuild substitution replaces them with empty strings at apply time
+    # (that emptied api_key -> HTTP 401 from z.ai). Disable substitution here.
+    kustomize.toolkit.fluxcd.io/substitute: disabled
 data:
   config.yaml: |
     # Hermes Agent config.yaml — declarative, git-owned.
@@ -297,7 +304,7 @@ data:
     create_job "0 4 * * *" "vault-file-nightly" "$VAULT_FILE_PROMPT" "local"
 
     # --- Job 2: daily digest to the Telegram home channel -----------------------
-    DAILY_DIGEST_PROMPT="Compose the daily digest. This is a self-contained scheduled task -- you have no memory of any previous chat, so gather everything you need right now. 1) Look at recent activity under /vault (the hourly vault-git commits, and/or file mtimes/frontmatter state) to summarize the last 24 hours: notes captured to 00-inbox/, notes filed to 10-notes//20-refs/ by the vault-file-nightly job, and Syncthing conflicts resolved. 2) Check whether the Syncthing phone device has been disconnected for more than 48 hours by calling: curl -s -H \"X-API-Key: \$SYNCTHING_API_KEY\" http://syncthing:8384/rest/system/connections -- inspect each remote device's connected flag and lastSeen timestamp. If the call fails for ANY reason, say so briefly in one line and move on, do not treat it as fatal. 3) If nothing notable happened in the last 24h AND the phone device is not stalled beyond 48h, reply with EXACTLY: [SILENT] -- nothing else on that line. 4) Otherwise send a short digest. The one thing you must always report even on an otherwise quiet day is a Syncthing phone device stalled beyond 48h -- a silently stuck sync is the one failure the user must hear about, so it overrides the [SILENT] rule by itself. 5) Reply in German unless the day's content makes English clearly more natural -- the user is a German speaker."
+    DAILY_DIGEST_PROMPT="Compose the daily digest. This is a self-contained scheduled task -- you have no memory of any previous chat, so gather everything you need right now. 1) Look at recent activity under /vault (the hourly vault-git commits, and/or file mtimes/frontmatter state) to summarize the last 24 hours: notes captured to 00-inbox/, and notes filed to 10-notes//20-refs/ by the vault-file-nightly job. 2) If nothing notable happened in the last 24h, reply with EXACTLY: [SILENT] -- nothing else on that line. 3) Otherwise send a short digest of what changed. 4) Reply in German unless the day's content makes English clearly more natural -- the user is a German speaker."
 
     create_job "0 7 * * *" "daily-digest" "$DAILY_DIGEST_PROMPT" "telegram"
 
