@@ -26,5 +26,13 @@
       matchManagers: ["mise"],
       stabilityDays: 7,
     },
+    {
+      // Ceph tags are major.releaseType.patch where releaseType 2 == stable GA
+      // (0 == dev, 1 == release candidate). Only ever offer stable releases.
+      description: "Only allow stable Ceph GA releases, skip dev/RC tags",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["quay.io/ceph/ceph"],
+      allowedVersions: "/^v?\\d+\\.2\\.\\d+$/",
+    },
   ],
 }
