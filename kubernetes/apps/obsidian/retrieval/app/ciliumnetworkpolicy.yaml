@@ -56,9 +56,14 @@ spec:
         - ports:
             - port: "5432"
               protocol: TCP
+    # Broadened from the two explicit PyPI hosts to any DNS-resolvable host:
+    # uv's install timed out reaching pypi.org under the exact-name allow-list
+    # (files.pythonhosted.org redirects/CDN chains weren't reliably matched),
+    # while the same `matchPattern: "*"` works for hermes. This pod is already
+    # the deliberately-trusted, wider-egress one (no untrusted input, no LLM),
+    # and it's still DNS-proxy gated (no direct-IP egress).
     - toFQDNs:
-        - matchName: pypi.org
-        - matchName: files.pythonhosted.org
+        - matchPattern: "*"
       toPorts:
         - ports:
             - port: "443"
