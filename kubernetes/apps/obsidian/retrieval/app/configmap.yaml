@@ -78,7 +78,14 @@ data:
     def init_schema() -> None:
         with db_connect() as conn:
             with conn.cursor() as cur:
-                # Harmless if the extension already exists.
+                # This only succeeds because `vector` is already installed in
+                # this database: the CNPG cluster installs it into template1 at
+                # bootstrap (postInitTemplateSQL), and postgres-init's createdb
+                # inherits from template1, so `IF NOT EXISTS` short-circuits
+                # before the privilege check -- the unprivileged retrieval role
+                # cannot CREATE EXTENSION on its own (vector is untrusted). Do
+                # NOT "fix" this into a bare CREATE EXTENSION: it would fail
+                # with permission denied. See obsidian.yaml + the AGENTS finding.
                 cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
                 cur.execute(
                     f"""

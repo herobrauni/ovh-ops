@@ -30,6 +30,11 @@ spec:
       app.kubernetes.io/name: hermes
       app.kubernetes.io/instance: hermes
       app.kubernetes.io/controller: hermes
+  # Default-deny all inbound. This workload has no Service/Route and no
+  # legitimate inbound path (Telegram is outbound long polling only), so
+  # enforce that at the policy layer rather than relying on nothing ever
+  # creating a Service for it. An empty list = ingress-enforcing, zero allows.
+  ingress: []
   egress:
     - toEndpoints:
         - matchLabels:

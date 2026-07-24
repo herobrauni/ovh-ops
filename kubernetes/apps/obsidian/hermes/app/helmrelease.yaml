@@ -16,6 +16,7 @@ spec:
       # No cluster credentials for this workload -- it never talks to the
       # Kubernetes API.
       automountServiceAccountToken: false
+      enableServiceLinks: false
       securityContext:
         # Deliberately NOT runAsNonRoot/runAsUser. The image's s6-overlay
         # stage2 hook (docker/stage2-hook.sh) requires root to do the UID
