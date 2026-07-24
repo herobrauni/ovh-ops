@@ -43,8 +43,8 @@ spec:
                   name: retrieval-initdb-secret
           02-deps:
             image:
-              repository: docker.io/library/python
-              tag: 3.13-slim@sha256:6771159cd4fa5d9bba1258caf0b82e6b73458c694d178ad97c5e925c2d0e1a91
+              repository: ghcr.io/astral-sh/uv
+              tag: python3.13-bookworm-slim@sha256:531f855bda2c73cd6ef67d56b733b357cea384185b3022bd09f05e002cd144ca
             env:
               HOME: /tmp
             command:
@@ -53,10 +53,25 @@ spec:
               - |
                 set -eu
 
-                REQ1="psycopg[binary]==3.3.4"
-                REQ2="httpx==0.28.1"
-                REQ3="fastapi==0.139.2"
-                REQ4="uvicorn==0.51.0"
+                # Version pins are tracked by Renovate through the repo's
+                # annotated-dependency customManager
+                # (.renovate/customManagers.json5): each `# renovate:` line pairs
+                # with the VAR= line under it, so Renovate raises a PR bumping
+                # the value whenever a new PyPI release lands. Keep that pairing
+                # intact when editing.
+                # renovate: datasource=pypi depName=psycopg
+                PSYCOPG_VERSION=3.3.4
+                # renovate: datasource=pypi depName=httpx
+                HTTPX_VERSION=0.28.1
+                # renovate: datasource=pypi depName=fastapi
+                FASTAPI_VERSION=0.139.2
+                # renovate: datasource=pypi depName=uvicorn
+                UVICORN_VERSION=0.51.0
+
+                REQ1="psycopg[binary]==${PSYCOPG_VERSION}"
+                REQ2="httpx==${HTTPX_VERSION}"
+                REQ3="fastapi==${FASTAPI_VERSION}"
+                REQ4="uvicorn==${UVICORN_VERSION}"
 
                 HASH=$(printf '%s\n' "$REQ1" "$REQ2" "$REQ3" "$REQ4" | sha256sum | cut -d' ' -f1)
                 MARKER=/deps/.install-hash
@@ -66,8 +81,8 @@ spec:
                   exit 0
                 fi
 
-                echo "installing deps (hash ${HASH})"
-                pip install --no-cache-dir --target /deps "$REQ1" "$REQ2" "$REQ3" "$REQ4"
+                echo "installing deps with uv (hash ${HASH})"
+                uv pip install --no-cache --target /deps "$REQ1" "$REQ2" "$REQ3" "$REQ4"
                 echo "$HASH" > "$MARKER"
             securityContext:
               allowPrivilegeEscalation: false
