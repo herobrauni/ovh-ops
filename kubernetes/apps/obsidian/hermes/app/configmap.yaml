@@ -762,7 +762,10 @@ data:
     def find_conflicts():
         for root, dirs, files in os.walk(VAULT_ROOT):
             # Never descend into the archive itself or .git/.stfolder metadata.
-            dirs[:] = [d for d in dirs if d not in (".git", ".stfolder", ".stversions")]
+            # 90-archive holds already-resolved conflict copies (which keep
+            # their *.sync-conflict-* name); re-walking it would re-find them
+            # every night and burrow each one an archive-prefix deeper.
+            dirs[:] = [d for d in dirs if d not in (".git", ".stfolder", ".stversions", "90-archive")]
             for name in files:
                 if ".sync-conflict-" in name and name.endswith(".md"):
                     yield os.path.join(root, name)
