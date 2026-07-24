@@ -70,7 +70,8 @@ spec:
     # Open web egress. `matchPattern: "*"` allows any host the pod resolves
     # through the DNS proxy above, which covers the three hosts this workload
     # always needs -- api.telegram.org (bot API + voice-note file downloads),
-    # openrouter.ai (LLM), api.groq.com (Whisper STT) -- plus arbitrary sites
+    # api.z.ai (LLM, GLM Coding Plan; or openrouter.ai if switched back),
+    # api.groq.com (Whisper STT) -- plus arbitrary sites
     # for link fetching and vault-enrich research. See the header comment for
     # the security rationale and how to tighten this again.
     #

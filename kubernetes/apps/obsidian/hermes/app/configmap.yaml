@@ -18,20 +18,31 @@ data:
     # as of 2026-07-23. See the deployment report for the model choice rationale.
 
     model:
-      # anthropic/claude-sonnet-5 via OpenRouter: Anthropic's current Sonnet-class
-      # model, chosen for strong agentic tool-use quality at a lower cost/latency
-      # than Opus-class models, which matters for a workload that is driven by
-      # cron ticks and Telegram messages all day, not a handful of interactive
-      # sessions. 1M context headroom also comfortably covers SOUL.md + skills +
-      # a long Telegram thread without hitting compression every turn.
-      provider: openrouter
-      default: anthropic/claude-sonnet-5
-      # OPENROUTER_API_KEY is already present in the process environment via the
-      # hermes-secret Secret (envFrom), so this line is redundant with the
-      # provider's automatic env-var fallback — kept explicit per deployment spec
-      # to demonstrate/pin the ${VAR} substitution path documented at
-      # user-guide/configuration.md#environment-variable-substitution.
-      api_key: ${OPENROUTER_API_KEY}
+      # ACTIVE: z.ai GLM Coding Plan via the OpenAI-compatible `custom` provider.
+      # Configured as `custom` (not the native `zai` provider) on purpose: the
+      # coding-plan key is ONLY valid on the coding endpoint below -- the native
+      # zai provider / standard https://api.z.ai/api/paas/v4 endpoint returns
+      # HTTP 429 "Insufficient balance or no resource package" for a coding-plan
+      # subscription (verified 2026-07). glm-4.6 is the proven agentic tool-use
+      # model for this plan (200K context, reliable function-calling), a good
+      # fit for an all-day capture/file/retrieve agent. Alternatives available
+      # on the same plan/endpoint: glm-4.7 (newer), glm-5 / glm-5.1 / glm-5.2
+      # (flagship, reasoning-heavy -> slower for quick capture acks),
+      # glm-5-turbo (faster/cheaper). Bump `default` to switch.
+      provider: custom
+      base_url: https://api.z.ai/api/coding/paas/v4
+      default: glm-4.6
+      # ZAI_API_KEY is injected into the process env via hermes-secret (envFrom).
+      # `custom` has no automatic env-var fallback tied to this key, so the
+      # ${VAR} substitution here is what wires the credential in.
+      api_key: ${ZAI_API_KEY}
+      # ALTERNATIVE (previous default): anthropic/claude-sonnet-5 via OpenRouter.
+      # To switch back, comment out the four `custom` lines above and uncomment
+      # these; OPENROUTER_API_KEY is still synced into hermes-secret. Keep
+      # seed-cron.sh's CRON_PROVIDER/CRON_MODEL in sync with whichever is active.
+      # provider: openrouter
+      # default: anthropic/claude-sonnet-5
+      # api_key: ${OPENROUTER_API_KEY}
 
     # No sandboxing needed/available in this pod (no Docker-in-Docker); the
     # container itself is already the sandbox boundary (non-root, dropped caps,
@@ -206,8 +217,10 @@ data:
     JOBS_FILE="${HERMES_HOME}/cron/jobs.json"
 
     # Must match config.yaml's `model.provider` / `model.default` exactly.
-    CRON_PROVIDER="openrouter"
-    CRON_MODEL="anthropic/claude-sonnet-5"
+    # (Active: z.ai GLM Coding Plan via the custom/OpenAI-compatible provider;
+    # the base_url lives in config.yaml, jobs only pin provider + model.)
+    CRON_PROVIDER="custom"
+    CRON_MODEL="glm-4.6"
 
     log() {
       echo "seed-cron: $*"
