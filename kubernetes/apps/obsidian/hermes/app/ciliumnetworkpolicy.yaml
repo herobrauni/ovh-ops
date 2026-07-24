@@ -10,14 +10,21 @@ spec:
   # and execute code on the agent's own behalf (skill_manage, terminal,
   # execute_code), and ingests text from Telegram that may include
   # forwarded articles/links from arbitrary third parties -- so prompt
-  # injection against the agent is assumed possible. Egress is therefore an
-  # explicit allow-list, not a default-open pod: DNS (required for the
-  # toFQDNs rules below to resolve at all), the in-namespace `retrieval`
-  # service for vault-search, the in-namespace `syncthing` REST API for the
-  # daily sync-health check, and exactly the three external hosts this
-  # workload has any legitimate reason to reach. There is no ingress
-  # section: this workload has no inbound path at all -- Telegram is
-  # reached by outbound long polling only.
+  # injection against the agent is assumed possible.
+  #
+  # General web egress (80/443 to any DNS-resolvable host) is deliberately
+  # allowed so the agent can fetch forwarded links and do `vault-enrich`
+  # web research. This is an accepted, eyes-open trade-off: with untrusted
+  # Telegram input reaching an agent that can now reach the open web, the
+  # egress firewall is no longer the exfiltration boundary. The residual
+  # controls are: it stays a `toFQDNs` allow-list keyed on the DNS proxy, so
+  # egress is still limited to names the pod actually resolves -- direct-IP
+  # connections and the IP-only cloud metadata endpoint (169.254.169.254)
+  # remain blocked -- plus no service-account token, HERMES_WRITE_SAFE_ROOT
+  # confining writes, dropped caps, and no inbound path. If tighter exfil
+  # control is wanted later, narrow the `matchPattern: "*"` below back to an
+  # explicit host list. There is no ingress section: this workload has no
+  # inbound path at all -- Telegram is reached by outbound long polling only.
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: hermes
@@ -55,11 +62,36 @@ spec:
             # that has silently stopped syncing. Not the sync port (22000).
             - port: "8384"
               protocol: TCP
+    # Open web egress. `matchPattern: "*"` allows any host the pod resolves
+    # through the DNS proxy above, which covers the three hosts this workload
+    # always needs -- api.telegram.org (bot API + voice-note file downloads),
+    # openrouter.ai (LLM), api.groq.com (Whisper STT) -- plus arbitrary sites
+    # for link fetching and vault-enrich research. See the header comment for
+    # the security rationale and how to tighten this again.
+    #
+    # This does NOT widen in-cluster reach: Cilium `toFQDNs` only matches
+    # non-cluster ("world") IPs. A DNS name that resolves to an in-cluster pod
+    # IP or a ClusterIP in the Service CIDR is not covered by this rule, so
+    # cluster-internal egress stays limited to the three `toEndpoints` allows
+    # above (kube-dns, retrieval, syncthing). Everything else in-cluster --
+    # other namespaces, the CNPG postgres cluster, node IPs (host/remote-node
+    # identities) -- is blocked by default now that this pod is selected by an
+    # egress policy.
     - toFQDNs:
-        - matchName: api.telegram.org
-        - matchName: openrouter.ai
-        - matchName: api.groq.com
+        - matchPattern: "*"
       toPorts:
         - ports:
             - port: "443"
               protocol: TCP
+            - port: "80"
+              protocol: TCP
+  # The Kubernetes API server is the one in-cluster target that some Cilium
+  # setups classify under the `world` identity (rather than a pod/Service-CIDR
+  # identity), which could let the `toFQDNs: "*"` rule above reach it. Deny it
+  # explicitly -- `egressDeny` takes precedence over every egress allow, so
+  # this holds regardless of how the apiserver identity is resolved. The pod
+  # already runs with automountServiceAccountToken: false, so there is no token
+  # to use against it either; this is defense-in-depth, not the only control.
+  egressDeny:
+    - toEntities:
+        - kube-apiserver

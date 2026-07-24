@@ -64,6 +64,14 @@ spec:
                 echo "seed-config: done"
             env:
               HERMES_HOME: /opt/data
+            # Stays root (writes into the fsGroup-owned /opt/data PVC), but
+            # needs no capabilities to do so -- the volume is group-writable
+            # via the pod fsGroup 1000. Strip everything and block escalation.
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
           # Idempotent cron bootstrap -- see seed-cron.sh (in the ConfigMap)
           # for the full rationale, including a verified gap in the
           # upstream `hermes cron` CLI around pinning provider/model.
@@ -79,6 +87,15 @@ spec:
                   name: hermes-secret
             env:
               HERMES_HOME: /opt/data
+            # Runs the `hermes` CLI + a python patch that only write into
+            # HERMES_HOME (/opt/data, fsGroup-owned) -- no capabilities needed.
+            # Kept as root to avoid a missing-$HOME surprise from the CLI; caps
+            # dropped and escalation blocked.
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
         containers:
           app:
             image:
@@ -122,6 +139,46 @@ spec:
                   - CHOWN
                   - DAC_OVERRIDE
                   - FOWNER
+            # The gateway has no inbound path and no HTTP health surface
+            # (HERMES_DASHBOARD/API_SERVER_HOST deliberately unset), so this
+            # is an exec probe rather than httpGet: it confirms the s6-managed
+            # `hermes gateway run` child is actually alive. This catches the
+            # failure that matters for a capture-only, run-for-months workload
+            # -- the gateway process dying while s6/pid1 stays up, which no
+            # process-based restart would otherwise notice. It cannot detect a
+            # wedged-but-running long-poll; there is no health endpoint to ask.
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - 'for f in /proc/[0-9]*/cmdline; do grep -aq gateway "$f" 2>/dev/null && exit 0; done; exit 1'
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 3
+              # Startup guards the liveness probe during boot: the two seed
+              # initContainers plus s6 stage2 (UID remap, chown) run before the
+              # gateway child appears, so allow up to ~5 min before liveness
+              # begins evaluating.
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - 'for f in /proc/[0-9]*/cmdline; do grep -aq gateway "$f" 2>/dev/null && exit 0; done; exit 1'
+                  periodSeconds: 10
+                  failureThreshold: 30
+              # No readiness probe: this workload has no Service and nothing
+              # routes to it, so readiness would gate nothing.
+              readiness:
+                enabled: false
             resources:
               requests:
                 cpu: 200m
