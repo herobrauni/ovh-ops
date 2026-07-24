@@ -80,9 +80,12 @@ spec:
             resources:
               requests:
                 cpu: 500m
-                memory: 2Gi
+                memory: 3Gi
+              # bge-m3 ONNX warmup (max_batch_tokens 16384) peaked past 6Gi and
+              # was OOMKilled (137). Worker nodes have ~24Gi allocatable, so give
+              # it comfortable headroom.
               limits:
-                memory: 6Gi
+                memory: 10Gi
 
     service:
       app:

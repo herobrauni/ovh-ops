@@ -57,16 +57,6 @@ spec:
         - ports:
             - port: "8080"
               protocol: TCP
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: obsidian
-            app.kubernetes.io/name: syncthing
-      toPorts:
-        - ports:
-            # Read-only REST call from the daily digest job, to detect a phone
-            # that has silently stopped syncing. Not the sync port (22000).
-            - port: "8384"
-              protocol: TCP
     # Open web egress. `matchPattern: "*"` allows any host the pod resolves
     # through the DNS proxy above, which covers the three hosts this workload
     # always needs -- api.telegram.org (bot API + voice-note file downloads),
@@ -78,8 +68,8 @@ spec:
     # This does NOT widen in-cluster reach: Cilium `toFQDNs` only matches
     # non-cluster ("world") IPs. A DNS name that resolves to an in-cluster pod
     # IP or a ClusterIP in the Service CIDR is not covered by this rule, so
-    # cluster-internal egress stays limited to the three `toEndpoints` allows
-    # above (kube-dns, retrieval, syncthing). Everything else in-cluster --
+    # cluster-internal egress stays limited to the `toEndpoints` allows
+    # above (kube-dns, retrieval). Everything else in-cluster --
     # other namespaces, the CNPG postgres cluster, node IPs (host/remote-node
     # identities) -- is blocked by default now that this pod is selected by an
     # egress policy.
