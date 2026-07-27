@@ -24,9 +24,15 @@ spec:
             args:
               - --character-set-server=utf8mb4
               - --collation-server=utf8mb4_unicode_ci
-            envFrom: &envFrom
+            envFrom:
               - secretRef:
-                  name: idlers2-secret
+                  name: idlers2-db-secret
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
             probes:
               liveness:
                 enabled: true
@@ -54,8 +60,12 @@ spec:
               - /bin/sh
               - -c
               - |
-                until mariadb-admin ping -h 127.0.0.1 -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}"; do sleep 2; done
-            envFrom: *envFrom
+                until mariadb-admin ping -h 127.0.0.1 -u"$${DB_USERNAME}" -p"$${DB_PASSWORD}"; do sleep 2; done
+            # Gates on the unprivileged application credentials rather than the
+            # root ones, so this also proves the grant the app actually needs.
+            envFrom: &appEnvFrom
+              - secretRef:
+                  name: idlers2-app-secret
         containers:
           app:
             image:
@@ -72,7 +82,7 @@ spec:
               # scheme http and the signed YABS ingest URLs fail validation.
               TRUSTED_PROXIES: "*"
               SESSION_SECURE_COOKIE: "true"
-            envFrom: *envFrom
+            envFrom: *appEnvFrom
             probes:
               # The entrypoint caches config/routes/views and runs migrations
               # before supervisord ever starts, so first boot is slow; a startup
@@ -115,12 +125,20 @@ spec:
               runAsNonRoot: false
               runAsUser: 0
               runAsGroup: 0
-              # supervisord starts as root and drops nginx/php-fpm workers to
-              # their own users, and the entrypoint re-chowns the app dirs, so
-              # this image needs the user-switching capabilities kept.
+              # This image cannot run unprivileged: the entrypoint writes
+              # .env.production into the root-owned /app, so a www-data UID
+              # fails before the app starts. Root plus the narrowest working
+              # cap set is the same trade-off the s6-overlay images here make.
+              #   SETUID/SETGID - nginx and php-fpm drop their workers to the
+              #                   nginx/www-data users.
+              #   DAC_OVERRIDE  - `artisan config:cache`/`view:cache` run as
+              #                   root but write into www-data-owned
+              #                   bootstrap/cache and storage/framework.
+              #   CHOWN         - the entrypoint re-chowns /app/database.
+              # FOWNER was dropped: nothing here chmods a file it does not own.
               capabilities:
                 drop: ["ALL"]
-                add: ["CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER"]
+                add: ["CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE"]
             resources:
               requests:
                 cpu: 25m
@@ -128,12 +146,15 @@ spec:
               limits:
                 memory: 512Mi
     defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
     service:
       app:
         controller: idlers2
