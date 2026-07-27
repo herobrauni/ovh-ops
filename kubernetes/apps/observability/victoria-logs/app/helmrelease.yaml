@@ -18,7 +18,7 @@ spec:
         enabled: true
         storageClassName: ceph-block
         size: 20Gi
-      retentionPeriod: 14d
+      retentionPeriod: 60d
       route:
         enabled: true
         annotations:
