@@ -47,4 +47,11 @@ spec:
                 valueFrom:
                   fieldRef:
                     fieldPath: status.hostIP
+            resources:
+              requests:
+                cpu: "1"
+                memory: "2Gi"
+              limits:
+                cpu: "6"
+                memory: "8Gi"
         serviceAccountName: *name
