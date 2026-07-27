@@ -1,0 +1,183 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: idlers2
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: idlers2
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    controllers:
+      idlers2:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        initContainers:
+          mariadb:
+            image:
+              repository: docker.io/library/mariadb
+              tag: 12.3.2@sha256:628f228f0fd5913a220438693576b29b6fe4dc1fa0a1298c0e98579fae28635f
+            args:
+              - --character-set-server=utf8mb4
+              - --collation-server=utf8mb4_unicode_ci
+            envFrom: &envFrom
+              - secretRef:
+                  name: idlers2-secret
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mariadb-admin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD}
+                  initialDelaySeconds: 10
+                  periodSeconds: 10
+                  timeoutSeconds: 3
+                  failureThreshold: 6
+            restartPolicy: Always
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities: { drop: ["ALL"] }
+          wait-for-mariadb:
+            image:
+              repository: docker.io/library/mariadb
+              tag: 12.3.2@sha256:628f228f0fd5913a220438693576b29b6fe4dc1fa0a1298c0e98579fae28635f
+            command:
+              - /bin/sh
+              - -c
+              - |
+                until mariadb-admin ping -h 127.0.0.1 -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}"; do sleep 2; done
+            envFrom: *envFrom
+        containers:
+          app:
+            image:
+              repository: ghcr.io/alteredparadox/my-idlers
+              tag: 4.1.0-ap.9@sha256:c6f995ca98a55fbf74cd8c7ff07502ad88fd9da4e95408ae004da7987465e98d
+            env:
+              DB_HOST: 127.0.0.1
+              DB_PORT: "3306"
+              APP_URL: https://idlers2.brauni.dev
+              # Applies the fork's newer migrations on boot. The image otherwise
+              # refuses to start against a database with pending migrations.
+              AUTO_MIGRATE: "true"
+              # TLS terminates at Envoy; without trusting the proxy the app sees
+              # scheme http and the signed YABS ingest URLs fail validation.
+              TRUSTED_PROXIES: "*"
+              SESSION_SECURE_COOKIE: "true"
+            envFrom: *envFrom
+            probes:
+              # The entrypoint caches config/routes/views and runs migrations
+              # before supervisord ever starts, so first boot is slow; a startup
+              # probe absorbs that instead of letting liveness kill the pod
+              # mid-migration.
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet: &httpGet
+                    path: /login
+                    port: &port 8000
+                    # TrustHosts rejects any host other than APP_URL's, so a
+                    # bare-IP probe would 400 against a perfectly healthy app.
+                    httpHeaders:
+                      - name: Host
+                        value: idlers2.brauni.dev
+                  periodSeconds: 5
+                  timeoutSeconds: 5
+                  failureThreshold: 60
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet: *httpGet
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet: *httpGet
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              runAsNonRoot: false
+              runAsUser: 0
+              runAsGroup: 0
+              # supervisord starts as root and drops nginx/php-fpm workers to
+              # their own users, and the entrypoint re-chowns the app dirs, so
+              # this image needs the user-switching capabilities kept.
+              capabilities:
+                drop: ["ALL"]
+                add: ["CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE", "FOWNER"]
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    service:
+      app:
+        controller: idlers2
+        ports:
+          http:
+            port: *port
+    route:
+      brauni-dev:
+        annotations:
+          gatus.home-operations.com/endpoint: |-
+            conditions: ["[STATUS] == 200"]
+            url: https://idlers2.brauni.dev
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Selfhosted
+          gethomepage.dev/name: Idlers 2
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=idlers2
+          gethomepage.dev/icon: mdi-application-cog
+        hostnames:
+          - idlers2.brauni.dev
+        parentRefs:
+          - name: envoy-brauni-dev-public
+            namespace: network
+            sectionName: https
+    persistence:
+      db:
+        existingClaim: "{{ .Release.Name }}"
+        advancedMounts:
+          idlers2:
+            mariadb:
+              - path: /var/lib/mysql
+                subPath: mariadb
+      mysqld-run:
+        type: emptyDir
+        medium: Memory
+        sizeLimit: 1Mi
+        advancedMounts:
+          idlers2:
+            mariadb:
+              - path: /run/mysqld
+      tmp:
+        type: emptyDir
+        advancedMounts:
+          idlers2:
+            app:
+              - path: /tmp
+            mariadb:
+              - path: /tmp
