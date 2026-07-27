@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cilium.io/ciliumnetworkpolicy_v2.json
+# Only the public Envoy gateway may reach the app port. The MariaDB sidecar is
+# not covered by any Service, but this also makes that explicit: nothing in the
+# cluster can open 3306 against this pod, including the original instance.
+# Egress is deliberately left unrestricted — the app performs ping status
+# checks, WHOIS lookups and optional Prometheus queries.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: idlers2
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: idlers2
+      app.kubernetes.io/instance: idlers2
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: network
+            gateway.networking.k8s.io/gateway-name: envoy-brauni-dev-public
+      toPorts:
+        - ports:
+            - port: "8000"
+              protocol: TCP
