@@ -35,6 +35,16 @@ spec:
           runAsGroup: 1001
           fsGroup: 1001
           fsGroupChangePolicy: OnRootMismatch
+        # Nix builds peak around 13Gi RSS, so two runners on one node can
+        # exhaust a 24Gi worker even when each stays under its own limit.
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: *name
+                    actions-ephemeral-runner: "True"
+                topologyKey: kubernetes.io/hostname
         containers:
           - name: runner
             image: ghcr.io/home-operations/actions-runner:2.336.0@sha256:281a9a090522fafbf4967f158b8c97d03552b1978b688893c5f7cb1944bc5fe5
@@ -50,8 +60,8 @@ spec:
             resources:
               requests:
                 cpu: "1"
-                memory: "2Gi"
+                memory: "8Gi"
               limits:
                 cpu: "6"
-                memory: "8Gi"
+                memory: "16Gi"
         serviceAccountName: *name
