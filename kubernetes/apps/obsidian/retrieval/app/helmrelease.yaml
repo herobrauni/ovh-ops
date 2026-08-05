@@ -74,7 +74,7 @@ spec:
                 # renovate: datasource=pypi depName=fastapi
                 FASTAPI_VERSION=0.141.1
                 # renovate: datasource=pypi depName=uvicorn
-                UVICORN_VERSION=0.52.0
+                UVICORN_VERSION=0.52.1
 
                 REQ1="psycopg[binary]==${PSYCOPG_VERSION}"
                 REQ2="httpx==${HTTPX_VERSION}"
