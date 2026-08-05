@@ -56,8 +56,9 @@ spec:
               name: *pguser
               key: password
       image:
-        repository: ghcr.io/goauthentik/dev-server
-        tag: gh-sdko-oauth-account-selection
+        repository: ghcr.io/goauthentik/server
+        tag: 2026.8.0-rc6
+        digest: sha256:173d7d219cca16a262ae07db77092dfbbb540807019f6bfb705aba95c7118971
       podAnnotations:
         reloader.stakater.com/auto: "true"
         secret.reloader.stakater.com/reload: authentik-secret,authentik-initdb-secret,authentik-pguser-secret
