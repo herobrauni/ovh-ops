@@ -7,7 +7,7 @@ spec:
   restartPolicy: Always
   containers:
     - name: aws-cli
-      image: amazon/aws-cli:2.36.11@sha256:dcaa51e37b4b681f77e6fefe0e9702b7dc0c5e2ed035ba31775575144af7463c
+      image: amazon/aws-cli:2.36.16@sha256:a5faa1d6b65c5afe675052599027bf46eb02b020ec153deefe4317f109c4bb92
       command:
         - sleep
         - infinity
