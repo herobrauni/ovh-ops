@@ -38,6 +38,8 @@ spec:
               CHROME_PATH: /usr/bin/chromium
               API_CORS_ORIGIN: https://web-check.brauni.dev
               API_TIMEOUT_LIMIT: "15000"
+              API_ENABLE_RATE_LIMIT: "true"
+              TRUST_PROXY: "1"
             probes:
               liveness:
                 enabled: true
