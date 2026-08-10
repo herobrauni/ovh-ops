@@ -81,6 +81,7 @@ spec:
   ingress:
     - fromEndpoints:
         - matchLabels:
+            k8s:io.kubernetes.pod.namespace: selfhosted
             app.kubernetes.io/name: karakeep
             app.kubernetes.io/instance: karakeep
             app.kubernetes.io/component: application
@@ -130,6 +131,7 @@ spec:
   ingress:
     - fromEndpoints:
         - matchLabels:
+            k8s:io.kubernetes.pod.namespace: selfhosted
             app.kubernetes.io/name: karakeep
             app.kubernetes.io/instance: karakeep
             app.kubernetes.io/component: application
