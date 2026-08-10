@@ -23,6 +23,19 @@
     "prEditedNotification",
     "prIgnoreNotification",
   ],
+  packageRules: [
+    {
+      description: "Keep Flux OCI artifact digests pinned",
+      matchManagers: ["flux"],
+      pinDigests: true,
+    },
+    {
+      description: "Require review for Flux OCI digest changes",
+      matchManagers: ["flux"],
+      matchUpdateTypes: ["digest"],
+      automerge: false,
+    },
+  ],
   ignorePaths: [
     "**/resources/**",
   ],

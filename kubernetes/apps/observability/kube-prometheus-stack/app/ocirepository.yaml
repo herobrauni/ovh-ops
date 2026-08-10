@@ -11,4 +11,5 @@ spec:
     operation: copy
   ref:
     tag: 88.2.0
+    digest: sha256:428d5d061298a0d440e1471c4edb9491faa2d0c15d4130f735704726f758a3eb
   url: oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack
