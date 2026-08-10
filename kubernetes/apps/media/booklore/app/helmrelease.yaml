@@ -83,7 +83,7 @@ spec:
           booklore:
             image:
               repository: ghcr.io/grimmory-tools/grimmory
-              tag: latest@sha256:b81f8135195bccf3bd7a2eca43bef924f8740843f653bc2f203445f794edc02b
+              tag: latest@sha256:746bf67ac42b5c5f359946ccf4fcfee21129b876371965943c3400036fc2f170
             command:
               - java
             args:
