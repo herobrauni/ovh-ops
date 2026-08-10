@@ -6,6 +6,7 @@ namespace: flux-system
 
 components:
   - ../../components/alerts
+  - ../../components/gateway-route-access
 
 resources:
   - ./namespace.yaml

@@ -28,7 +28,10 @@ spec:
       port: 443
       allowedRoutes:
         namespaces:
-          from: All
+          from: Selector
+          selector:
+            matchLabels:
+              gateway.brauni.dev/route-access: "true"
       tls:
         certificateRefs:
           - kind: Secret
