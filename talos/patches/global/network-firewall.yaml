@@ -1,0 +1,28 @@
+---
+# Restrict host-level control-plane APIs to the private cluster networks.
+# With the default firewall action left at accept, a NetworkRuleConfig allow
+# list applies only to its selected port; unmatched IPv4 and all IPv6 sources
+# are rejected for that port without disturbing unrelated node services.
+apiVersion: v1alpha1
+kind: NetworkRuleConfig
+name: talos-api-private
+portSelector:
+  ports:
+    - 50000
+  protocol: tcp
+ingress:
+  - subnet: 10.10.8.0/24
+  - subnet: 10.42.0.0/16
+  - subnet: 10.43.0.0/16
+---
+apiVersion: v1alpha1
+kind: NetworkRuleConfig
+name: kubernetes-api-private
+portSelector:
+  ports:
+    - 6443
+  protocol: tcp
+ingress:
+  - subnet: 10.10.8.0/24
+  - subnet: 10.42.0.0/16
+  - subnet: 10.43.0.0/16
