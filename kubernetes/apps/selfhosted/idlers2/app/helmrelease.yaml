@@ -70,7 +70,7 @@ spec:
           app:
             image:
               repository: ghcr.io/alteredparadox/my-idlers
-              tag: 4.1.0-ap.9@sha256:c6f995ca98a55fbf74cd8c7ff07502ad88fd9da4e95408ae004da7987465e98d
+              tag: 4.1.0-ap.13@sha256:62289fe9dd7242f82224884f9adf76f0fe62da41a11d158c79499a038dab59d6
             env:
               DB_HOST: 127.0.0.1
               DB_PORT: "3306"
