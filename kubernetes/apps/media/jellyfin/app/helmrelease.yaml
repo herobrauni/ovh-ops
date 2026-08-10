@@ -21,6 +21,7 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         supplementalGroups:
           - 44
+        seccompProfile: { type: RuntimeDefault }
     controllers:
       jellyfin:
         annotations:
@@ -163,11 +164,14 @@ spec:
               runAsUser: 0
               runAsGroup: 0
               runAsNonRoot: false
-              privileged: true
+              privileged: false
+              allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
               capabilities:
                 drop:
                   - ALL
+                add:
+                  - SYS_ADMIN
     service:
       app:
         controller: jellyfin
@@ -244,4 +248,3 @@ spec:
             app:
               - path: /aio/remote/altmount
                 mountPropagation: HostToContainer
-

@@ -188,11 +188,14 @@ spec:
               runAsUser: 0
               runAsGroup: 0
               runAsNonRoot: false
-              privileged: true
+              privileged: false
+              allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
               capabilities:
                 drop:
                   - ALL
+                add:
+                  - SYS_ADMIN
     service:
       app:
         controller: radarr4k
