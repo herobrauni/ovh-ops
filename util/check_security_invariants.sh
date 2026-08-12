@@ -44,8 +44,10 @@ declare -A host_network_allowlist=(
     [kubernetes/apps/rook-ceph/ceph-csi-drivers/app/helmrelease.yaml]=1
 )
 
+mapfile -d '' yaml_files < <(find kubernetes -type f -name '*.yaml' -print0)
+
 check_allowlist() {
-    local pattern=$1
+    local expression=$1
     local allowlist_name=$2
     local description=$3
     local file
@@ -56,39 +58,43 @@ check_allowlist() {
         if [[ -z "${allowlist[$file]+present}" ]]; then
             report_failure "unapproved ${description}: ${file}"
         fi
-    done < <(rg -l "$pattern" kubernetes || true)
+    done < <(mise exec -- yq eval -r -N "$expression | filename" "${yaml_files[@]}")
 }
 
-while IFS= read -r file; do
-    digest=$(mise exec -- yq eval -r '.spec.ref.digest // ""' "$file")
+while IFS=$'\t' read -r file digest; do
+    [[ -n "$file" ]] || continue
     if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
         report_failure "OCIRepository is not digest-pinned: ${file}"
     fi
-done < <(rg -l '^kind: OCIRepository$' kubernetes)
+done < <(mise exec -- yq eval -r -N 'select(.kind == "OCIRepository") | filename + "\t" + (.spec.ref.digest // "missing")' "${yaml_files[@]}")
 
-while IFS= read -r file; do
-    bad_images=$(mise exec -- yq eval -r '
-        .. | select(tag == "!!map") |
-        select(has("repository") and has("tag")) |
-        select(
-            (((.tag | tostring) | contains("@sha256:")) == false) and
-            (((.digest // "") | test("^sha256:[0-9a-f]{64}$")) == false)
-        ) |
-        (.repository | tostring) + ":" + (.tag | tostring)
-    ' "$file")
-    if [[ -n "$bad_images" ]]; then
-        report_failure "HelmRelease has mutable explicit image(s) in ${file}: ${bad_images//$'\n'/, }"
-    fi
-done < <(rg --files kubernetes -g 'helmrelease.yaml')
+while IFS=$'\t' read -r file image; do
+    [[ -n "$file" ]] || continue
+    report_failure "mutable explicit image in ${file}: ${image}"
+done < <(mise exec -- yq eval -r -N '
+    .. | select(tag == "!!map") |
+    select(has("repository") and has("tag")) |
+    select(
+        (((.tag | tostring) | contains("@sha256:")) == false) and
+        (((.digest // "") | test("^sha256:[0-9a-f]{64}$")) == false)
+    ) |
+    filename + "\t" + ((.repository | tostring) + ":" + (.tag | tostring))
+' "${yaml_files[@]}")
 
-while IFS= read -r finding; do
-    [[ -n "$finding" ]] || continue
-    report_failure "mutable scalar image reference: ${finding}"
-done < <(rg --pcre2 -n '^\s+(?:image|imageName):\s+(?!&)(?!.*@sha256:)\S+' kubernetes || true)
+while IFS=$'\t' read -r file image; do
+    [[ -n "$file" ]] || continue
+    report_failure "mutable scalar image reference in ${file}: ${image}"
+done < <(mise exec -- yq eval -r -N '
+    .. | select(tag == "!!map") | to_entries[] |
+    select(.key == "image" or .key == "imageName") |
+    select(.value | tag == "!!str") |
+    select((.value | contains("@sha256:")) == false) |
+    filename + "\t" + .value
+' "${yaml_files[@]}")
 
-check_allowlist '^\s+privileged:\s+true' privileged_allowlist "privileged container"
-check_allowlist 'hostPath:\s+/dev/fuse' fuse_allowlist "FUSE host device"
-check_allowlist '^\s+hostNetwork:\s+true' host_network_allowlist "host networking"
+check_allowlist '.. | select(tag == "!!map" and .privileged == true)' privileged_allowlist "privileged container"
+check_allowlist '.. | select(tag == "!!str" and . == "/dev/fuse")' fuse_allowlist "FUSE host device"
+check_allowlist '.. | select(tag == "!!map" and .hostNetwork == true)' host_network_allowlist "host networking"
 
 if ((failures > 0)); then
     echo "Security invariant check failed with ${failures} issue(s)." >&2
