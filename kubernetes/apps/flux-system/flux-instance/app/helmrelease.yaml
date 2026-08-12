@@ -18,6 +18,12 @@ spec:
       commonMetadata:
         labels:
           gateway.brauni.dev/route-access: "true"
+          pod-security.kubernetes.io/enforce: baseline
+          pod-security.kubernetes.io/enforce-version: v1.35
+          pod-security.kubernetes.io/audit: restricted
+          pod-security.kubernetes.io/audit-version: v1.35
+          pod-security.kubernetes.io/warn: restricted
+          pod-security.kubernetes.io/warn-version: v1.35
       distribution:
         artifact: oci://ghcr.io/controlplaneio-fluxcd/flux-operator-manifests:v0.45.0@sha256:83545a6a06fbc915bb5277ff9447cc6ab33a10d8ee9e77babc07c095237e30c4
       cluster:
