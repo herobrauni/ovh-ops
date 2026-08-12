@@ -18,8 +18,6 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
         runAsGroup: 1000
         runAsUser: 1000
-        seccompProfile:
-          type: RuntimeDefault
     controllers:
       media-debug:
         forceRename: media-debug
@@ -101,14 +99,11 @@ spec:
               runAsUser: 0
               runAsGroup: 0
               runAsNonRoot: false
-              privileged: false
-              allowPrivilegeEscalation: false
+              privileged: true
               readOnlyRootFilesystem: true
               capabilities:
                 drop:
                   - ALL
-                add:
-                  - SYS_ADMIN
     persistence:
       fuse:
         type: hostPath
