@@ -11,4 +11,5 @@ spec:
     operation: copy
   ref:
     tag: 0.19.0
+    digest: sha256:80070875201a6a9809c8bcdec3ead542195ed522ad2a4d33f81477fb8d9970e0
   url: oci://ghcr.io/home-operations/charts-mirror/k8tz
