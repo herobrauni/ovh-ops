@@ -14,7 +14,7 @@ spec:
   values:
     image:
       rclone:
-        tag: v0.4.9
+        tag: v0.4.9@sha256:bcb4bab8ca2217febfe93c564ac14af46696f7e04b506d749e7bcdc125bd7328
     feature:
       enableInlineVolume: true
     node:

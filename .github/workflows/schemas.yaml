@@ -22,10 +22,7 @@ permissions:
 jobs:
   main:
     name: Schemas
-    runs-on: ovh-ops-runner
-    permissions:
-      contents: read
-      packages: write
+    runs-on: schemas-runner
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -54,7 +51,14 @@ jobs:
         run: uv pip install pyyaml
 
       - name: Run crd-extractor
-        run: curl -fsSL https://raw.githubusercontent.com/datreeio/CRDs-catalog/43e4407642d4c37683c88711f37caa6c9c20ca40/Utilities/crd-extractor.sh | bash
+        env:
+          CRD_EXTRACTOR_SHA256: 5674b60b9ab2ea4bb2fed4530be8b1048f8afb2caa92259828345d6c24bc6955
+          CRD_EXTRACTOR_URL: https://raw.githubusercontent.com/datreeio/CRDs-catalog/43e4407642d4c37683c88711f37caa6c9c20ca40/Utilities/crd-extractor.sh
+        run: |
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error \
+            --output /tmp/crd-extractor.sh "${CRD_EXTRACTOR_URL}"
+          echo "${CRD_EXTRACTOR_SHA256}  /tmp/crd-extractor.sh" | sha256sum --check --strict
+          bash /tmp/crd-extractor.sh
 
       - name: Generate index.html
         run: |

@@ -11,4 +11,5 @@ spec:
     operation: copy
   ref:
     tag: v1.8.3
-  url: oci://mirror.gcr.io/envoyproxy/gateway-helm
+    digest: sha256:cfb34ff4266c87a394cd6be5c13607a2dd47083aef771368302eaeaa99c4a0a9
+  url: oci://docker.io/envoyproxy/gateway-helm
