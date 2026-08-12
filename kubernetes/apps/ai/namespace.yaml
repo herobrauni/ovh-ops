@@ -1,0 +1,14 @@
+apiVersion: v1
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/kube/namespace_v1.json
+kind: Namespace
+metadata:
+  name: _
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.35
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: v1.35
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.35
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
