@@ -24,9 +24,6 @@ spec:
     - group: gateway.envoyproxy.io
       kind: SecurityPolicy
       namespace: selfhosted
-    - group: gateway.envoyproxy.io
-      kind: SecurityPolicy
-      namespace: obsidian
   to:
     - group: ""
       kind: Service
