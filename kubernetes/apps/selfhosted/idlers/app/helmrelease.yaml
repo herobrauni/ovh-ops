@@ -24,9 +24,9 @@ spec:
             args:
               - --character-set-server=utf8mb4
               - --collation-server=utf8mb4_unicode_ci
-            envFrom: &envFrom
+            envFrom:
               - secretRef:
-                  name: idlers-secret
+                  name: idlers-db-secret
             probes:
               liveness:
                 enabled: true
@@ -54,8 +54,10 @@ spec:
               - /bin/sh
               - -c
               - |
-                until mariadb-admin ping -h 127.0.0.1 -u"$${MYSQL_USER}" -p"$${MYSQL_PASSWORD}"; do sleep 2; done
-            envFrom: *envFrom
+                until mariadb-admin ping -h 127.0.0.1 -u"$${DB_USERNAME}" -p"$${DB_PASSWORD}"; do sleep 2; done
+            envFrom: &appEnvFrom
+              - secretRef:
+                  name: idlers-app-secret
         containers:
           app:
             image:
@@ -63,7 +65,7 @@ spec:
               tag: latest@sha256:1474d11bd2a615c59c4f8067e6f261ce16ff49a86f4f96778ff1ebca6a0a63ca
             env:
               DB_HOST: 127.0.0.1
-            envFrom: *envFrom
+            envFrom: *appEnvFrom
             probes:
               liveness:
                 enabled: true
@@ -105,6 +107,8 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
     service:
       app:
         controller: idlers
