@@ -89,10 +89,6 @@ spec:
         existingClaim: omniroute
         globalMounts:
           - path: /app/data
-      tmp:
-        type: emptyDir
-        globalMounts:
-          - path: /tmp
 
     route:
       app:
