@@ -91,6 +91,7 @@ spec:
               - -jar
               - /app/app.jar
             env:
+              ALLOWED_ORIGINS: https://booklore.brauni.dev
               FORCE_DISABLE_OIDC: false
               BOOKLORE_PORT: "6060"
               SWAGGER_ENABLED: true
