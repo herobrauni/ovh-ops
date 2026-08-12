@@ -64,11 +64,6 @@ spec:
             envFrom: &envFrom
               - secretRef:
                   name: karakeep-secret
-            securityContext:
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop:
-                  - ALL
             probes:
               liveness:
                 enabled: true
