@@ -19,6 +19,14 @@ spec:
         - ports:
             - port: "20128"
               protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: selfhosted
+            app.kubernetes.io/name: silverbullet
+      toPorts:
+        - ports:
+            - port: "20128"
+              protocol: TCP
   egress:
     - toEndpoints:
         - matchLabels:
