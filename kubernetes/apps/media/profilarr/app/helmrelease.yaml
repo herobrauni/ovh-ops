@@ -15,6 +15,14 @@ spec:
     defaultPodOptions:
       automountServiceAccountToken: false
       enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
     controllers:
       profilarr:
         annotations:
@@ -24,11 +32,17 @@ spec:
             image:
               repository: santiagosayshey/profilarr
               tag: beta@sha256:864486f403195b2ae3277335ac46457db587de983c5a1814c93bb384a0d3252c
+            command:
+              - gunicorn
+            args:
+              - --bind
+              - 0.0.0.0:6868
+              - --timeout
+              - "600"
+              - app.main:create_app()
             env:
               LOG_LEVEL: info
               PORT: &port 6868
-              PGID: "1000"
-              PUID: "1000"
             probes:
               liveness: &probes
                 enabled: true
@@ -46,15 +60,10 @@ spec:
                 memory: 1Gi
             securityContext:
               allowPrivilegeEscalation: false
-              runAsUser: 0
-              runAsGroup: 0
+              readOnlyRootFilesystem: true
               capabilities:
                 drop:
                   - ALL
-                add:
-                  - CHOWN
-                  - SETUID
-                  - SETGID
     service:
       app:
         controller: profilarr
