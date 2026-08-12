@@ -6,6 +6,7 @@ namespace: dbms
 
 components:
   - ../../components/alerts
+  - ../../components/gateway-route-access
 
 resources:
   - ./namespace.yaml
