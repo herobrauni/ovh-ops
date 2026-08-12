@@ -32,8 +32,6 @@ spec:
             image:
               repository: ghcr.io/silverbulletmd/silverbullet
               tag: 2.10.0@sha256:27b5724cc36798e7de82180ec9898ea9c157c4f15127f279834bca2897b91f37
-            env:
-              SB_NAME: "brauni's notes"
             probes:
               liveness:
                 enabled: true
