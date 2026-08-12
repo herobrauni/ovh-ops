@@ -3,7 +3,7 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: &name ovh-ops-runner
+  name: &name schemas-runner
 spec:
   chartRef:
     kind: OCIRepository
@@ -13,9 +13,9 @@ spec:
     mode: enabled
   values:
     githubConfigUrl: https://github.com/herobrauni/ovh-ops
-    githubConfigSecret: ovh-ops-runner-secret
+    githubConfigSecret: schemas-runner-secret
     minRunners: 1
-    maxRunners: 3
+    maxRunners: 1
     containerMode:
       type: kubernetes
       kubernetesModeWorkVolumeClaim:
@@ -30,6 +30,7 @@ spec:
       namespace: actions-runner-system
     template:
       spec:
+        automountServiceAccountToken: true
         securityContext:
           runAsUser: 1001
           runAsGroup: 1001
@@ -43,16 +44,4 @@ spec:
             env:
               - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
                 value: "false"
-              - name: NODE
-                valueFrom:
-                  fieldRef:
-                    fieldPath: status.hostIP
-            volumeMounts:
-              - mountPath: /var/run/secrets/talos.dev
-                name: talos
-                readOnly: true
         serviceAccountName: *name
-        volumes:
-          - name: talos
-            secret:
-              secretName: *name
