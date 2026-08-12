@@ -1,0 +1,99 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app silverbullet
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: silverbullet
+  interval: 30m
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
+
+    controllers:
+      silverbullet:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: ghcr.io/silverbulletmd/silverbullet
+              tag: 2.10.0@sha256:27b5724cc36798e7de82180ec9898ea9c157c4f15127f279834bca2897b91f37
+            env:
+              SB_NAME: "brauni's notes"
+            probes:
+              liveness:
+                enabled: true
+              readiness:
+                enabled: true
+              startup:
+                enabled: true
+                spec:
+                  failureThreshold: 30
+                  periodSeconds: 10
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+            resources:
+              requests:
+                cpu: 10m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
+
+    service:
+      app:
+        controller: silverbullet
+        primary: true
+        ports:
+          http:
+            port: &port 3000
+
+    route:
+      app:
+        annotations:
+          gatus.home-operations.com/endpoint: |-
+            conditions: ["[STATUS] == 200"]
+            url: https://silverbullet.brauni.dev
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Tools
+          gethomepage.dev/name: Silverbullet
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=silverbullet
+          gethomepage.dev/icon: mdi-notebook
+        hostnames:
+          - silverbullet.brauni.dev
+          - notes.brauni.dev
+        parentRefs:
+          - name: envoy-brauni-dev-public
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - name: *app
+                port: *port
+
+    persistence:
+      data:
+        existingClaim: *app
+        globalMounts:
+          - path: /space
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
