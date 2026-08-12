@@ -23,6 +23,14 @@ spec:
           rules:
             dns:
               - matchPattern: "*"
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: niks3
+            app.kubernetes.io/instance: niks3
+      toPorts:
+        - ports:
+            - port: "5751"
+              protocol: TCP
     - toEntities:
         - world
   egressDeny:
