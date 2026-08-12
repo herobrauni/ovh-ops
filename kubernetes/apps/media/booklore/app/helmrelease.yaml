@@ -65,7 +65,8 @@ spec:
                 drop:
                   - ALL
               readOnlyRootFilesystem: true
-              seccompProfile: { type: Unconfined }
+              seccompProfile:
+                type: RuntimeDefault
           wait-for-mariadb:
             image:
               repository: wait4x/wait4x
