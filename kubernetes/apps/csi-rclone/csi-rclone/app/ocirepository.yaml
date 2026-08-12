@@ -11,4 +11,5 @@ spec:
     operation: copy
   ref:
     tag: 0.5.0
+    digest: sha256:72e94539abeb78b31a4d46ade06bbe99e23216181e79e318dd2df84c6cf6794a
   url: oci://ghcr.io/veloxpack/charts/csi-driver-rclone
