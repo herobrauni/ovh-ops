@@ -64,6 +64,12 @@ spec:
             envFrom: &envFrom
               - secretRef:
                   name: karakeep-secret
+            # s6-overlay-suexec needs the default capability bounding set to
+            # repair /run ownership before dropping back to UID 1000.
+            securityContext:
+              allowPrivilegeEscalation: true
+              capabilities:
+                drop: []
             probes:
               liveness:
                 enabled: true
