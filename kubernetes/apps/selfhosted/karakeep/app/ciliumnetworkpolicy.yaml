@@ -1,0 +1,142 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: karakeep
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: karakeep
+      app.kubernetes.io/instance: karakeep
+      app.kubernetes.io/component: application
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: network
+            gateway.networking.k8s.io/gateway-name: envoy-brauni-dev-public
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: selfhosted
+            app.kubernetes.io/name: karakeep
+            app.kubernetes.io/instance: karakeep
+            app.kubernetes.io/component: chrome
+      toPorts:
+        - ports:
+            - port: "9222"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: selfhosted
+            app.kubernetes.io/name: karakeep
+            app.kubernetes.io/instance: karakeep
+            app.kubernetes.io/component: meilisearch
+      toPorts:
+        - ports:
+            - port: "7700"
+              protocol: TCP
+    - toFQDNs:
+        - matchPattern: "*"
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP
+  egressDeny:
+    - toEntities:
+        - host
+        - remote-node
+        - kube-apiserver
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: karakeep-chrome
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: karakeep
+      app.kubernetes.io/instance: karakeep
+      app.kubernetes.io/component: chrome
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: selfhosted
+            app.kubernetes.io/name: karakeep
+            app.kubernetes.io/instance: karakeep
+            app.kubernetes.io/component: application
+      toPorts:
+        - ports:
+            - port: "9222"
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toFQDNs:
+        - matchPattern: "*"
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "443"
+              protocol: TCP
+  egressDeny:
+    - toEntities:
+        - host
+        - remote-node
+        - kube-apiserver
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: karakeep-meilisearch
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: karakeep
+      app.kubernetes.io/instance: karakeep
+      app.kubernetes.io/component: meilisearch
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: selfhosted
+            app.kubernetes.io/name: karakeep
+            app.kubernetes.io/instance: karakeep
+            app.kubernetes.io/component: application
+      toPorts:
+        - ports:
+            - port: "7700"
+              protocol: TCP
+  egress: []
