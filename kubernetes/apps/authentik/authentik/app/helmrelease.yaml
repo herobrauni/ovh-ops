@@ -57,7 +57,7 @@ spec:
               key: password
       image:
         repository: ghcr.io/goauthentik/server
-        tag: 2026.8.0-rc6@sha256:173d7d219cca16a262ae07db77092dfbbb540807019f6bfb705aba95c7118971
+        tag: 2026.8.0-rc6
         digest: sha256:173d7d219cca16a262ae07db77092dfbbb540807019f6bfb705aba95c7118971
       podAnnotations:
         reloader.stakater.com/auto: "true"
