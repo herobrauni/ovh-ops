@@ -33,7 +33,3 @@ spec:
               protocol: TCP
     - toEntities:
         - world
-  egressDeny:
-    - toEntities:
-        - host
-        - remote-node
