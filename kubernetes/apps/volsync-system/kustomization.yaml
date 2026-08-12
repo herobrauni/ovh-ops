@@ -6,6 +6,7 @@ namespace: volsync-system
 
 components:
   - ../../components/alerts
+  - ../../components/gateway-route-access
 
 resources:
   - ./namespace.yaml

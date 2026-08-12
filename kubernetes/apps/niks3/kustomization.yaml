@@ -6,6 +6,7 @@ namespace: niks3
 
 components:
   - ../../components/alerts
+  - ../../components/gateway-route-access
 
 resources:
   - ./namespace.yaml

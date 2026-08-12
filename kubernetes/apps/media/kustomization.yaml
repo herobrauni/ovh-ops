@@ -6,6 +6,7 @@ namespace: media
 
 components:
   - ../../components/alerts
+  - ../../components/gateway-route-access
 
 resources:
   - ./namespace.yaml
