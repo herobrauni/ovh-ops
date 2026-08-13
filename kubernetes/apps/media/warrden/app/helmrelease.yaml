@@ -23,7 +23,7 @@ spec:
           app:
             image:
               repository: registry.neureka.dev/warrden/warrden
-              tag: 4.1.4@sha256:34bb3fb4e9b115cc48827e764bc902428bd19e6b14b92d81d8336e2b2835b67d
+              tag: 4.6.0@sha256:ff4afa6c87a9537e42ae8e9370ba32d0764f62867ca74479c9bb0a25ef3c5025
             env:
               PUID: "1000"
               PGID: "1000"
