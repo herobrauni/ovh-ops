@@ -22,7 +22,7 @@ spec:
         containers:
           app:
             image:
-              repository: code.neureka.dev/warrden/warrden
+              repository: registry.neureka.dev/warrden/warrden
               tag: 4.1.4@sha256:34bb3fb4e9b115cc48827e764bc902428bd19e6b14b92d81d8336e2b2835b67d
             env:
               PUID: "1000"
