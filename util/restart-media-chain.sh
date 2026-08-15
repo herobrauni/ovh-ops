@@ -1,13 +1,20 @@
 #!/bin/bash
-# Restarts the Decypharr → CSI-Rclone → Media Apps chain in the correct order.
+# Restarts the Altmount -> rclone sidecar mount chain in the correct order.
 #
 # Usage: ./util/restart-media-chain.sh [--wait-timeout SECONDS]
 #
-# Order:
-#   1. Scale down all media consumers that use the CSI rclone mount
-#   2. Restart Decypharr (WebDAV source for the rclone mount)
-#   3. Restart CSI-Rclone node DaemonSet (refreshes all FUSE mounts)
-#   4. Scale consumers back up and wait for readiness
+# Architecture (per-pod rclone-altmount sidecars, no CSI driver):
+#   1. Restart Altmount (the WebDAV source all rclone sidecars mount from)
+#   2. Restart every consumer deployment — each pod's rclone-altmount
+#      sidecar re-runs `umount -l` + `rclone mount`, re-establishing its
+#      FUSE mount against the fresh Altmount. The sidecar readiness probe
+#      (`test -d /host-mount/rclone-<app>-altmount/complete`) gates rollout
+#      success, so a completed rollout means the mount is live.
+#   3. Restart altmount-sync-helper (talks to the Altmount API and refreshes
+#      Plex libraries) once source and consumers are healthy.
+#
+# Apps whose Flux Kustomization is currently unwired (for example decypharr,
+# nzbdav, and their sync-helpers) are warn-skipped if not present.
 #
 # Default wait timeout per rollout: 300s
 
@@ -20,9 +27,11 @@ if [[ "$TIMEOUT" == "--wait-timeout" ]]; then
 fi
 
 NAMESPACE="media"
-CSI_NAMESPACE="csi-rclone"
 
-# Apps that consume the CSI rclone mount (exclude decypharr — it is restarted separately)
+# The single WebDAV source for all rclone-altmount sidecar mounts
+SOURCE="altmount"
+
+# Apps that run the rclone-altmount sidecar (FUSE mount consumers)
 CONSUMERS=(
     jellyfin
     media-debug
@@ -33,85 +42,79 @@ CONSUMERS=(
     sonarr4k
 )
 
-# Decypharr also mounts itself via CSI rclone, so it is both a source and a consumer
-SOURCE="decypharr"
+# API consumer: depends on altmount and plex being healthy, no FUSE mount
+POST_TASKS=(
+    altmount-sync-helper
+)
 
 info()  { echo -e "\033[1;34m[INFO]\033[0m  $*"; }
 ok()    { echo -e "\033[1;32m[OK]\033[0m    $*"; }
 warn()  { echo -e "\033[1;33m[WARN]\033[0m  $*"; }
 fail()  { echo -e "\033[1;31m[FAIL]\033[0m  $*"; }
 
+deployment_exists() {
+    kubectl get deployment "$1" -n "$NAMESPACE" &>/dev/null
+}
+
+wait_for_rollout() {
+    local app="$1"
+    if kubectl rollout status deployment/"$app" -n "$NAMESPACE" --timeout="${TIMEOUT}s"; then
+        ok "$app is ready."
+    else
+        fail "$app failed to become ready within ${TIMEOUT}s."
+        return 1
+    fi
+}
+
 # ---------------------------------------------------------------------------
-# Step 1: Scale down consumers so they release CSI rclone mounts
+# Step 1/3: Restart Altmount (the WebDAV source for every sidecar mount)
 # ---------------------------------------------------------------------------
-info "Step 1/5 — Scaling down media consumers..."
-for app in "${CONSUMERS[@]}" "$SOURCE"; do
-    if kubectl get deployment "$app" -n "$NAMESPACE" &>/dev/null; then
-        kubectl scale deployment "$app" -n "$NAMESPACE" --replicas=0
-        info "  Scaled down $app"
+info "Step 1/3 — Restarting Altmount..."
+if deployment_exists "$SOURCE"; then
+    kubectl rollout restart deployment/"$SOURCE" -n "$NAMESPACE"
+    wait_for_rollout "$SOURCE"
+else
+    warn "  Deployment $SOURCE not found in $NAMESPACE, aborting."
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Step 2/3: Restart all mount consumers so their sidecars re-mount
+# ---------------------------------------------------------------------------
+info "Step 2/3 — Restarting rclone-altmount consumers..."
+RESTARTED=()
+for app in "${CONSUMERS[@]}"; do
+    if deployment_exists "$app"; then
+        kubectl rollout restart deployment/"$app" -n "$NAMESPACE"
+        RESTARTED+=("$app")
+        info "  Restarted $app"
     else
         warn "  Deployment $app not found in $NAMESPACE, skipping"
     fi
 done
 
-info "Waiting for scaled-down pods to terminate..."
-for app in "${CONSUMERS[@]}" "$SOURCE"; do
-    if kubectl get deployment "$app" -n "$NAMESPACE" &>/dev/null; then
-        kubectl wait --for=delete pods -n "$NAMESPACE" -l "app.kubernetes.io/name=$app" --timeout="${TIMEOUT}s" 2>/dev/null || true
-    fi
-done
-ok "All scaled-down pods terminated."
-
-# ---------------------------------------------------------------------------
-# Step 2: Restart Decypharr (the WebDAV backend)
-# ---------------------------------------------------------------------------
-info "Step 2/5 — Restarting Decypharr..."
-kubectl scale deployment "$SOURCE" -n "$NAMESPACE" --replicas=1
-kubectl rollout status deployment "$SOURCE" -n "$NAMESPACE" --timeout="${TIMEOUT}s"
-ok "Decypharr is healthy."
-
-# ---------------------------------------------------------------------------
-# Step 3: Restart CSI-Rclone node DaemonSet to refresh FUSE mounts
-# ---------------------------------------------------------------------------
-info "Step 3/5 — Restarting CSI-Rclone node DaemonSet..."
-kubectl rollout restart daemonset/csi-rclone-node -n "$CSI_NAMESPACE"
-kubectl rollout status daemonset/csi-rclone-node -n "$CSI_NAMESPACE" --timeout="${TIMEOUT}s"
-ok "CSI-Rclone node DaemonSet rolled out."
-
-# Brief pause to let CSI node plugin register and stabilize
-info "Waiting 10s for CSI node plugin to stabilize..."
-sleep 10
-
-# ---------------------------------------------------------------------------
-# Step 4: Scale consumers back up
-# ---------------------------------------------------------------------------
-info "Step 4/5 — Scaling up media consumers..."
-for app in "${CONSUMERS[@]}"; do
-    if kubectl get deployment "$app" -n "$NAMESPACE" &>/dev/null; then
-        kubectl scale deployment "$app" -n "$NAMESPACE" --replicas=1
-        info "  Scaled up $app"
-    fi
-done
-
-# ---------------------------------------------------------------------------
-# Step 5: Wait for all consumers to become ready
-# ---------------------------------------------------------------------------
-info "Step 5/5 — Waiting for all consumers to become ready..."
+info "Waiting for consumers to become ready (rollout success = mount live)..."
 FAIL=0
-for app in "${CONSUMERS[@]}"; do
-    if kubectl get deployment "$app" -n "$NAMESPACE" &>/dev/null; then
-        if kubectl rollout status deployment "$app" -n "$NAMESPACE" --timeout="${TIMEOUT}s"; then
-            ok "$app is ready."
-        else
-            fail "$app failed to become ready within ${TIMEOUT}s."
-            FAIL=1
-        fi
+for app in "${RESTARTED[@]}"; do
+    wait_for_rollout "$app" || FAIL=1
+done
+
+# ---------------------------------------------------------------------------
+# Step 3/3: Restart API-based helpers once source and consumers are healthy
+# ---------------------------------------------------------------------------
+info "Step 3/3 — Restarting post-task helpers..."
+for app in "${POST_TASKS[@]}"; do
+    if deployment_exists "$app"; then
+        kubectl rollout restart deployment/"$app" -n "$NAMESPACE"
+        wait_for_rollout "$app" || FAIL=1
+    else
+        warn "  Deployment $app not found in $NAMESPACE, skipping"
     fi
 done
 
 echo ""
 if [ "$FAIL" -eq 0 ]; then
-    ok "Media chain restart complete — all deployments healthy."
+    ok "Media chain restart complete — altmount and all mount consumers healthy."
 else
     fail "Some deployments did not become ready. Check pod events for details."
     exit 1
