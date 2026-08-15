@@ -7,8 +7,11 @@ metadata:
 spec:
   dependsOn:
     - name: tinyauth-riki-boo
+      namespace: network
     - name: tinyauth-brauni-dev
+      namespace: network
     - name: tinyauth-480p-com
+      namespace: network
   interval: 1h
   path: ./kubernetes/apps/network/echo/app
   prune: true
