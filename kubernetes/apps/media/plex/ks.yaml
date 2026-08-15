@@ -17,6 +17,7 @@ spec:
     - name: rook-ceph-cluster
       namespace: rook-ceph
     - name: symlinks
+      namespace: media
   interval: 1h
   path: ./kubernetes/apps/media/plex/app
   postBuild:
