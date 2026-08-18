@@ -44,6 +44,7 @@ spec:
             env:
               PAPERLESS_CONSUMER_POLLING: 5
               PAPERLESS_OCR_LANGUAGE: eng
+              PAPERLESS_OCR_WORKERS: 2
               PAPERLESS_PORT: &port 8000
               PAPERLESS_TIKA_ENABLED: 1
               PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://paperless-gotenberg.selfhosted.svc.cluster.local:3000
@@ -88,7 +89,7 @@ spec:
                 cpu: 100m
                 memory: 512Mi
               limits:
-                memory: 2Gi
+                memory: 4Gi
 
       gotenberg:
         containers:
