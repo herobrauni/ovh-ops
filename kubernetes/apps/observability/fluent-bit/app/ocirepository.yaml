@@ -10,6 +10,6 @@ spec:
     mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
     operation: copy
   ref:
-    tag: 0.58.0
-    digest: sha256:262b6f196d53dea692bfad8e06522949604675ffb3aaa1d53c181b16398e3df3
+    tag: 0.58.1
+    digest: sha256:cc83b54aec114fb7dce7951e0ad014245aaacdd2e21dfa79277c15ab6704268f
   url: oci://ghcr.io/fluent/helm-charts/fluent-bit
