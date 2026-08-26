@@ -12,6 +12,10 @@ spec:
   driftDetection:
     mode: enabled
   values:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
     serviceMonitor:
       create: true
     web:

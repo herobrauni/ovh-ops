@@ -13,6 +13,13 @@ spec:
     mode: enabled
   values:
     kind: Deployment
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
     deschedulerPolicyAPIVersion: descheduler/v1alpha2
     deschedulerPolicy:
       metricsProviders:
