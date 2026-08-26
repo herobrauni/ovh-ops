@@ -57,6 +57,10 @@ spec:
               capabilities:
                 drop:
                   - ALL
+            resources:
+              requests:
+                cpu: 100m
+                memory: 1Gi
     service:
       app:
         forceRename: altmount
