@@ -1,0 +1,30 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kube-1.31/jsonschema/k8s.io/kubernetes/deployment_v1.json
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cdi-operator
+  namespace: cdi
+spec:
+  template:
+    spec:
+      containers:
+        - name: cdi-operator
+          image: quay.io/kubevirt/cdi-operator:v1.65.0@sha256:42ce149c020523b466cd8cb5e413bad9800d93f502d82ced69a2d98a01944ce5
+          env:
+            - name: CONTROLLER_IMAGE
+              value: quay.io/kubevirt/cdi-controller:v1.65.0@sha256:c924d99bf27fe6a198f9796c4250d4fb04af3dfc4e850f2a2f089fc4f988c5bf
+            - name: IMPORTER_IMAGE
+              value: quay.io/kubevirt/cdi-importer:v1.65.0@sha256:27fad4a3677e15fb6ff61d7ef0ae99c31d0462cc993b4b4f1e3d8988e4d0e698
+            - name: CLONER_IMAGE
+              value: quay.io/kubevirt/cdi-cloner:v1.65.0@sha256:4c485d088db067a81fce46899a5a577529c1a97a164f27d666d6317da0a32319
+            - name: OVIRT_POPULATOR_IMAGE
+              value: quay.io/kubevirt/cdi-importer:v1.65.0@sha256:27fad4a3677e15fb6ff61d7ef0ae99c31d0462cc993b4b4f1e3d8988e4d0e698
+            - name: APISERVER_IMAGE
+              value: quay.io/kubevirt/cdi-apiserver:v1.65.0@sha256:bf8bbaf76410bc20adff6c9bd76493fdcf622b0bc0be3aea166eec57b1b34a59
+            - name: UPLOAD_SERVER_IMAGE
+              value: quay.io/kubevirt/cdi-uploadserver:v1.65.0@sha256:6d7e71acf3087f4c2de2fa96ed968aff5793f6ba24d3bdb30080912e55929a78
+            - name: UPLOAD_PROXY_IMAGE
+              value: quay.io/kubevirt/cdi-uploadproxy:v1.65.0@sha256:6fd47bf9fe695e3299764b7fd7729c5d438558e439c06ada3c472705e9c9d77c
+            - name: MONITORING_NAMESPACE
+              value: observability

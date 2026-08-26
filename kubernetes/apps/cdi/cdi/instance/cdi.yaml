@@ -1,0 +1,18 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/cdi.kubevirt.io/cdi_v1beta1.json
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: CDI
+metadata:
+  name: cdi
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  config:
+    podResourceRequirements:
+      limits:
+        cpu: "2"
+        memory: 2Gi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    scratchSpaceStorageClass: openebs-hostpath
