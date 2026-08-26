@@ -12,6 +12,7 @@
 /nodes.yaml
 # Kubernetes
 kubeconfig
+kubeconfig-home
 talosconfig
 # Misc.
 .private/

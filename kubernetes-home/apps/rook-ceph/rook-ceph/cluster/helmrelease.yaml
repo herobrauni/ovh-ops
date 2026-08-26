@@ -1,0 +1,136 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: rook-ceph-cluster
+spec:
+  interval: 30m
+  driftDetection:
+    mode: enabled
+  timeout: 15m
+  chartRef:
+    kind: OCIRepository
+    name: rook-ceph-cluster
+  maxHistory: 2
+  install:
+    createNamespace: true
+    remediation:
+      retries: 3
+  upgrade:
+    cleanupOnFail: true
+    remediation:
+      retries: 3
+  dependsOn:
+    - name: snapshot-controller
+      namespace: kube-system
+  uninstall:
+    keepHistory: false
+  values:
+    operatorNamespace: rook-ceph
+    toolbox:
+      enabled: true
+    monitoring:
+      enabled: false
+    cephImage:
+      repository: quay.io/ceph/ceph
+      tag: v20.2.4@sha256:6bb1c8a42fbc0bf87938946990b65174466997bc11c31eb5a323225a779fd8f9
+    # Internal cluster (OVH runs external mode against Proxmox Ceph — that
+    # cluster disappears during migration and is replaced by internal Rook).
+    cephClusterSpec:
+      dataDirHostPath: /var/lib/rook
+      mon:
+        count: 3
+        allowMultiplePerNode: false
+      dashboard:
+        enabled: false
+      storage:
+        useAllNodes: false
+        useAllDevices: false
+        nodes:
+          - name: mini1
+            devices:
+              # Raw partition provisioned by Talos (talos-home volume-rook-osd patch).
+              # Partlabel must not contain "ceph" — hence r-rook-osd.
+              - name: /dev/disk/by-partlabel/r-rook-osd
+          - name: mini2
+            devices:
+              - name: /dev/disk/by-partlabel/r-rook-osd
+          - name: mini3
+            devices:
+              - name: /dev/disk/by-partlabel/r-rook-osd
+      resources:
+        mgr:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        mon:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        osd:
+          requests:
+            cpu: 200m
+            memory: 1Gi
+    cephBlockPools:
+      - name: home-block
+        spec:
+          replicated:
+            size: 3
+            requireSafeReplicaSize: false
+        storageClass:
+          enabled: true
+          name: ceph-block
+          isDefault: true
+          reclaimPolicy: Delete
+          allowVolumeExpansion: true
+          parameters:
+            # RBD stripe/config for small pools
+            compression_mode: none
+    cephFileSystems:
+      - name: home-fs
+        spec:
+          metadataPool:
+            replicated:
+              size: 3
+          dataPools:
+            - failureDomain: host
+              replicated:
+                size: 3
+              name: replicapool
+          metadataServer:
+            activeCount: 1
+            activeStandby: true
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+        storageClass:
+          enabled: true
+          name: ceph-filesystem
+          isDefault: false
+          pool: replicapool
+          reclaimPolicy: Delete
+    # Small RGW for rehearsing the rclone RGW restore path (S3 mirror → RGW)
+    cephObjectStores:
+      - name: home-rgw
+        spec:
+          metadataPool:
+            replicated:
+              size: 3
+          dataPool:
+            replicated:
+              size: 3
+          gateway:
+            port: 80
+            instances: 1
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+        storageClass:
+          enabled: false
+        ingress:
+          enabled: false
+    ingress:
+      enabled: false

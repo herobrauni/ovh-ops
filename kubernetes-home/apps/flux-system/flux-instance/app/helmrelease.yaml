@@ -1,0 +1,40 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: flux-instance
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: flux-instance
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    instance:
+      # Home-cluster variant: lean Flux (no monitoring/webhook extras).
+      # The sync points at kubernetes-home/flux/cluster instead of kubernetes/flux/cluster.
+      commonMetadata:
+        labels:
+          pod-security.kubernetes.io/enforce: privileged
+          pod-security.kubernetes.io/enforce-version: v1.35
+          pod-security.kubernetes.io/audit: restricted
+          pod-security.kubernetes.io/audit-version: v1.35
+          pod-security.kubernetes.io/warn: restricted
+          pod-security.kubernetes.io/warn-version: v1.35
+      distribution:
+        artifact: oci://ghcr.io/controlplaneio-fluxcd/flux-operator-manifests:v0.45.0@sha256:83545a6a06fbc915bb5277ff9447cc6ab33a10d8ee9e77babc07c095237e30c4
+      cluster:
+        networkPolicy: false
+      components:
+        - source-controller
+        - kustomize-controller
+        - helm-controller
+        - notification-controller
+      sync:
+        kind: GitRepository
+        url: https://github.com/herobrauni/ovh-ops
+        ref: refs/heads/main
+        path: kubernetes-home/flux/cluster
+        interval: 1h

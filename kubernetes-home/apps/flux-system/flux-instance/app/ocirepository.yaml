@@ -1,0 +1,15 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/source.toolkit.fluxcd.io/ocirepository_v1.json
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: flux-instance
+spec:
+  interval: 15m
+  layerSelector:
+    mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
+    operation: copy
+  ref:
+    tag: 0.58.1
+    digest: sha256:aeeb3e25fdcfd19f62b2c8de073119c3038df8bff3977de2d17beff108fe1482
+  url: oci://ghcr.io/controlplaneio-fluxcd/charts/flux-instance

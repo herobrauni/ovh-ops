@@ -1,0 +1,12 @@
+# Small local-path volume (xfs) for OpenEBS localpv rehearsal and small
+# single-node workloads. Mounted at /var/mnt/local-hostpath.
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: local-hostpath
+provisioning:
+  diskSelector:
+    match: disk.size > 400u * GB && !system_disk
+  minSize: 30GiB
+  maxSize: 30GiB
+filesystem:
+  type: xfs

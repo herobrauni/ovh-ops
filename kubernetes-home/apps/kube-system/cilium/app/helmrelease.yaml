@@ -1,0 +1,80 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cilium
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: cilium
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    # Home-cluster variant of ../../../../../kubernetes/apps/kube-system/cilium/app/helmrelease.yaml
+    # Differences vs OVH:
+    # - routingMode: tunnel (OVH: native) — pods/services ride vxlan over the
+    #   KubeSpan WireGuard mesh instead of routed native CIDRs.
+    # - mtu: 1370 = 1500 - 80 (KubeSpan/WireGuard) - 50 (VXLAN).
+    # - No BGP control plane and no LoadBalancer IP pool (phase 1); services are
+    #   reached via NodePort. BGP peering rehearsal with the home OPNsense is a
+    #   documented follow-up (see ~/Repos/pve/docs/talos-migration.md).
+    bpf:
+      masquerade: true
+      # Ref: https://github.com/siderolabs/talos/issues/10002
+      hostLegacyRouting: true
+    cgroup:
+      automount:
+        enabled: false
+      hostRoot: /sys/fs/cgroup
+    dashboards:
+      enabled: false
+    envoy:
+      enabled: false
+    gatewayAPI:
+      enabled: false
+    hubble:
+      enabled: false
+    ipam:
+      mode: kubernetes
+    k8sServiceHost: 10.100.15.61
+    k8sServicePort: 6443
+    kubeProxyReplacement: true
+    kubeProxyReplacementHealthzBindAddr: 0.0.0.0:10256
+    l2announcements:
+      enabled: false
+    mtu: 1370
+    operator:
+      replicas: 2
+      rollOutPods: true
+    pmtuDiscovery:
+      enabled: true
+    prometheus:
+      enabled: false
+    rollOutCiliumPods: true
+    routingMode: tunnel
+    tunnelProtocol: vxlan
+    securityContext:
+      capabilities:
+        ciliumAgent:
+          - CHOWN
+          - KILL
+          - NET_ADMIN
+          - NET_RAW
+          - IPC_LOCK
+          - SYS_ADMIN
+          - SYS_RESOURCE
+          - PERFMON
+          - BPF
+          - DAC_OVERRIDE
+          - FOWNER
+          - SETGID
+          - SETUID
+        cleanCiliumState:
+          - NET_ADMIN
+          - SYS_ADMIN
+          - SYS_RESOURCE
+    socketLB:
+      enabled: true
+      hostNamespaceOnly: true

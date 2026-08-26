@@ -1,0 +1,7 @@
+# Cap EPHEMERAL so the single 512 GB disk has room for local PVs and the
+# Rook OSD partition. Volume configs only apply before first provisioning.
+apiVersion: v1alpha1
+kind: VolumeConfig
+name: EPHEMERAL
+provisioning:
+  maxSize: 30GiB

@@ -1,0 +1,8 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./restic-rest-s1.yaml
+  - ./restic-rest-s2.yaml
+  - ./restic-rest-s3.yaml

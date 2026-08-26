@@ -1,0 +1,13 @@
+# Unformatted partition handed to Rook as an OSD device.
+# Rook consumes it via /dev/disk/by-partlabel/r-rook-osd (note: label must not
+# contain "ceph" — Talos prefixes raw volumes with "r-").
+# 3 x 120GiB OSDs -> ~120GiB replica-3 usable: enough to rehearse subset
+# restores of the OVH data (the OVH target uses whole 1.7TiB disks instead).
+apiVersion: v1alpha1
+kind: RawVolumeConfig
+name: rook-osd
+provisioning:
+  diskSelector:
+    match: disk.size > 400u * GB && !system_disk
+  minSize: 120GiB
+  maxSize: 120GiB

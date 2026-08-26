@@ -1,0 +1,12 @@
+# KubeSpan: WireGuard full mesh between the three minis.
+# - Same mechanism the OVH bare-metal target will use (public nodes, NAT traversal).
+# - Traffic on the kubespan interface is always allowed by the Talos ingress firewall.
+# - advertiseKubernetesNetworks: false -> pod/service traffic is tunneled by Cilium
+#   (vxlan over the KubeSpan link), matching the OVH target design.
+# Requires cluster.discovery.enabled (Talos default) using discovery.talos.dev.
+apiVersion: v1alpha1
+kind: KubeSpanConfig
+enabled: true
+advertiseKubernetesNetworks: false
+allowDownPeerBypass: false
+mtu: 1420

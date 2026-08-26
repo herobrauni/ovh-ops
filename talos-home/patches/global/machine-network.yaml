@@ -1,0 +1,7 @@
+machine:
+  network:
+    disableSearchDomain: true
+    nameservers:
+      - 10.100.15.11 # home DNS (VLAN 15 infra) — replaces OVH ovh-dns1 dependency
+      - 1.1.1.1
+      - 2606:4700:4700::1111

@@ -1,0 +1,103 @@
+---
+# Home (rehearsal/staging) cluster — see README.md in this directory.
+# This is the second Talos environment in this repo and mirrors talos/talconfig.yaml conventions.
+clusterName: home
+
+talosVersion: "${talosVersion}"
+kubernetesVersion: "${kubernetesVersion}"
+
+# Single-endpoint control plane: first mini. No LB VIP at home (phase 1/2).
+# If a mini is down, point this at another control plane node.
+endpoint: https://10.100.15.61:6443
+additionalApiServerCertSans: &sans
+  - "127.0.0.1"
+  - "10.100.15.61"
+  - "10.100.15.62"
+  - "10.100.15.63"
+additionalMachineCertSans: *sans
+
+# Must NOT overlap with the OVH cluster (10.42.0.0/16 / 10.43.0.0/16):
+# the two clusters exchange traffic over the site tunnels during migration.
+clusterPodNets: ["10.62.0.0/16"]
+clusterSvcNets: ["10.63.0.0/16"]
+
+# Combined control-plane/worker nodes — rehearses the OVH bare-metal target shape.
+allowSchedulingOnControlPlanes: true
+
+# Disable built-in CNI to use Cilium (tunnel mode, see kubernetes-home/apps)
+cniConfig:
+  name: none
+
+nodes:
+  # TODO: fill in real MAC addresses when the minis arrive; switch to DHCP
+  # reservations instead of static config if preferred.
+  - hostname: "mini1"
+    ipAddress: "10.100.15.61"
+    # TODO: adjust if the disk enumerates as /dev/nvme0n1 instead of /dev/sda.
+    installDisk: "/dev/sda"
+    machineSpec:
+      secureboot: false
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "???:???:???:???:???:61" # TODO: mini1 NIC MAC
+        dhcp: false
+        addresses:
+          - "10.100.15.61/24"
+        routes:
+          - gateway: "10.100.15.1"
+            network: 0.0.0.0/0
+        # mtu: 1370
+  - hostname: "mini2"
+    ipAddress: "10.100.15.62"
+    installDisk: "/dev/sda"
+    machineSpec:
+      secureboot: false
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "???:???:???:???:???:62" # TODO: mini2 NIC MAC
+        dhcp: false
+        addresses:
+          - "10.100.15.62/24"
+        routes:
+          - gateway: "10.100.15.1"
+            network: 0.0.0.0/0
+        # mtu: 1370
+  - hostname: "mini3"
+    ipAddress: "10.100.15.63"
+    installDisk: "/dev/sda"
+    machineSpec:
+      secureboot: false
+    controlPlane: true
+    networkInterfaces:
+      - deviceSelector:
+          hardwareAddr: "???:???:???:???:???:63" # TODO: mini3 NIC MAC
+        dhcp: false
+        addresses:
+          - "10.100.15.63/24"
+        routes:
+          - gateway: "10.100.15.1"
+            network: 0.0.0.0/0
+        # mtu: 1370
+
+# Global patches
+patches:
+  - "@./patches/global/machine-files.yaml"
+  - "@./patches/global/machine-kubelet.yaml"
+  - "@./patches/global/machine-network.yaml"
+  - "@./patches/global/machine-sysctls.yaml"
+  - "@./patches/global/machine-time.yaml"
+  - "@./patches/global/kubespan.yaml"
+  - "@./patches/global/ingress-firewall.yaml"
+  # Disk layout: must be present at first apply — Talos only provisions
+  # volumes that do not exist yet.
+  - "@./patches/global/volume-ephemeral.yaml"
+  - "@./patches/global/volume-local-hostpath.yaml"
+  - "@./patches/global/volume-rook-osd.yaml"
+  - "@./patches/global/volume-staging.yaml"
+
+# Controller patches (these nodes are also the only workers)
+controlPlane:
+  patches:
+    - "@./patches/controller/cluster.yaml"

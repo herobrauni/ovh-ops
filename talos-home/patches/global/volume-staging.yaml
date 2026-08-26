@@ -1,0 +1,13 @@
+# Staging volume for migration phase 2/4: restic repos and MinIO drives
+# (~810GiB single-copy across the three nodes; the OVH cluster keeps the only
+# production copy during migration). Mounted at /var/mnt/staging.
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: staging
+provisioning:
+  diskSelector:
+    match: disk.size > 400u * GB && !system_disk
+  minSize: 270GiB
+  maxSize: 270GiB
+filesystem:
+  type: xfs

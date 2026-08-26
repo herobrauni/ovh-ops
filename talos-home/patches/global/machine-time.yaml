@@ -1,0 +1,6 @@
+machine:
+  time:
+    disabled: false
+    servers:
+      - pool.ntp.org
+      - time.cloudflare.com

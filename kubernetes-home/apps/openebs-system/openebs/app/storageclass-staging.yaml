@@ -1,0 +1,17 @@
+# Second local-path StorageClass backed by the `staging` user volume
+# (mounted at /var/mnt/staging on every mini). Used by the migration staging
+# workloads (MinIO shards, restic rest-server repos). Same provisioner as the
+# chart-managed openebs-hostpath class — localpv supports path-per-class.
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/storage.k8s.io/storageclass_v1.json
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: staging-hostpath
+provisioner: openebs.io/local
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstBinding
+allowVolumeExpansion: false
+parameters:
+  storageType: hostpath
+  basePath: /var/mnt/staging

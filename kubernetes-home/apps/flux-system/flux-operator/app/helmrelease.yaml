@@ -1,0 +1,23 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: flux-operator
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: flux-operator
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+    serviceMonitor:
+      create: true
+    web:
+      networkPolicy:
+        create: false

@@ -1,0 +1,74 @@
+# restic rest-server shard 1 (mini3). REST endpoint for VolSync/restic
+# repositories pushed from the OVH cluster during migration phase 2.
+# TODO: pin image by digest once decided (renovate will pick it up).
+# TODO(phase 2): replace --no-auth with htpasswd auth before real data lands.
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: restic-rest-s3
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: staging-hostpath
+  resources:
+    requests:
+      storage: 125Gi
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/apps/deployment_v1.json
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: restic-rest-s3
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: restic-rest-s3
+  template:
+    metadata:
+      labels:
+        app: restic-rest-s3
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: mini3
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: rest-server
+          image: restic/rest-server:0.13.0 # TODO: pin digest
+          args: ["--path", "/data", "--no-auth"]
+          ports:
+            - name: http
+              containerPort: 8000
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: restic-rest-s3
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/discovery.k8s.io/service_v1.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: restic-rest-s3
+spec:
+  type: NodePort
+  selector:
+    app: restic-rest-s3
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      nodePort: 30913 # reachable from OVH via site tunnels: 10.100.15.63:30913
