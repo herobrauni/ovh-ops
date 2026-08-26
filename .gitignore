@@ -29,3 +29,6 @@ tmp/
 plans
 .worktrees/
 .opencode
+
+# Added by ggshield
+.cache_ggshield
