@@ -1,0 +1,105 @@
+---
+# Vendored from the CDI v1.65.0 release.
+# Source: https://github.com/kubevirt/containerized-data-importer/releases/download/v1.65.0/network-policies.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    cdi.kubevirt.io: ""
+  name: cdi-allow-ingress-to-metrics
+  namespace: cdi
+spec:
+  ingress:
+  - ports:
+    - port: 8443
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      prometheus.cdi.kubevirt.io: "true"
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    cdi.kubevirt.io: ""
+  name: cdi-allow-uploadproxy-communications
+  namespace: cdi
+spec:
+  egress:
+  - ports:
+    - port: 8443
+      protocol: TCP
+    to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          cdi.kubevirt.io: cdi-upload-server
+  ingress:
+  - ports:
+    - port: 8443
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      cdi.kubevirt.io: cdi-uploadproxy
+  policyTypes:
+  - Ingress
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    cdi.kubevirt.io: ""
+  name: cdi-allow-cdi-api-webhook-server
+  namespace: cdi
+spec:
+  ingress:
+  - ports:
+    - port: 8443
+      protocol: TCP
+  podSelector:
+    matchLabels:
+      cdi.kubevirt.io: cdi-apiserver
+  policyTypes:
+  - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    cdi.kubevirt.io: ""
+  name: cdi-allow-cdi-deployment-importer-metrics
+  namespace: cdi
+spec:
+  egress:
+  - ports:
+    - port: 8443
+      protocol: TCP
+    to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          prometheus.cdi.kubevirt.io: "true"
+  podSelector:
+    matchLabels:
+      cdi.kubevirt.io: cdi-deployment
+  policyTypes:
+  - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    cdi.kubevirt.io: ""
+  name: cdi-allow-egress-from-poller
+  namespace: cdi
+spec:
+  egress:
+  - {}
+  podSelector:
+    matchLabels:
+      cdi.kubevirt.io/dataImportCronPoller: ""
+  policyTypes:
+  - Egress

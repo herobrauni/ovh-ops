@@ -1,0 +1,15 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kube-1.31/jsonschema/k8s.io/kubernetes/rolebinding_rbac.authorization.k8s.io_v1.json
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cdi-monitoring-prometheus
+  namespace: cdi
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cdi-monitoring
+subjects:
+  - kind: ServiceAccount
+    name: kube-prometheus-stack-prometheus
+    namespace: observability
