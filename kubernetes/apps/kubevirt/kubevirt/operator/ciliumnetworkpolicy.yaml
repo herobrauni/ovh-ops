@@ -1,0 +1,32 @@
+---
+# The vendored upstream NetworkPolicies restrict egress for virt-api,
+# virt-handler and virt-exportproxy without allowing the Kubernetes API
+# server or DNS (upstream assumes an OpenShift-style guaranteed path).
+# CiliumNetworkPolicies are additive with NetworkPolicies, so this unions
+# the missing egress destinations back in for exactly those pods.
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: kubevirt-allow-apiserver-egress
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: kubevirt.io
+        operator: In
+        values:
+          - virt-api
+          - virt-handler
+          - virt-exportproxy
+  egress:
+    - toEntities:
+        - kube-apiserver
+    - toEndpoints:
+        - matchLabels:
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
