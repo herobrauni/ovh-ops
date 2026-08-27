@@ -12,7 +12,7 @@ metadata:
   name: smoke-test
 spec:
   selector:
-    kubevirt.io/domain: smoke-test
+    vm.kubevirt.io/name: smoke-test
   ports:
     - name: ssh
       port: 22
