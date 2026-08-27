@@ -1,0 +1,76 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/kubevirt.io/virtualmachine_v1.json
+# Smoke test for the KubeVirt platform: boots Alpine from a CDI-imported
+# volume on the RWX raw-block ceph-block-kubevirt StorageClass, the same
+# path live migration will use. Remove this whole app once the platform is
+# proven and Hermes has moved.
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: smoke-test
+spec:
+  runStrategy: Always
+  dataVolumeTemplates:
+    - metadata:
+        name: smoke-test-root
+      spec:
+        source:
+          http:
+            url: https://dl-cdn.alpinelinux.org/alpine/v3.24/releases/cloud/generic_alpine-3.24.1-x86_64-bios-cloudinit-r0.qcow2
+            # upstream sha512: 8d756f6fc7653daa4fb4e2e213d8a66007bcb1e5a846e28891af62c47b90685c694486c2746099ad99e9e8f5278db76b69d11dfe1e9361aa4c8406df16929a9c
+        storage:
+          accessModes:
+            - ReadWriteMany
+          volumeMode: Block
+          resources:
+            requests:
+              storage: 1Gi
+          storageClassName: ceph-block-kubevirt
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: smoke-test
+    spec:
+      hostname: smoke-test
+      evictionStrategy: LiveMigrate
+      networks:
+        - name: default
+          pod: {}
+      domain:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        memory:
+          guest: 256Mi
+        devices:
+          interfaces:
+            - name: default
+              masquerade: {}
+          disks:
+            - name: root
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: cloudinit
+              disk:
+                bus: virtio
+        firmware:
+          bootloader:
+            bios:
+              useSerial: true
+      volumes:
+        - name: root
+          dataVolume:
+            name: smoke-test-root
+        - name: cloudinit
+          cloudInitNoCloud:
+            userData: |
+              #cloud-config
+              hostname: smoke-test
+              timezone: Europe/Paris
+              write_files:
+                - path: /etc/kubevirt-smoke-test
+                  permissions: '0644'
+                  content: |
+                    provisioned by flux from kubernetes/apps/vms/smoke-test
