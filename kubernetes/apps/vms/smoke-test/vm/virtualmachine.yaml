@@ -69,6 +69,13 @@ spec:
               #cloud-config
               hostname: smoke-test
               timezone: Europe/Paris
+              ssh_authorized_keys:
+                - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILwDfQMN5rPy6wGN62UMqBDfNa4F5kOwUnubzRAOe1TS brauni@desktop-2026-04-bitwarden-cli-incident
+              packages:
+                - qemu-guest-agent
+              runcmd:
+                - rc-update add qemu-guest-agent default
+                - rc-service qemu-guest-agent start
               write_files:
                 - path: /etc/kubevirt-smoke-test
                   permissions: '0644'
