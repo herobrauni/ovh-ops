@@ -85,6 +85,11 @@ spec:
       fullnameOverride: node-exporter
     kube-state-metrics:
       fullnameOverride: kube-state-metrics
+      # KubeVirt's NoAvailableNodes alert selects on
+      # kube_node_labels{label_kubevirt_io_schedulable='true'}, which KSM v2
+      # only serves for allowlisted label keys. Expose just this one key.
+      metricLabelsAllowlist:
+        - nodes=[kubevirt.io/schedulable]
       prometheus:
         monitor:
           honorLabels: false
