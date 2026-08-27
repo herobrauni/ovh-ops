@@ -1,0 +1,27 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: smoke-test
+spec:
+  dependsOn:
+    - name: kubevirt
+      namespace: kubevirt
+    - name: cdi
+      namespace: cdi
+  interval: 1h
+  path: ./kubernetes/apps/vms/smoke-test/vm
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: vms
+  wait: true
+  timeout: 10m
+  healthCheckExprs:
+    - apiVersion: kubevirt.io/v1
+      kind: VirtualMachine
+      failed: status.conditions.exists(e, e.type == 'Ready' && e.status == 'False')
+      current: status.ready == true
