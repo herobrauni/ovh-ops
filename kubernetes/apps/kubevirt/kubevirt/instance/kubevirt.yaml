@@ -1,0 +1,32 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/kubevirt.io/kubevirt_v1.json
+apiVersion: kubevirt.io/v1
+kind: KubeVirt
+metadata:
+  name: kubevirt
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  configuration:
+    developerConfiguration:
+      featureGates:
+        - Snapshot
+    network:
+      permitBridgeInterfaceOnPodNetwork: false
+  monitorAccount: kube-prometheus-stack-prometheus
+  monitorNamespace: observability
+  serviceMonitorNamespace: observability
+  uninstallStrategy: BlockUninstallIfWorkloadsExist
+  workloadUpdateStrategy:
+    workloadUpdateMethods:
+      - LiveMigrate
+      - Evict
+  workloads:
+    nodePlacement:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
