@@ -56,6 +56,11 @@ spec:
               disk:
                 bus: virtio
         firmware:
+          # KubeVirt uses the firmware UUID as the cloud-init instance-id.
+          # Bump this UUID whenever cloud-init user-data changes, otherwise
+          # cloud-init treats the boot as the same instance and skips all
+          # per-instance modules (users, ssh keys, packages, runcmd).
+          uuid: 5bf5b4d9-78af-4d3d-a39a-f2a3c94d7797
           bootloader:
             bios:
               useSerial: true
