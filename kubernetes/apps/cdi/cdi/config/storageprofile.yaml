@@ -9,3 +9,18 @@ spec:
     - accessModes:
         - ReadWriteMany
       volumeMode: Block
+---
+# LocalPV hostpath is not a provisioner CDI recognizes, so it must be
+# described explicitly: host-local directories are RWO/Filesystem only
+# (no Block volume mode, no RWX). Keeps the StorageProfile complete and
+# silences CDIStorageProfilesIncomplete for openebs-hostpath.
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cdi.kubevirt.io/storageprofile_v1beta1.json
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: StorageProfile
+metadata:
+  name: openebs-hostpath
+spec:
+  claimPropertySets:
+    - accessModes:
+        - ReadWriteOnce
+      volumeMode: Filesystem
