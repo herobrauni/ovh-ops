@@ -140,7 +140,17 @@ spec:
             # LiteLLM proxy config; models are managed via the UI/database
             # (STORE_MODEL_IN_DB=True) or by adding entries here.
             model_list: []
-            litellm_settings: {}
+            litellm_settings:
+              # Response cache + shared virtual-key auth cache on the
+              # app-scoped Dragonfly instance (Redis-compatible).
+              cache: true
+              enable_redis_auth_cache: true
+              cache_params:
+                type: redis
+                host: litellm-dragonfly.ai.svc.cluster.local
+                port: "6379"
+                namespace: litellm
+                ttl: 300
             general_settings:
               store_model_in_db: true
 
