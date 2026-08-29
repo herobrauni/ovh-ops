@@ -137,9 +137,22 @@ spec:
       config:
         data:
           config.yaml: |-
-            # LiteLLM proxy config; models are managed via the UI/database
-            # (STORE_MODEL_IN_DB=True) or by adding entries here.
-            model_list: []
+            # LiteLLM proxy config; UI/database-managed models use
+            # STORE_MODEL_IN_DB=True, file-defined models live here.
+            # z.ai GLM models use the Coding Plan endpoint
+            # (https://api.z.ai/api/coding/paas/v4) because the default
+            # paas/v4 base requires pay-as-you-go credit balance.
+            model_list:
+              - model_name: glm-4.7
+                litellm_params:
+                  model: zai/glm-4.7
+                  api_base: https://api.z.ai/api/coding/paas/v4
+                  api_key: os.environ/ZAI_API_KEY
+              - model_name: glm-4.6
+                litellm_params:
+                  model: zai/glm-4.6
+                  api_base: https://api.z.ai/api/coding/paas/v4
+                  api_key: os.environ/ZAI_API_KEY
             litellm_settings: {}
             general_settings:
               store_model_in_db: true
