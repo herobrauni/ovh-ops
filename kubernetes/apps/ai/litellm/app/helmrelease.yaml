@@ -41,8 +41,8 @@ spec:
         containers:
           app:
             image:
-              repository: ghcr.io/berriai/litellm
-              tag: v1.85.7@sha256:7eeb9742de97ef43516bb7d0bff74eaa84155c62112ec9f27587222b9fd569e4
+              repository: ghcr.io/berriai/litellm-non_root
+              tag: v1.85.7@sha256:4676bf1e1ef21d381daa91e7e3c76ce0c7891c9a8dd9f2478a36d5be90c47978
             args:
               - --port=4000
               - --config=/app/config.yaml
