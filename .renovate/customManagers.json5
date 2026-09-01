@@ -29,5 +29,16 @@
       ],
       datasourceTemplate: "docker",
     },
+    {
+      customType: "regex",
+      description: "Process digest-pinned operator image values",
+      managerFilePatterns: [
+        "/operator/images\\.yaml$/",
+      ],
+      matchStrings: [
+        "value: (?<depName>\\S+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})",
+      ],
+      datasourceTemplate: "docker",
+    },
   ],
 }
