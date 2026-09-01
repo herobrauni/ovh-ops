@@ -10,4 +10,8 @@ components:
 
 resources:
   - ./namespace.yaml
-  - ./niks3/ks.yaml
+  # Disabled 2026-09-01: ceph v20.2.4 RGW SigV4 regression (tracker #79674)
+  # rejects niks3's minio-go writes (unsigned Content-Type) with 403 AccessDenied,
+  # which makes niks3 >= v1.10.x crash on bucket init. Re-enable after upgrading
+  # to a ceph release containing the fix (PR ceph#71192, e.g. v20.2.5+).
+  # - ./niks3/ks.yaml
