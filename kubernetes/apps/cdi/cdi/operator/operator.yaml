@@ -5757,7 +5757,7 @@ spec:
         - name: PULL_POLICY
           value: IfNotPresent
         - name: MONITORING_NAMESPACE
-        image: quay.io/kubevirt/cdi-operator:v1.66.0
+        image: quay.io/kubevirt/cdi-operator:v1.66.0@sha256:45964f62a027e09463c8dd48a2cbaf063c0afe771edb18e505f4461d0915984c
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
