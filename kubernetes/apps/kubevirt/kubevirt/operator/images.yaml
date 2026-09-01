@@ -15,7 +15,7 @@ spec:
             - name: VIRT_OPERATOR_IMAGE
               value: quay.io/kubevirt/virt-operator:v1.8.4@sha256:65d23c9ad91707a4fb5f0103e04c12d02343437ac44e3a31608d7a1fff003d55
             - name: VIRT_API_IMAGE
-              value: quay.io/kubevirt/virt-api:v1.8.4@sha256:8df9c3b10cafbca3bbd8d42f005f12abed14ec70c9f1feea209d5785618db028
+              value: quay.io/kubevirt/virt-api:v1.9.0@sha256:42341b1d52699f4bb87f3996151bafe2e3fe065e9146cc64a15959ddf7bf2c69
             - name: VIRT_CONTROLLER_IMAGE
               value: quay.io/kubevirt/virt-controller:v1.8.4@sha256:4135c3f1284aadb60b914b50cbf3be6be3d2d14a050ada2397cc89b47c525e4e
             - name: VIRT_HANDLER_IMAGE
