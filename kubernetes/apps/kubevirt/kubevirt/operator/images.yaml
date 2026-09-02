@@ -23,7 +23,7 @@ spec:
             - name: VIRT_LAUNCHER_IMAGE
               value: quay.io/kubevirt/virt-launcher:v1.9.0@sha256:f23102ca00bf12f7962021adfdfdad63c873b01a03001a6d20d5813950254b9c
             - name: VIRT_EXPORTPROXY_IMAGE
-              value: quay.io/kubevirt/virt-exportproxy:v1.8.4@sha256:ef68bb9b9f997d4aca56a8053cc368a5eeb2d9623de5fed3356e7ce4f38290e2
+              value: quay.io/kubevirt/virt-exportproxy:v1.9.0@sha256:042443b8f58246623e440af59cd34c0627f843b6094c41794d16c98c8d0049ea
             - name: VIRT_EXPORTSERVER_IMAGE
               value: quay.io/kubevirt/virt-exportserver:v1.9.0@sha256:bf805f79151d689431f3e461ad77355acd04b16fe5bde88b00be772ae1edd06c
             - name: VIRT_SYNCHRONIZATIONCONTROLLER_IMAGE
