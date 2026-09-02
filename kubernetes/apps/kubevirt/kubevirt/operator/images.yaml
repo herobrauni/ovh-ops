@@ -29,6 +29,6 @@ spec:
             - name: VIRT_SYNCHRONIZATIONCONTROLLER_IMAGE
               value: quay.io/kubevirt/virt-synchronization-controller:v1.9.0@sha256:6163d1108317d2abc4fef3213b4a00acfc8e066625d22882671fcb032859e062
             - name: PR_HELPER_IMAGE
-              value: quay.io/kubevirt/pr-helper:v1.8.4@sha256:eca8d1f2c46ce09c18d4e59a44276ef4f02bea82665a6525aed8b5f76986131a
+              value: quay.io/kubevirt/pr-helper:v1.9.0@sha256:4218ea0f78481d27f5876e88c080c867dc49e21761928dc0ee1603f281e6d9e7
             - name: SIDECAR_SHIM_IMAGE
               value: quay.io/kubevirt/sidecar-shim:v1.9.0@sha256:8eb25c016c09366ea4b2bbd524dfbb4872184a9aea67cc34c60ff78a11cb2661
