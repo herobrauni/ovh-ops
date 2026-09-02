@@ -37,7 +37,7 @@ spec:
           app:
             image:
               repository: ghcr.io/realzombee/prowlarr
-              tag: 2.10.1.2018@sha256:344e70d1edbc05c1a965d96c9b71cf3920bf572c06206a5ed85dbe68e80fba75
+              tag: 2.10.1.2019@sha256:1eb73725349f75aabbed7ea5751b3139ca8045cdd8fc5162021ecb3facbc8280
             env:
               PUID: "1000"
               PGID: "1000"
