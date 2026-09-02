@@ -31,4 +31,4 @@ spec:
             - name: PR_HELPER_IMAGE
               value: quay.io/kubevirt/pr-helper:v1.8.4@sha256:eca8d1f2c46ce09c18d4e59a44276ef4f02bea82665a6525aed8b5f76986131a
             - name: SIDECAR_SHIM_IMAGE
-              value: quay.io/kubevirt/sidecar-shim:v1.8.4@sha256:95255857aa7ea1924f6742534707930f452e46242c8ab7d5570d297ed89a34b0
+              value: quay.io/kubevirt/sidecar-shim:v1.9.0@sha256:8eb25c016c09366ea4b2bbd524dfbb4872184a9aea67cc34c60ff78a11cb2661
