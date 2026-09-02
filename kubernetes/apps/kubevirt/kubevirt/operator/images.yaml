@@ -27,7 +27,7 @@ spec:
             - name: VIRT_EXPORTSERVER_IMAGE
               value: quay.io/kubevirt/virt-exportserver:v1.8.4@sha256:1489c5ee739a24a24fdaa0a96b4ea1336ebbcbcadd5f04deb2ca96c47a8a6e6a
             - name: VIRT_SYNCHRONIZATIONCONTROLLER_IMAGE
-              value: quay.io/kubevirt/virt-synchronization-controller:v1.8.4@sha256:631ade5aced9ffb248f2725759c7d37376d596875b05f6a331a12342a281a1ce
+              value: quay.io/kubevirt/virt-synchronization-controller:v1.9.0@sha256:6163d1108317d2abc4fef3213b4a00acfc8e066625d22882671fcb032859e062
             - name: PR_HELPER_IMAGE
               value: quay.io/kubevirt/pr-helper:v1.8.4@sha256:eca8d1f2c46ce09c18d4e59a44276ef4f02bea82665a6525aed8b5f76986131a
             - name: SIDECAR_SHIM_IMAGE
