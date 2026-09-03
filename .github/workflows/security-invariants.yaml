@@ -41,3 +41,6 @@ jobs:
 
       - name: Check security invariants
         run: bash util/check_security_invariants.sh
+
+      - name: Check vendored operator sync
+        run: bash util/check_vendored_operator_sync.sh
