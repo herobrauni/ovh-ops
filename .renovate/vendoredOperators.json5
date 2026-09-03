@@ -1,0 +1,31 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  packageRules: [
+    {
+      // KubeVirt and CDI are installed from vendored upstream operator
+      // manifests (operator/operator.yaml, RBAC + CRD) whose component images
+      // are bumped separately in operator/images.yaml. A new upstream minor
+      // can grant permissions the vendored ClusterRole does not hold (e.g.
+      // KubeVirt v1.9.0 introduced plugin.kubevirt.io), which trips the API
+      // server's RBAC escalation guard and stalls the upgrade with
+      // DeploymentFailed. Keep all component image bumps in ONE grouped PR,
+      // never auto-merge them, and remind the reviewer to re-vendor
+      // operator.yaml from the matching release.
+      description: "Vendored operator images (KubeVirt/CDI) need manual re-vendoring",
+      groupName: "vendored-kubevirt-operators",
+      matchDatasources: [
+        "docker"
+      ],
+      matchPackageNames: [
+        "quay.io/kubevirt/*"
+      ],
+      matchManagers: [
+        "regex"
+      ],
+      automerge: false,
+      prBodyNotes: [
+        "> [!WARNING]\n> This repo vendors the upstream operator manifests (RBAC/CRD) in `operator/operator.yaml`. If this PR bumps to a new **minor** release, re-vendor the manifest from the matching upstream release in the same change (drop the leading Namespace doc, keep the vendored-from header, format with `yamlfmt`), otherwise the API server's RBAC escalation guard can reject the operator's own RBAC update (`DeploymentFailed`). CI gate: `bash util/check_vendored_operator_sync.sh`."
+      ],
+    },
+  ],
+}
