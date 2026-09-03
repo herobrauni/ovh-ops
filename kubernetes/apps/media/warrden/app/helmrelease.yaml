@@ -22,8 +22,8 @@ spec:
         containers:
           app:
             image:
-              repository: registry.neureka.dev/warrden/warrden
-              tag: 4.6.0@sha256:ff4afa6c87a9537e42ae8e9370ba32d0764f62867ca74479c9bb0a25ef3c5025
+              repository: ghcr.io/neurekadev/warrden
+              tag: 5.1.0@sha256:36ff2b05abb7ee28af3731081ecf3434f3a860e2aec9d8bf68c664355a51b63a
             env:
               PUID: "1000"
               PGID: "1000"
