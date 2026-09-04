@@ -24,7 +24,7 @@
     {
       description: "Cooldown for mise tool updates",
       matchManagers: ["mise"],
-      stabilityDays: 7,
+      minimumReleaseAge: "7 days",
     },
     {
       // Ceph tags are major.releaseType.patch where releaseType 2 == stable GA

@@ -65,14 +65,10 @@
       description: "Kubernetes Group",
       groupName: "kubernetes",
       matchDatasources: [
-        "docker"
+        "github-releases"
       ],
       matchPackageNames: [
-        "/kube-apiserver/",
-        "/kube-controller-manager/",
-        "/kube-proxy/",
-        "/kube-scheduler/",
-        "/kubelet/",
+        "kubernetes/kubernetes",
       ],
       group: {
         commitMessageTopic: "{{{groupName}}} group",
@@ -98,15 +94,16 @@
       description: "Talos Group",
       groupName: "talos",
       matchDatasources: [
-        "docker"
+        "github-releases"
       ],
       matchPackageNames: [
-        "/installer/"
+        "siderolabs/talos",
       ],
       group: {
         commitMessageTopic: "{{{groupName}}} group",
       },
       minimumGroupSize: 2,
+      minimumReleaseAge: "3 days",
     },
   ],
 }
