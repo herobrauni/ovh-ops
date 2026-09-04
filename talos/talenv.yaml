@@ -1,4 +1,4 @@
 # renovate: datasource=github-releases depName=siderolabs/talos
 talosVersion: v1.13.10
 # renovate: datasource=github-releases depName=kubernetes/kubernetes
-kubernetesVersion: v1.35.7
+kubernetesVersion: v1.37.0
