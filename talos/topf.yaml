@@ -1,0 +1,62 @@
+---
+clusterName: ovh-ops
+clusterEndpoint: https://10.10.8.10:6443
+
+# renovate: datasource=docker depName=ghcr.io/siderolabs/installer
+talosVersion: v1.13.10
+# renovate: datasource=docker depName=ghcr.io/siderolabs/kubelet
+kubernetesVersion: v1.35.7
+
+schematicId: ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515
+secureboot: false
+secretsPath: secrets.sops.yaml
+
+nodes:
+  - host: c-ovhsbg1
+    ip: 10.10.8.181
+    role: control-plane
+    data:
+      installDisk: /dev/sda
+      macPrimary: "bc:24:11:2a:12:fb"
+      macSecondary: "bc:24:11:62:33:de"
+      secondaryAddr: "10.10.8.104/24"
+  - host: c-ovhsbg2
+    ip: 10.10.8.183
+    role: control-plane
+    data:
+      installDisk: /dev/sda
+      macPrimary: "bc:24:11:5f:f6:65"
+      macSecondary: "bc:24:11:cd:d2:35"
+      secondaryAddr: "10.10.8.106/24"
+  - host: c-ovhsbg3
+    ip: 10.10.8.185
+    role: control-plane
+    data:
+      installDisk: /dev/sda
+      macPrimary: "bc:24:11:80:42:3c"
+      macSecondary: "bc:24:11:68:53:7e"
+      secondaryAddr: "10.10.8.110/24"
+  - host: w-ovhsbg1
+    ip: 10.10.8.182
+    role: worker
+    data:
+      installDisk: /dev/sda
+      macPrimary: "bc:24:11:5e:a2:fc"
+      macSecondary: "bc:24:11:ce:1c:83"
+      secondaryAddr: "10.10.8.105/24"
+  - host: w-ovhsbg2
+    ip: 10.10.8.184
+    role: worker
+    data:
+      installDisk: /dev/sda
+      macPrimary: "bc:24:11:5c:6b:b8"
+      macSecondary: "bc:24:11:26:cb:15"
+      secondaryAddr: "10.10.8.107/24"
+  - host: w-ovhsbg3
+    ip: 10.10.8.186
+    role: worker
+    data:
+      installDisk: /dev/sda
+      macPrimary: "bc:24:11:80:19:ef"
+      macSecondary: "bc:24:11:41:d1:31"
+      secondaryAddr: "10.10.8.111/24"

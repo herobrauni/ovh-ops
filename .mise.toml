@@ -1,10 +1,10 @@
 [env]
 KUBECONFIG = "{{config_root}}/kubeconfig"
 SOPS_AGE_KEY_FILE = "{{config_root}}/age.key"
-TALOSCONFIG = "{{config_root}}/talos/clusterconfig/talosconfig"
+TALOSCONFIG = "{{config_root}}/talos/talosconfig"
 
 [tools]
-"aqua:budimanjojo/talhelper" = "3.1.17"
+"github:postfinance/topf" = "v0.6.0"
 "github:cilium/cilium-cli" = "0.19.7"
 "aqua:cli/cli" = "2.98.0"
 "aqua:cloudflare/cloudflared" = "2026.8.2"
