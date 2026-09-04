@@ -44,7 +44,7 @@
         "patch",
         "digest"
       ],
-      minimumReleaseAge: "3 days",
+      minimumReleaseAge: "7 days",
       ignoreTests: true,
     },
     {
