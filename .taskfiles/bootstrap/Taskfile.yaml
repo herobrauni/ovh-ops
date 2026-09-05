@@ -1,17 +1,12 @@
 ---
 version: '3'
 
-vars:
-  CONTROLLER:
-    sh: talosctl config info -o yaml | yq -e '.endpoints[0]'
-
 tasks:
 
   full:
     desc: Run full bootstrap sequence
     cmds:
       - task: talos
-      - task: kube
       - task: kubeconfig
         vars:
           LB: node
@@ -22,74 +17,58 @@ tasks:
       - task: apps
       - task: kubeconfig
     preconditions:
-      - which talosctl yq kubectl kustomize helmfile minijinja-cli talhelper
+      - which talosctl yq kubectl kustomize helmfile minijinja-cli topf
 
   talos:
-    desc: Apply Talos configuration to all nodes (insecure mode for initial bootstrap)
+    desc: Apply Talos configuration to all nodes and bootstrap the cluster (initial bootstrap)
     dir: '{{.TALOS_DIR}}'
     cmds:
       - |
         echo "Running stage: talos"
-        if ! talhelper gencommand apply --extra-flags="--insecure" | bash 2>&1; then
-          echo "Note: Some nodes may already have certificates. This is expected."
-        fi
+        topf apply --auto-bootstrap --confirm=false
+      - task: talosconfig
     preconditions:
-      - which talhelper
-      - test -f {{.TALOS_DIR}}/talconfig.yaml
+      - which topf
+      - test -f {{.TALOS_DIR}}/topf.yaml
+      - test -f {{.TALOS_DIR}}/secrets.sops.yaml
+      - test -f {{.ROOT_DIR}}/.sops.yaml
+      - test -f {{.SOPS_AGE_KEY_FILE}}
 
-  talos-apply:
-    desc: Apply Talos configuration to all nodes (secure mode)
+  talosconfig:
+    desc: Generate talosconfig from the secrets bundle
     dir: '{{.TALOS_DIR}}'
-    cmds:
-      - |
-        echo "Applying Talos configuration to all nodes"
-        if ! talhelper gencommand apply | bash; then
-          echo "Failed to apply Talos configuration"
-          exit 1
-        fi
+    cmd: topf talosconfig > talosconfig
     preconditions:
-      - which talhelper
-      - test -f {{.TALOS_DIR}}/talconfig.yaml
-      - test -f {{.TALOSCONFIG}}
-
-  kube:
-    desc: Bootstrap Kubernetes cluster
-    dir: '{{.TALOS_DIR}}'
-    cmds:
-      - |
-        echo "Running stage: kube"
-        until talhelper gencommand bootstrap | bash 2>&1; do
-          echo "Kubernetes bootstrap in progress. Retrying in 5 seconds..."
-          sleep 5
-        done
-    preconditions:
-      - which talhelper
-      - test -f {{.TALOSCONFIG}}
-      - test -f {{.TALOS_DIR}}/talconfig.yaml
+      - which topf
+      - test -f {{.TALOS_DIR}}/topf.yaml
+      - test -f {{.TALOS_DIR}}/secrets.sops.yaml
+      - test -f {{.ROOT_DIR}}/.sops.yaml
+      - test -f {{.SOPS_AGE_KEY_FILE}}
 
   kubeconfig:
-    desc: Fetch kubeconfig from controller node
+    desc: Fetch kubeconfig from controller node [VALIDITY=8760h]
     dir: '{{.TALOS_DIR}}'
     vars:
       LB: '{{.LB | default "cilium"}}'
+      VALIDITY: '{{.VALIDITY | default "8760h"}}'
     cmds:
       - |
         echo "Running stage: kubeconfig"
-        if ! talhelper gencommand kubeconfig --extra-flags="{{.ROOT_DIR}} --force" | bash; then
-          echo "Failed to fetch kubeconfig"
-          exit 1
-        fi
+        topf kubeconfig --validity {{.VALIDITY}} > {{.ROOT_DIR}}/kubeconfig
         if [[ "{{.LB}}" != "cilium" ]]; then
           CONTROLLER=$(talosctl config info -o yaml | yq -e '.endpoints[0]')
-          if ! kubectl config set-cluster main --server "https://$CONTROLLER:6443"; then
+          CLUSTER=$(kubectl config view --minify -o jsonpath='{.clusters[0].name}')
+          if ! kubectl config set-cluster "$CLUSTER" --server "https://$CONTROLLER:6443"; then
             echo "Failed to set kubectl cluster server address"
             exit 1
           fi
         fi
     preconditions:
-      - which talhelper kubectl
+      - which topf talosctl kubectl yq
       - test -f {{.TALOSCONFIG}}
-      - test -f {{.TALOS_DIR}}/talconfig.yaml
+      - test -f {{.TALOS_DIR}}/topf.yaml
+      - test -f {{.TALOS_DIR}}/secrets.sops.yaml
+      - test -f {{.SOPS_AGE_KEY_FILE}}
 
   wait:
     desc: Wait for nodes to be ready
