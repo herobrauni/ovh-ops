@@ -1,0 +1,7 @@
+# Talos 1.14 defaults to running kubelet and pods in a sandboxed PID/mount
+# namespace, which breaks workloads that rely on hostPID or host mounts
+# (node-exporter, Rook Ceph, KubeVirt). Set to true to opt in.
+---
+apiVersion: v1alpha1
+kind: SecurityProfileConfig
+workloadIsolation: false
