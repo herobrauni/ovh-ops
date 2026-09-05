@@ -16,17 +16,20 @@ This document provides instructions for generating Talos configuration.
 task talos:generate-config
 ```
 
-This command will generate the necessary Talos configuration files based on the current configuration settings.
+This command renders the Talos machine configuration files for every node from
+`talos/topf.yaml` and its patch directories into `talos/output/` without
+applying them. Use `task talos:diff` to preview pending changes against the
+running cluster, or `task talos:apply` to apply them.
 
-## Create talsecret
+## Create the secrets bundle
 
-If the talsecret file does not exist, run the following command:
+If the secrets bundle does not exist, run the following command:
 
 ```bash
-talhelper gensecret | sops --filename-override talos/talsecret.sops.yaml --encrypt /dev/stdin > talos/talsecret.sops.yaml
+topf secrets --confirm=false | sops --filename-override talos/secrets.sops.yaml --encrypt /dev/stdin > talos/secrets.sops.yaml
 ```
 
-This command will generate and encrypt the secret configuration file.
+This command generates and encrypts the secret configuration file.
 
 ## Proxmox Host Network Requirements
 

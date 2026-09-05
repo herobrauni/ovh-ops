@@ -13,6 +13,8 @@
 # Kubernetes
 kubeconfig
 talosconfig
+# topf render output
+/talos/output/
 # Misc.
 .private/
 .task/
