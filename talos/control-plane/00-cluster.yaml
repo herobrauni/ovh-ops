@@ -31,6 +31,14 @@ apiVersion: v1alpha1
 kind: KubeProxyConfig
 enabled: false
 ---
+# Disable Talos-managed CoreDNS, Flux manages it via the coredns HelmRelease
+# (kubernetes/apps/kube-system/coredns); selector labels differ from the
+# Talos manifest and Deployment selectors are immutable, which breaks
+# upgrade-k8s' manifests phase
+apiVersion: v1alpha1
+kind: KubeCoreDNSConfig
+enabled: false
+---
 apiVersion: v1alpha1
 kind: KubeSchedulerConfig
 extraArgs:
