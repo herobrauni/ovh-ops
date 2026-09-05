@@ -5,7 +5,7 @@ clusterEndpoint: https://10.10.8.10:6443
 # renovate: datasource=github-releases depName=siderolabs/talos
 talosVersion: v1.13.10
 # renovate: datasource=github-releases depName=kubernetes/kubernetes
-kubernetesVersion: v1.36.4
+kubernetesVersion: v1.37.0
 
 schematicId: ce4c980550dd2ab1b17bbf2b08801c7eb59418eafe8f279833297925d67c7515
 secureboot: false
