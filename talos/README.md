@@ -19,6 +19,9 @@ Files ending in `.yaml.tpl` are Go-templated per node; see the
 [topf configuration model](https://postfinance.github.io/topf/main/configuration-model/)
 for the available template variables.
 
-The cluster is currently on the Talos v1.13 single-document config format
-(`machine:` / `cluster:` maps). The v1.14 multi-document config migration is
-deliberately deferred to a separate change.
+The cluster uses the Talos v1.14 multi-document config format (typed
+`Kube*Config` / `SysctlConfig` / `ResolverConfig` / `CRICustomizationConfig` /
+`UnattendedInstallConfig` documents alongside the remaining v1alpha1 fields).
+The 1.13-format config cannot be applied to 1.13 nodes — `topf apply` only
+works once the nodes run the `talosVersion` pinned in `topf.yaml`, so upgrade
+Talos first, then apply the migrated config.

@@ -15,7 +15,7 @@ tasks:
       - which topf
 
   apply-node:
-    desc: Apply Talos config to a node (shows a diff and asks first) [NODE=required MODE=auto|reboot|no-reboot|staged|try]
+    desc: Apply Talos config to a node (shows a diff and asks first) [NODE=required MODE=auto|no-reboot|staged|try]
     dir: '{{.TALOS_DIR}}'
     cmd: topf apply --nodes-filter '^{{.NODE}}$' --mode '{{.MODE}}'
     vars:

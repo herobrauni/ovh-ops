@@ -1,29 +1,37 @@
 ---
-cluster:
-  allowSchedulingOnControlPlanes: false
-  apiServer:
-    admissionControl:
-      $patch: delete
-    certSANs:
-      - 127.0.0.1
-      - 10.10.8.10
-    extraArgs:
-      # https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/
-      enable-aggregator-routing: true
-      feature-gates: MutatingAdmissionPolicy=true
-      runtime-config: admissionregistration.k8s.io/v1beta1=true
-  controllerManager:
-    extraArgs:
-      bind-address: 0.0.0.0
-  coreDNS:
-    disabled: true
-  etcd:
-    extraArgs:
-      listen-metrics-urls: http://0.0.0.0:2381
-    advertisedSubnets:
-      - 10.10.8.0/24
-  proxy:
-    disabled: true
-  scheduler:
-    extraArgs:
-      bind-address: 0.0.0.0
+# Drop Talos' default PodSecurity admission plugin config
+apiVersion: v1alpha1
+kind: KubeAdmissionControlConfig
+name: PodSecurity
+$patch: delete
+---
+apiVersion: v1alpha1
+kind: KubeAPIServerConfig
+certExtraSANs:
+  - 127.0.0.1
+  - 10.10.8.10
+extraArgs:
+  # https://kubernetes.io/docs/tasks/extend-kubernetes/configure-aggregation-layer/
+  enable-aggregator-routing: "true"
+  feature-gates: MutatingAdmissionPolicy=true
+  runtime-config: admissionregistration.k8s.io/v1beta1=true
+---
+apiVersion: v1alpha1
+kind: KubeControllerManagerConfig
+extraArgs:
+  bind-address: 0.0.0.0
+---
+# Disable built-in CNI to use Cilium
+apiVersion: v1alpha1
+kind: KubeFlannelCNIConfig
+$patch: delete
+---
+# Disable kube-proxy, Cilium handles it (kubeProxyReplacement)
+apiVersion: v1alpha1
+kind: KubeProxyConfig
+enabled: false
+---
+apiVersion: v1alpha1
+kind: KubeSchedulerConfig
+extraArgs:
+  bind-address: 0.0.0.0
