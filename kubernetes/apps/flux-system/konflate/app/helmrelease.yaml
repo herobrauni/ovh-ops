@@ -17,6 +17,10 @@ spec:
       # Missed-webhook backstop; the verified GitHub webhook on /hooks makes
       # re-renders immediate once it is configured on the repo.
       refreshInterval: 15m
+      # GitHub App auth (same CI bot App as the runners): konflate mints
+      # short-lived installation tokens — no standing PAT — and the App
+      # authenticates reads, statusChecks and prComments alike.
+      appClientId: "1203112"
       statusChecks: true
       prComments: true
       verifyImages: true
