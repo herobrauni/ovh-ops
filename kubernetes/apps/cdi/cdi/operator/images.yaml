@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
         - name: cdi-operator
-          image: quay.io/kubevirt/cdi-operator:v1.66.0@sha256:45964f62a027e09463c8dd48a2cbaf063c0afe771edb18e505f4461d0915984c
+          image: quay.io/kubevirt/cdi-operator:v1.66.1@sha256:470b2997b87c152b2573cdb4a3feb2a7925f60602e16c052de94e8d765b97357
           env:
             - name: CONTROLLER_IMAGE
               value: quay.io/kubevirt/cdi-controller:v1.66.0@sha256:6541d5b148731bd895bf7b3c1702745a91e5d28d7f84d9a24bf12cf9ddf73e97
