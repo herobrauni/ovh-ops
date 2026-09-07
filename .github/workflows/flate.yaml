@@ -92,6 +92,14 @@ jobs:
       - name: Run flate diff
         run: flate diff all -o github -p ./kubernetes/flux/cluster --no-progress > diff.md
 
+      # GitHub caps PR comments at 65536 chars; cap well below that and flag it.
+      - name: Truncate diff
+        run: |-
+          if [ "$(wc -c < diff.md)" -gt 48000 ]; then
+            head -c 48000 diff.md > diff.md.trunc && mv diff.md.trunc diff.md
+            printf '\n\n> Diff truncated at 48kB. Run `flate diff all -o github -p ./kubernetes/flux/cluster --base main` locally for the full render.\n' >> diff.md
+          fi
+
       - name: Generate Diff
         id: diff
         run: |-
