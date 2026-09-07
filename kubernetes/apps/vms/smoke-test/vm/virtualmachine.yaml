@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/kubevirt.io/virtualmachine_v1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kubevirt.io/virtualmachine_v1.json
 # Smoke test for the KubeVirt platform: boots Alpine from a CDI-imported
 # volume on the RWX raw-block ceph-block-kubevirt StorageClass, the same
 # path live migration will use. Remove this whole app once the platform is

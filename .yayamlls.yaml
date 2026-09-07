@@ -2,12 +2,11 @@
 # yayamlls — Flux-aware YAML language server (single Go binary, flate built in).
 # Editor setup snippets (nvim/vscode/zed/helix): https://github.com/home-operations/yayamlls
 # One-shot validation without an editor: `yayamlls validate kubernetes/`
-kubernetes:
-  # Same URL shape as upstream's default (k8s-schemas.home-operations.com) but
-  # served from this repo's own CRD mirror, which carries the exact CRD set
-  # installed in the cluster. Core (non-CRD) kinds 404 and are silently skipped;
-  # those files keep their schemastore modelines.
-  schemaUrl: https://kubernetes-schemas.brauni.dev/{group:-core}/{kind@L}_{version@L}.json
+#
+# Kubernetes auto-detection is on by default and resolves apiVersion+kind against
+# k8s-schemas.home-operations.com (CRDs pinned from upstream releases plus core
+# kinds from a kind cluster's OpenAPI). Known gap: volsync.backube/kopiamaintenance
+# is not published there yet (the file has no modeline, so it is silently skipped).
 renderers:
   flate:
     # Flux entrypoint, so an edited HelmRelease can resolve OCIRepository and

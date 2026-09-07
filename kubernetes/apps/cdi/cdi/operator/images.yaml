@@ -1,5 +1,6 @@
 ---
-# yaml-language-server: $schema=https://json.schemastore.org/kube-1.31/jsonschema/k8s.io/kubernetes/deployment_v1.json
+# yayamlls-disable-file
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/apps/deployment_v1.json
 apiVersion: apps/v1
 kind: Deployment
 metadata:

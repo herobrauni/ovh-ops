@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cilium.io/ciliumnetworkpolicy_v2.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cilium.io/ciliumnetworkpolicy_v2.json
 # Only the public Envoy gateway may reach the app port. The MariaDB sidecar is
 # not covered by any Service, but this also makes that explicit: nothing in the
 # cluster can open 3306 against this pod, including the original instance.
