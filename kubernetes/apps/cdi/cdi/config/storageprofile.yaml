@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cdi.kubevirt.io/storageprofile_v1beta1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cdi.kubevirt.io/storageprofile_v1beta1.json
 apiVersion: cdi.kubevirt.io/v1beta1
 kind: StorageProfile
 metadata:
@@ -14,7 +14,7 @@ spec:
 # described explicitly: host-local directories are RWO/Filesystem only
 # (no Block volume mode, no RWX). Keeps the StorageProfile complete and
 # silences CDIStorageProfilesIncomplete for openebs-hostpath.
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cdi.kubevirt.io/storageprofile_v1beta1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cdi.kubevirt.io/storageprofile_v1beta1.json
 apiVersion: cdi.kubevirt.io/v1beta1
 kind: StorageProfile
 metadata:

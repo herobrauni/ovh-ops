@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/k8s.io/service_v1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/service_v1.json
 # Stable SSH endpoint for the smoke-test VM. With masquerade networking the
 # guest is reached through the virt-launcher pod IP (inbound traffic is
 # DNAT'd to 10.0.2.15), but that pod is replaced on every restart and
