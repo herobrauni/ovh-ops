@@ -1,6 +1,6 @@
 ---
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
-name: Flux Local
+name: Flate
 
 on:
   pull_request:
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   filter:
-    name: Flux Local - Filter
+    name: Flate - Filter
     runs-on: ubuntu-latest
     outputs:
       changed-files: ${{ steps.changed-files.outputs.changed_files }}
@@ -30,7 +30,7 @@ jobs:
   test:
     if: ${{ needs.filter.outputs.changed-files != '[]' }}
     needs: filter
-    name: Flux Local - Test
+    name: Flate - Test
     runs-on: ubuntu-latest
     steps:
       - name: Generate Token
@@ -44,34 +44,29 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Run flux-local test
-        uses: docker://ghcr.io/allenporter/flux-local:v8.4.0@sha256:c0be852e30f299ce6a220cc992b0c21a2a0b0684cc17713b9d718e18d9c8beff
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+      - name: Install Flate
+        uses: home-operations/flate/action@631b76b69c4e58c6f4d1cb01e23616fa61aebafa # v0.6.5
         with:
-          args: >-
-            test
-            --all-namespaces
-            --enable-helm
-            --path /github/workspace/kubernetes/flux/cluster
-            --verbose
+          token: ${{ steps.app-token.outputs.token }}
+
+      # Full-tree validation (not changed-only): a full render of this repo takes
+      # single-digit seconds, so there is no reason to skip untouched subtrees.
+      - name: Run flate test
+        env:
+          FLATE_BASE: ""
+        run: flate test all -p ./kubernetes/flux/cluster --no-progress
 
   diff:
     if: ${{ needs.filter.outputs.changed-files != '[]' }}
     needs: filter
-    name: Flux Local - Diff
+    name: Flate - Diff
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
-    strategy:
-      matrix:
-        resource:
-          - helmrelease
-          - kustomization
-      fail-fast: false
     steps:
       - name: Generate Token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -80,61 +75,57 @@ jobs:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
 
-      - name: Checkout Pull Request Branch
+      - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          path: pull
           persist-credentials: false
+          fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Checkout Default Branch
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Flate
+        uses: home-operations/flate/action@631b76b69c4e58c6f4d1cb01e23616fa61aebafa # v0.6.5
         with:
-          path: default
-          persist-credentials: false
-          ref: ${{ github.event.repository.default_branch }}
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Run flux-local diff
-        uses: docker://ghcr.io/allenporter/flux-local:v8.4.0@sha256:c0be852e30f299ce6a220cc992b0c21a2a0b0684cc17713b9d718e18d9c8beff
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-        with:
-          args: >-
-            diff ${{ matrix.resource }}
-            --unified 6
-            --path /github/workspace/pull/kubernetes/flux/cluster
-            --path-orig /github/workspace/default/kubernetes/flux/cluster
-            --strip-attrs "helm.sh/chart,checksum/config,app.kubernetes.io/version,chart"
-            --limit-bytes 10000
-            --all-namespaces
-            --sources "flux-system"
-            --output-file diff.patch
+      # The action exports FLATE_BASE=<default branch>, so this diff renders the
+      # PR against main in changed-only mode and prints GitHub-flavored markdown.
+      - name: Run flate diff
+        run: flate diff all -o github -p ./kubernetes/flux/cluster --no-progress > diff.md
+
+      # GitHub caps PR comments at 65536 chars; cap well below that and flag it.
+      - name: Truncate diff
+        run: |-
+          if [ "$(wc -c < diff.md)" -gt 48000 ]; then
+            head -c 48000 diff.md > diff.md.trunc && mv diff.md.trunc diff.md
+            printf '\n\n> Diff truncated at 48kB. Run `flate diff all -o github -p ./kubernetes/flux/cluster --base main` locally for the full render.\n' >> diff.md
+          fi
 
       - name: Generate Diff
         id: diff
         run: |-
-          echo 'diff<<EOF' >> $GITHUB_OUTPUT
-          cat diff.patch >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
+          {
+            echo 'diff<<EOF'
+            cat diff.md
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - if: ${{ steps.diff.outputs.diff != '' }}
         name: Add Comment
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          header: ${{ github.event.pull_request.number }}/kubernetes/${{ matrix.resource }}
+          header: ${{ github.event.pull_request.number }}/rendered-diff
           message: |-
-            ```diff
+            ## Rendered diff (flate)
+
             ${{ steps.diff.outputs.diff }}
-            ```
 
   success:
     if: ${{ !cancelled() }}
     needs:
       - test
       - diff
-    name: Flux Local - Success
+    name: Flate - Success
     runs-on: ubuntu-latest
     steps:
       - name: Any jobs failed?
