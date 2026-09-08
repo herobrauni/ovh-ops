@@ -4,7 +4,7 @@
 # (upstream assumes an OpenShift-style guaranteed path). CiliumNetworkPolicies
 # are additive with NetworkPolicies, so this unions the missing egress
 # destinations back in for exactly those pods.
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/cilium.io/ciliumnetworkpolicy_v2.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cilium.io/ciliumnetworkpolicy_v2.json
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

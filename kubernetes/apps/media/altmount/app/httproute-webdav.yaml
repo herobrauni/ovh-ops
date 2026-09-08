@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/gateway.networking.k8s.io/httproute_v1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/httproute_v1.json
 # Separate HTTPRoute for /webdav — intentionally NOT targeted by any SecurityPolicy
 # so that WebDAV requests bypass TinyAuth. Altmount's WebDAV handler has its own auth.
 apiVersion: gateway.networking.k8s.io/v1

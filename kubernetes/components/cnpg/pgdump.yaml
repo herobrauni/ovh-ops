@@ -1,6 +1,6 @@
 ---
 # yayamlls-disable-file
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/v1/persistentvolumeclaim-v1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/persistentvolumeclaim_v1.json
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -13,7 +13,7 @@ spec:
       storage: ${PGDUMP_CAPACITY:=10Gi}
   storageClassName: ${PGDUMP_STORAGECLASS:=ceph-block}
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/batch/v1/job.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/batch/job_v1.json
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -42,7 +42,7 @@ spec:
           persistentVolumeClaim:
             claimName: "${APP}-pgdump"
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/external-secrets.io/externalsecret_v1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/external-secrets.io/externalsecret_v1.json
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -89,7 +89,7 @@ spec:
       remoteRef:
         key: /kopia_known_hosts/SFTP_KNOWN_HOSTS_DATA
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/volsync.backube/replicationsource_v1alpha1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/volsync.backube/replicationsource_v1alpha1.json
 apiVersion: volsync.backube/v1alpha1
 kind: ReplicationSource
 metadata:

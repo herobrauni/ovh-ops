@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/v1/persistentvolumeclaim-v1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/persistentvolumeclaim_v1.json
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -12,7 +12,7 @@ spec:
       storage: 35Gi
   storageClassName: ceph-block
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/batch/v1/cronjob.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/batch/cronjob_v1.json
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -89,7 +89,7 @@ spec:
             - name: tmp
               emptyDir: {}
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/external-secrets.io/externalsecret_v1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/external-secrets.io/externalsecret_v1.json
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -136,7 +136,7 @@ spec:
       remoteRef:
         key: /kopia_known_hosts/SFTP_KNOWN_HOSTS_DATA
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/volsync.backube/replicationsource_v1alpha1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/volsync.backube/replicationsource_v1alpha1.json
 apiVersion: volsync.backube/v1alpha1
 kind: ReplicationSource
 metadata:
@@ -145,6 +145,8 @@ spec:
   sourcePVC: postgres18-pgdumpall
   trigger:
     schedule: 30 3 * * *
+# Upstream k8s-schemas pins volsync CRDs older than spec.kopia
+# yayamlls-disable
   kopia:
     accessModes:
       - ReadWriteOnce
@@ -163,8 +165,9 @@ spec:
       yearly: 2
     storageClassName: ceph-block
     volumeSnapshotClassName: csi-ceph-blockpool
+# yayamlls-enable
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/v1/persistentvolumeclaim-v1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/persistentvolumeclaim_v1.json
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -177,7 +180,7 @@ spec:
       storage: 15Gi
   storageClassName: ceph-block
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/batch/v1/cronjob.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/batch/cronjob_v1.json
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -254,7 +257,7 @@ spec:
             - name: tmp
               emptyDir: {}
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/external-secrets.io/externalsecret_v1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/external-secrets.io/externalsecret_v1.json
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -301,7 +304,7 @@ spec:
       remoteRef:
         key: /kopia_known_hosts/SFTP_KNOWN_HOSTS_DATA
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/volsync.backube/replicationsource_v1alpha1.json
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/volsync.backube/replicationsource_v1alpha1.json
 apiVersion: volsync.backube/v1alpha1
 kind: ReplicationSource
 metadata:
@@ -310,6 +313,8 @@ spec:
   sourcePVC: immich-pgdumpall
   trigger:
     schedule: 0 4 * * *
+# Upstream k8s-schemas pins volsync CRDs older than spec.kopia
+# yayamlls-disable
   kopia:
     accessModes:
       - ReadWriteOnce
@@ -328,3 +333,4 @@ spec:
       yearly: 2
     storageClassName: ceph-block
     volumeSnapshotClassName: csi-ceph-blockpool
+# yayamlls-enable
