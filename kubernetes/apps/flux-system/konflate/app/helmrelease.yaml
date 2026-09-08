@@ -1,0 +1,48 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.brauni.dev/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: konflate
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: konflate
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    config:
+      repo: github://herobrauni/ovh-ops
+      # Missed-webhook backstop; the verified GitHub webhook on /hooks makes
+      # re-renders immediate once it is configured on the repo.
+      refreshInterval: 15m
+      # GitHub App auth (same CI bot App as the runners): konflate mints
+      # short-lived installation tokens — no standing PAT — and the App
+      # authenticates reads, statusChecks and prComments alike.
+      appClientId: "1203112"
+      statusChecks: true
+      prComments: true
+      verifyImages: true
+      publicUrl: https://konflate.brauni.dev
+      mcp: true
+    secret:
+      existingSecret: konflate-secret
+    # Custom HTTPRoutes in ./httproute.yaml: the webhook path (/hooks) must stay
+    # reachable without TinyAuth (konflate verifies the GitHub HMAC itself),
+    # while the UI/API is behind the TinyAuth SecurityPolicy.
+    httpRoute:
+      enabled: false
+    persistence:
+      enabled: true
+      storageClass: ceph-block
+      size: 5Gi
+    monitoring:
+      serviceMonitor:
+        enabled: true
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+      limits:
+        memory: 1Gi
