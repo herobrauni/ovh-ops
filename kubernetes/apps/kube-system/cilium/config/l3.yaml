@@ -51,6 +51,9 @@ spec:
           peerConfigRef:
             name: l3-bgp-peer-config
 ---
+# File-level modeline above applies the CiliumBGPAdvertisement schema to every doc
+# in this multi-doc file; the plain Service below is valid core k8s.
+# yayamlls-disable
 apiVersion: v1
 kind: Service
 metadata:
@@ -69,3 +72,4 @@ spec:
       protocol: TCP
       targetPort: 6443
 
+# yayamlls-enable
