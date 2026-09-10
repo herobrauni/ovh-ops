@@ -3,15 +3,9 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: prowlarr-480p-com
+  name: prowlarr-480p-com-outpost
   annotations:
-    gethomepage.dev/enabled: "true"
-    gethomepage.dev/group: Media
-    gethomepage.dev/name: Prowlarr
-    gethomepage.dev/pod-selector: app.kubernetes.io/name=prowlarr
-    gethomepage.dev/icon: prowlarr.png
-    gatus.home-operations.com/endpoint: |-
-      url: https://prowlarr.480p.com/ping
+    gatus.home-operations.com/enabled: "false"
 spec:
   hostnames:
     - prowlarr.480p.com
@@ -20,6 +14,11 @@ spec:
       namespace: network
       sectionName: https
   rules:
-    - backendRefs:
-        - name: prowlarr
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /outpost.goauthentik.io
+      backendRefs:
+        - name: authentik-server
+          namespace: authentik
           port: 80
