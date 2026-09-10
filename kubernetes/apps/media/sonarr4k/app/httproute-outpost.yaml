@@ -3,15 +3,9 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: sonarr4k-480p-com
+  name: sonarr4k-480p-com-outpost
   annotations:
-    gethomepage.dev/enabled: "true"
-    gethomepage.dev/group: Media
-    gethomepage.dev/name: Sonarr 4K
-    gethomepage.dev/pod-selector: app.kubernetes.io/name=sonarr4k
-    gethomepage.dev/icon: sonarr.png
-    gatus.home-operations.com/endpoint: |-
-      url: https://sonarr4k.480p.com/ping
+    gatus.home-operations.com/enabled: "false"
 spec:
   hostnames:
     - sonarr4k.480p.com
@@ -20,6 +14,11 @@ spec:
       namespace: network
       sectionName: https
   rules:
-    - backendRefs:
-        - name: sonarr4k
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /outpost.goauthentik.io
+      backendRefs:
+        - name: authentik-server
+          namespace: authentik
           port: 80
