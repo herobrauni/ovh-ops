@@ -10,6 +10,8 @@ metadata:
     gethomepage.dev/name: Radarr
     gethomepage.dev/pod-selector: app.kubernetes.io/name=radarr
     gethomepage.dev/icon: radarr.png
+    gatus.home-operations.com/endpoint: |-
+      url: https://radarr.480p.com/ping
 spec:
   hostnames:
     - radarr.480p.com
