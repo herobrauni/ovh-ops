@@ -174,18 +174,43 @@ Add `from` entries for each namespace as apps migrate.
 
 Three things, because the sidecar (`--auto-httproute`) derives endpoints from routes:
 
-1. Provider `skip_path_regex: ^/ping$` so `/ping` returns 200 without authentication.
-   `*arr` apps serve `/ping` anonymously once the request gets past the proxy, and the outpost's
-   skip check runs **before** basic-auth handling — so the inherited `Authorization: Basic …`
-   header from the Gateway annotation is harmless (verified with and without it).
+1. Provider `skip_path_regex` for the probe path, so it returns 200 without authentication.
+   The outpost's skip check runs **before** basic-auth handling, so the inherited
+   `Authorization: Basic …` header from the Gateway annotation is harmless (verified with and
+   without it). Anonymous liveness paths found so far:
+
+   | App | Path | Notes |
+   | --- | --- | --- |
+   | `*arr` apps (sonarr, radarr, prowlarr, incl. 4K) | `/ping` | `[AllowAnonymous]`, returns `{"status":"OK"}` |
+   | altmount | `/health` | `/healthz` also answers; the app's `/sabnzbd` and `/webdav` routes are separate HTTPRoutes |
+   | clonarr | `/api/health` | `/ping`, `/health`, `/healthz` are 404 |
+   | umlautadaptarrex | `/api/health` | on the routed port 5007 (`/ping`, `/health` are 404 there) |
+
+   To find one for a new app, probe the Service from a throwaway pod first:
+
+   ```bash
+   kubectl run probe -n observability --image=curlimages/curl:8.11.1 --restart=Never --rm -i \
+     --command -- sh -c 'for p in / /health /healthz /api/health /ping; do
+       printf "%-16s " "$p"; curl -s -o /dev/null -w "%{http_code}\n" -m 5 \
+         "http://<app>.media.svc.cluster.local:<port>$p"; done'
+   ```
+
+   An in-cluster 200 is a **candidate, not proof**: the app may exempt local addresses, and the
+   outpost may skip a path while the app still answers 401/302. Prove it through the gateway
+   without credentials after the migration. If the app has no anonymous path, assert its own auth
+   challenge instead of 200
+   (`gatus.home-operations.com/endpoint: |- conditions: ["[STATUS] == 401"]`, as altmount's
+   `/webdav` route does) or disable the endpoint entirely. **Never** leave a probe on `/` behind
+   Authentik: an unauthenticated request gets a 302 and the endpoint reports failed.
+
+   Watch for **extra routes on the same hostname** (altmount: `/sabnzbd`, `/webdav`): each is a
+   separate HTTPRoute, may deliberately bypass ext-auth, and gets its own sidecar-generated
+   endpoint that otherwise inherits an `== 200` condition that does not fit.
 2. On the app's HTTPRoute, override the probed URL:
-   `gatus.home-operations.com/endpoint: |- url: https://<app>.480p.com/ping`
+   `gatus.home-operations.com/endpoint: |- url: https://<app>.480p.com/<liveness-path>`
    (conditions/group/interval/headers are inherited from the `envoy-480p-com-public` Gateway).
 3. On the outpost HTTPRoute, `gatus.home-operations.com/enabled: "false"`, otherwise the sidecar
    emits a second endpoint for `https://<app>.480p.com/outpost.goauthentik.io` that fails.
-
-Do **not** leave the route pointed at `/` behind Authentik: an unauthenticated probe gets a 302
-and the endpoint reports failed.
 
 ## Step 5 — Verification
 
@@ -231,8 +256,9 @@ hand-set `Cookie` header across redirects, so the authorize request arrives unau
 flow silently degrades into the login form. Put it in the cookie jar instead.
 
 Negative test: repeat with a user that is **not** in the group → must land on Authentik's
-"Request has been denied" page. Remember to delete forged sessions afterwards
-(`AuthenticatedSession.objects.filter(user__username=…)`).
+"Request has been denied" page. Remember to delete forged sessions afterwards: take the `sid`
+claim from the JWT you minted and `SessionStore(session_key=<sid>).delete()`;
+`django.contrib.sessions.models.Session.objects.all()` should then be empty.
 
 ## Rollback
 
@@ -272,4 +298,7 @@ Created by hand for the Sonarr/Radarr cutover — a blueprint could bring this i
 - Applications `Sonarr` (slug `sonarr`) and `Radarr` (slug `radarr`), one `PolicyBinding` each
   → Group `Media`, allow, order 0.
 - Same again for `Sonarr 4K` (`sonarr4k`) and `Radarr 4K` (`radarr4k`).
+- `AltMount` (`altmount`, `skip_path_regex: ^/health$`), `Clonarr` (`clonarr`, `^/api/health$`),
+  `Prowlarr` (`prowlarr`, `^/ping$`) and `UmlautAdaptarrEX` (`umlautadaptarrex`, `^/api/health$`):
+  `forward_single`, one application each, one `PolicyBinding` → Group `Media`, embedded outpost.
 - Users `brauni` (in `Media`) and `authentik_testuser1` (in no group — the negative-test account).
