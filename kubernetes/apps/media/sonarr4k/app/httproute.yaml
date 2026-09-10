@@ -10,6 +10,8 @@ metadata:
     gethomepage.dev/name: Sonarr 4K
     gethomepage.dev/pod-selector: app.kubernetes.io/name=sonarr4k
     gethomepage.dev/icon: sonarr.png
+    gatus.home-operations.com/endpoint: |-
+      url: https://sonarr4k.480p.com/ping
 spec:
   hostnames:
     - sonarr4k.480p.com
