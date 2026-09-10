@@ -35,6 +35,14 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: konflate-webhook
+  annotations:
+    # gatus-sidecar probes the route path with GET. The handler is POST-only, so
+    # konflate answers with its own Go 404 ("404 page not found"); asserting that
+    # still proves DNS/TLS/gateway/route/pod are fine, and a POST probe would only
+    # add log noise because an unsigned payload can never pass HMAC verification.
+    # Same idiom as the github-webhook route in flux-system/flux-instance.
+    gatus.home-operations.com/endpoint: |-
+      conditions: ["[STATUS] == 404"]
 spec:
   hostnames:
     - konflate.brauni.dev
