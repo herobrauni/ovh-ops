@@ -1,7 +1,7 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/httproute_v1.json
 # Separate HTTPRoute for /sabnzbd — intentionally NOT targeted by any SecurityPolicy
-# so that sabnzbd API requests bypass TinyAuth.
+# so that sabnzbd API requests bypass gateway auth.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:

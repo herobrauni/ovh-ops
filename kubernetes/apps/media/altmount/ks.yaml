@@ -16,8 +16,8 @@ spec:
       namespace: rook-ceph
     - name: symlinks
       namespace: media
-    - name: tinyauth-480p-com
-      namespace: network
+    - name: authentik
+      namespace: authentik
   interval: 1h
   path: ./kubernetes/apps/media/altmount/app
   postBuild:
