@@ -19,8 +19,8 @@ spec:
       namespace: external-secrets
     - name: rook-ceph-cluster
       namespace: rook-ceph
-    - name: tinyauth-480p-com
-      namespace: network
+    - name: authentik
+      namespace: authentik
     - name: symlinks
       namespace: media
     - name: volsync
