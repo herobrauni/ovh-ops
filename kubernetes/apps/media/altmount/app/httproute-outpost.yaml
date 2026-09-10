@@ -1,14 +1,11 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/httproute_v1.json
-# Separate HTTPRoute for /webdav — intentionally NOT targeted by any SecurityPolicy
-# so that WebDAV requests bypass gateway auth. Altmount's WebDAV handler has its own auth.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: altmount-480p-com-webdav
+  name: altmount-480p-com-outpost
   annotations:
-    gatus.home-operations.com/endpoint: |-
-      conditions: ["[STATUS] == 401"]
+    gatus.home-operations.com/enabled: "false"
 spec:
   hostnames:
     - altmount.480p.com
@@ -20,7 +17,8 @@ spec:
     - matches:
         - path:
             type: PathPrefix
-            value: /webdav
+            value: /outpost.goauthentik.io
       backendRefs:
-        - name: altmount
-          port: 8080
+        - name: authentik-server
+          namespace: authentik
+          port: 80

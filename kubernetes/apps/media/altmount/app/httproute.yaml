@@ -10,6 +10,8 @@ metadata:
     gethomepage.dev/name: AltMount
     gethomepage.dev/pod-selector: app.kubernetes.io/name=altmount
     gethomepage.dev/icon: mdi-folder-sync-outline
+    gatus.home-operations.com/endpoint: |-
+      url: https://altmount.480p.com/health
 spec:
   hostnames:
     - altmount.480p.com
