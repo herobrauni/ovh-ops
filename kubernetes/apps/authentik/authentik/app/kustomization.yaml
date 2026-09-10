@@ -8,3 +8,4 @@ resources:
   - ./externalsecret.yaml
   - ./helmrelease.yaml
   - ./dnsendpoints.yaml
+  - ./referencegrant.yaml
