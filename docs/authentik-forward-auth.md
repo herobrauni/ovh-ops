@@ -271,4 +271,5 @@ Created by hand for the Sonarr/Radarr cutover — a blueprint could bring this i
   and `Radarr`; both assigned to `authentik Embedded Outpost`.
 - Applications `Sonarr` (slug `sonarr`) and `Radarr` (slug `radarr`), one `PolicyBinding` each
   → Group `Media`, allow, order 0.
+- Same again for `Sonarr 4K` (`sonarr4k`) and `Radarr 4K` (`radarr4k`).
 - Users `brauni` (in `Media`) and `authentik_testuser1` (in no group — the negative-test account).
