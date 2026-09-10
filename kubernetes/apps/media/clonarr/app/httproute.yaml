@@ -10,6 +10,8 @@ metadata:
     gethomepage.dev/name: Clonarr
     gethomepage.dev/pod-selector: app.kubernetes.io/name=clonarr
     gethomepage.dev/icon: mdi-sync
+    gatus.home-operations.com/endpoint: |-
+      url: https://clonarr.480p.com/api/health
 spec:
   hostnames:
     - clonarr.480p.com
