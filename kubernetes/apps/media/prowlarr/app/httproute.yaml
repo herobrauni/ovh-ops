@@ -10,6 +10,8 @@ metadata:
     gethomepage.dev/name: Prowlarr
     gethomepage.dev/pod-selector: app.kubernetes.io/name=prowlarr
     gethomepage.dev/icon: prowlarr.png
+    gatus.home-operations.com/endpoint: |-
+      url: https://prowlarr.480p.com/ping
 spec:
   hostnames:
     - prowlarr.480p.com
