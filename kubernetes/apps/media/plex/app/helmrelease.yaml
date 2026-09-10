@@ -149,7 +149,8 @@ spec:
       app:
         annotations:
           gatus.home-operations.com/endpoint: |-
-            conditions: ["[STATUS] == 401"]
+            url: https://plex.480p.com/identity
+            conditions: ["[STATUS] == 200"]
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Media
           gethomepage.dev/name: Plex
