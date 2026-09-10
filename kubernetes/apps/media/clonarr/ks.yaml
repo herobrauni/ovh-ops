@@ -14,8 +14,8 @@ spec:
   dependsOn:
     - name: rook-ceph-cluster
       namespace: rook-ceph
-    - name: tinyauth-480p-com
-      namespace: network
+    - name: authentik
+      namespace: authentik
   interval: 1h
   path: ./kubernetes/apps/media/clonarr/app
   postBuild:
