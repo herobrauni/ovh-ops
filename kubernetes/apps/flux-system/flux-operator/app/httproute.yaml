@@ -10,6 +10,8 @@ metadata:
     gethomepage.dev/name: Flux Operator
     gethomepage.dev/pod-selector: app.kubernetes.io/name=flux-operator
     gethomepage.dev/icon: flux-cd.png
+    gatus.home-operations.com/endpoint: |-
+      url: https://flux-operator.riki.boo/healthz
 spec:
   hostnames:
     - flux-operator.riki.boo
