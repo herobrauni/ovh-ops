@@ -61,12 +61,19 @@ kustomize turns it into the `authentik-blueprints` ConfigMap and the chart mount
 in `helmrelease.yaml`). The worker owns the file watcher (`BlueprintWatcherMiddleware`) and applies a
 changed file right away; on top of that the `blueprints_discovery` schedule re-scans hourly at `:26`
 with `send_on_startup: true`, so a pod restart is always enough to pick the file up. Blueprint state
-is visible as `BlueprintInstance` objects:
+is visible as `BlueprintInstance` **database** rows (there is no `BlueprintInstance` CRD, so
+`kubectl get blueprintinstance` does not exist):
 
 ```bash
-kubectl -n authentik get blueprintinstance   # custom/forward-auth.yaml → successful
+kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c "
+from authentik.blueprints.models import BlueprintInstance
+b = BlueprintInstance.objects.get(path='custom/forward-auth.yaml')
+print('MARKBP', b.name, b.status, b.last_applied, b.last_applied_hash[:12])"
+# MARKBP ovh-ops - Forward Auth successful 2026-09-11 12:38:52.078505+00:00 53819193f31c
 kubectl -n authentik logs deploy/authentik-worker | grep -i blueprint
 ```
+
+How to verify and recover an apply is in [1c](#1c-applying-verifying-and-re-applying).
 
 ### 1a. What the blueprint declares
 
@@ -132,7 +139,46 @@ print('MARKBAD', [(l.log_level, l.event) for l in logs if l.log_level in ('warni
 
 `ak apply_blueprint <file> [--dry-run]` does the same from inside the pod.
 
-### 1c. What is deliberately *not* in the blueprint
+### 1c. Applying, verifying and re-applying
+
+A blueprint is applied by the **worker**: the file watcher applies a changed file right away, and
+the hourly `blueprints_discovery` schedule (`:26`, `send_on_startup: true`) re-applies anything whose
+content hash moved. `BlueprintInstance.last_applied_hash` is the sha512 of the file content, so the
+cheap check is a local `sha512sum` against the row:
+
+```bash
+sha512sum kubernetes/apps/authentik/authentik/app/blueprints/forward-auth.yaml   # 53819193f31c…
+```
+
+To force an apply (after a failed run, or to convince yourself nothing is pending), use the very
+same entry point as the UI's *Apply* button and the API action — an in-worker task:
+
+```bash
+kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c "
+from authentik.blueprints.models import BlueprintInstance
+from authentik.blueprints.v1.tasks import apply_blueprint
+b = BlueprintInstance.objects.get(path='custom/forward-auth.yaml')
+apply_blueprint.send_with_options(args=(b.pk,), rel_obj=b)
+print('MARKQUEUED', b.pk)"
+```
+
+Equivalent: `POST /api/v3/blueprints/instances/<pk>/apply/` with an API token (the `pk` of that row),
+or *System → Blueprints → Apply* in the UI. Applying an already-applied file is a no-op.
+
+Two gotchas:
+
+- **`successful` does not prove the change landed.** The first apply of this file finished
+  `successful` with a matching `last_applied_hash` while `Sonarr`/`Radarr` still had
+  `invalidation_flow: null` (everything else was applied). It ran while the worker was rolling
+  through a stuck `Terminating` replica, and re-triggering it converged immediately. So when an
+  expected diff is missing but the hash matches, just re-apply (recipe above) — and do **not**
+  `kubectl rollout restart deploy/authentik-worker` while a first apply is in flight.
+- **`default/flow-oobe.yaml` sits in `status: error`, and that is not your blueprint.** Its content
+  changed with the 2026.8.2 image, and an OOBE blueprint cannot re-apply once the instance is set
+  up; it is `enabled: false` and unrelated to `custom/forward-auth.yaml`. Do not chase it while
+  debugging (`clear_failed_blueprints` runs hourly at `:27` and keeps retrying it upstream).
+
+### 1d. What is deliberately *not* in the blueprint
 
 - **Passwords** — users created without one get an unusable password, so after a fresh install they
   have to be set once (`ak changepassword <username>`, interactive, or the UI). There is no
@@ -145,7 +191,7 @@ print('MARKBAD', [(l.log_level, l.event) for l in logs if l.log_level in ('warni
   (declaring `name` in that entry would trip `validate_name`'s managed-outpost side effect).
 - **MFA devices** — user-side, UI only (`/if/user/#/settings`).
 
-### 1d. Reference: `ak shell` recipes (one-off only)
+### 1e. Reference: `ak shell` recipes (one-off only)
 
 Kept for experiments and for creating something outside Git during an incident. The blueprint is
 authoritative for everything it declares: hand-made edits to those objects are reverted on the next
@@ -349,6 +395,14 @@ curl -sS --resolve <app>.480p.com:443:10.10.8.15 https://<app>.480p.com/ping
 For an authenticated test, forge a session (authentik signs the session cookie, so a bare session
 key is rejected — the cookie value is `SessionMiddleware.encode_session()`):
 
+> Go through `django.contrib.auth.login()`: in 2026.8 authentication lives in an
+> `AuthenticatedSession` **row** that points at the session, plus a `login_event` key in the session
+> data (`SessionStore.create_model_instance()` deliberately *drops* Django's
+> `_auth_user_id`/`_auth_user_backend`/`_auth_user_hash`). A hand-rolled `SessionStore()` whose row
+> was inserted directly looks authenticated to nothing: the authorize view logs
+> `request with no login event`, redirects to the login form, and the test then “passes” with a 200
+> that is the login page — check the final hostname, not just the status code.
+
 ```bash
 JWT=$(kubectl exec -n authentik deploy/authentik-server -c server -- ak shell -c "
 from django.contrib.auth import login
@@ -376,10 +430,20 @@ Gotcha that cost an hour: **do not pass the cookie with `-H "Cookie: …"`** —
 hand-set `Cookie` header across redirects, so the authorize request arrives unauthenticated and the
 flow silently degrades into the login form. Put it in the cookie jar instead.
 
-Negative test: repeat with a user that is **not** in the group → must land on Authentik's
-"Request has been denied" page. Remember to delete forged sessions afterwards: take the `sid`
-claim from the JWT you minted and `SessionStore(session_key=<sid>).delete()`;
-`django.contrib.sessions.models.Session.objects.all()` should then be empty.
+Negative test: repeat with a user that is **not** in the group (`authentik_testuser1`) → the chain
+stops at `sso.brauni.dev` on Authentik's "Request has been denied" page. Clean up the forged
+sessions afterwards — by `sid` (`SessionStore(session_key=<sid>).delete()`) or by user agent:
+
+```bash
+kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c "
+from authentik.core.models import Session
+qs = Session.objects.filter(last_user_agent='curl-e2e-test')
+print('MARKCLEAN', qs.count(), qs.delete())"
+```
+
+(`authentik.core.models.Session` is the model that matters — `django.contrib.sessions.models` is
+unused here; the cascade also drops the `AuthenticatedSession` row. The `login_event` Events left
+in the audit log are harmless.)
 
 ## Rollback
 
@@ -419,6 +483,10 @@ The Authentik-side objects are harmless if left behind.
   closed as not planned). Desktop browsers and curl resolve it correctly; mobile Chrome/Brave have
   been reported to mishandle it. Nothing to fix in this repo.
 - **Keep the outpost HTTPRoute separate** and its Gatus annotation disabled (see steps 2 and 4).
+- **`BlueprintInstance` is a DB model, not a CRD**: check/force applies through `ak shell` (see
+  1c). An apply can report `successful` with the correct hash and still miss a change; re-applying
+  converges. Forging a session for end-to-end tests must go through `login()` (step 5), otherwise
+  the “authenticated” request is really the login form.
 - **`skip_path_regex` is app-wide**: `^/ping$` exposes the liveness endpoint unauthenticated.
   That is intended for Gatus; do not widen it to paths that leak data.
 - **One provider per hostname, even for one app**: `echo` served on `.480p.com`, `.brauni.dev`
@@ -435,7 +503,11 @@ All of it is declared in
 API/UI objects on 2026-09-11; that file is the source of truth, and re-applying it is a no-op against
 the live state below. The only real change the first apply made was normalising `Sonarr`/`Radarr` to
 `invalidation_flow: default-provider-invalidation-flow` (the other 16 providers already had it,
-because the API serializer sets it):
+because the API serializer sets it) — and it only landed on the **second** apply: the first reported
+`successful` while both fields stayed `null` (see
+[1c](#1c-applying-verifying-and-re-applying)). Confirmed afterwards through the real gateway with a
+forged `brauni` session on all 18 hostnames (`200` from the app itself) and `authentik_testuser1`
+ending on “Request has been denied” (see [step 5](#step-5--verification)):
 
 - Groups `Media` and `Platform` (no roles, `is_superuser: false`), member `brauni`.
 - ProxyProvider `Sonarr` (`forward_single`, `https://sonarr.480p.com`, `skip_path_regex: ^/ping$`)
