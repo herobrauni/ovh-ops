@@ -2,7 +2,11 @@
 
 Runbook for replacing TinyAuth with Authentik's **embedded outpost** as the Envoy Gateway
 `extAuth` provider. Written when `sonarr.480p.com` / `radarr.480p.com` were migrated
-(2026-09-10); use it as the template for the remaining 480p.com apps (`sonarr4k`, `radarr4k`, …).
+(2026-09-10); use it as the template for the next app. Migrated so far: the media set
+(`sonarr`, `radarr`, both 4K, `altmount`, `clonarr`, `prowlarr`, `umlautadaptarrex`) and the
+platform/observability set (`echo` on all three domains, `flux-operator`, `konflate`,
+`grafana`, `prometheus`, `alertmanager`, `victoria-logs`, `kopia`). TinyAuth is still
+deployed and still fronts `vaultwarden.brauni.dev/admin`.
 
 Two halves, and they live in different places:
 
@@ -14,11 +18,12 @@ Two halves, and they live in different places:
 ## Request flow
 
 ```text
-browser ─▶ Envoy (10.10.8.15, *.480p.com) ─▶ extAuth ─▶ authentik-server:80
-                                                    │            /outpost.goauthentik.io/auth/envoy
+browser ─▶ Envoy (*.480p.com 10.10.8.15 / *.brauni.dev 10.10.8.16 / *.riki.boo 10.10.8.13)
+                ─▶ extAuth ─▶ authentik-server:80
+                                     /outpost.goauthentik.io/auth/envoy
    ①  302 ──▶ https://sso.brauni.dev/application/o/authorize/?client_id=<provider>&…
-   ②  302 ──▶ https://<app>.480p.com/outpost.goauthentik.io/callback?code=…   (unauthenticated HTTPRoute → authentik-server)
-   ③  302 ──▶ //<app>.480p.com/  + Set-Cookie: authentik_proxy_<hash>
+   ②  302 ──▶ https://<app>.<domain>/outpost.goauthentik.io/callback?code=…   (unauthenticated HTTPRoute → authentik-server)
+   ③  302 ──▶ //<app>.<domain>/  + Set-Cookie: authentik_proxy_<hash>
    ④  200 ──▶ Envoy ─▶ app, with X-authentik-* identity headers
 ```
 
@@ -48,11 +53,14 @@ Run inside the server pod; everything below is idempotent-ish Python.
 kubectl exec -n authentik deploy/authentik-server -c server -- ak shell -c '<script>'
 ```
 
-### 1a. Group for access control (once, already exists: `Media`)
+### 1a. Group for access control (already exist: `Media`, `Platform`)
+
+One group per batch keeps the migration auditable; `Media` covers the media apps, `Platform`
+the platform/observability apps.
 
 ```python
 from authentik.core.models import Group
-Group.objects.get_or_create(name="Media", defaults={"is_superuser": False})
+Group.objects.get_or_create(name="Platform", defaults={"is_superuser": False})
 ```
 
 ### 1b. Provider + Application + binding
@@ -65,6 +73,7 @@ from authentik.policies.models import PolicyBinding
 from authentik.providers.proxy.models import ProxyProvider
 
 SLUG, NAME, HOST = "prowlarr", "Prowlarr", "https://prowlarr.480p.com"
+GROUP = "Media"  # or "Platform" for the platform/observability batch
 
 provider = ProxyProvider.objects.create(
     name=NAME,
@@ -80,7 +89,7 @@ Outpost.objects.get(name="authentik Embedded Outpost").providers.add(provider)
 
 application = Application.objects.create(name=NAME, slug=SLUG, provider=provider)
 PolicyBinding.objects.create(  # order/negate/enabled/failure_result: see gotchas
-    target=application, group=Group.objects.get(name="Media"),
+    target=application, group=Group.objects.get(name=GROUP),
     order=0, negate=False, enabled=True, failure_result=False,
 )
 print("client_id:", provider.client_id)
@@ -91,7 +100,7 @@ print("client_id:", provider.client_id)
 Create accounts in the UI (`Directory → Users`). Only group membership matters for access:
 
 ```python
-Group.objects.get(name="Media").users.add(User.objects.get(username="brauni"))
+Group.objects.get(name="Platform").users.add(User.objects.get(username="brauni"))
 ```
 
 MFA enrollment is a user-side action in the UI (`/if/user/#/settings` → MFA Devices).
@@ -167,8 +176,10 @@ not migrated; mix-and-match per route is fine.
 
 Cross-namespace `backendRef` from `SecurityPolicy`/`HTTPRoute` in `<ns>` to Service
 `authentik-server` in `authentik` needs a grant in the **target** namespace
-(`kubernetes/apps/authentik/authentik/app/referencegrant.yaml`, currently scoped to `media`).
-Add `from` entries for each namespace as apps migrate.
+(`kubernetes/apps/authentik/authentik/app/referencegrant.yaml`). One `from` entry **per kind and
+namespace pair** — a missing `HTTPRoute` entry accepts the SecurityPolicy but leaves the outpost
+route unresolved, which surfaces as an ext-auth loop rather than a clear error. Scoped today to
+`flux-system`, `media`, `network`, `observability`, `volsync-system`.
 
 ## Step 4 — Gatus
 
@@ -185,6 +196,12 @@ Three things, because the sidecar (`--auto-httproute`) derives endpoints from ro
    | altmount | `/health` | `/healthz` also answers; the app's `/sabnzbd` and `/webdav` routes are separate HTTPRoutes |
    | clonarr | `/api/health` | `/ping`, `/health`, `/healthz` are 404 |
    | umlautadaptarrex | `/api/health` | on the routed port 5007 (`/ping`, `/health` are 404 there) |
+   | echo (all 3 domains) | `/healthz` | returns 200 on any path |
+   | flux-operator, konflate | `/healthz` | konflate's `/health` is 404 |
+   | grafana | `/api/health` | |
+   | prometheus, alertmanager | `/-/healthy` | |
+   | victoria-logs | `/health` | its route has an `Exact /` rule that 302s to `/select/vmui/` |
+   | kopia | `/healthz` | **no anonymous path** — skipped from ext-auth and the endpoint asserts `[STATUS] == 404` (see below) |
 
    To find one for a new app, probe the Service from a throwaway pod first:
 
@@ -203,6 +220,12 @@ Three things, because the sidecar (`--auto-httproute`) derives endpoints from ro
    `/webdav` route does) or disable the endpoint entirely. **Never** leave a probe on `/` behind
    Authentik: an unauthenticated request gets a 302 and the endpoint reports failed.
 
+   A third option, used for **kopia**: when no path is anonymously healthy *and* the app's own
+   rejection is a 404, skip that path (`^/healthz$`) and assert `[STATUS] == 404` — the 404 is
+   served by the app, so a dead pod behind a live route (or a broken ext-auth chain returning 5xx)
+   still goes red, while a probe on `/` would only prove that Authentik answered. Kopia's UI shell
+   answers 200 on `/` and its API is what authenticates, which is why the shell is not probed.
+
    Watch for **extra routes on the same hostname** (altmount: `/sabnzbd`, `/webdav`): each is a
    separate HTTPRoute, may deliberately bypass ext-auth, and gets its own sidecar-generated
    endpoint that otherwise inherits an `== 200` condition that does not fit.
@@ -215,13 +238,14 @@ Three things, because the sidecar (`--auto-httproute`) derives endpoints from ro
 ## Step 5 — Verification
 
 `--resolve` gives a genuine end-to-end test (real TLS, HTTPRoute, ext-auth) without touching DNS.
-`10.10.8.15` is the `envoy-480p-com-public` LoadBalancer IP.
+Per-domain `LoadBalancer` IP: `10.10.8.15` (`envoy-480p-com-public`), `10.10.8.16`
+(`envoy-brauni-dev-public`), `10.10.8.13` (`envoy-riki-boo-public`).
 
 ```bash
-# 1. unauthenticated: expect 302 to sso.brauni.dev
+# 1. unauthenticated: expect 302 to sso.brauni.dev, client_id matching this app's provider
 curl -sS -o /dev/null -w '%{http_code} -> %{redirect_url}\n' --resolve <app>.480p.com:443:10.10.8.15 https://<app>.480p.com/
 
-# 2. liveness path: expect 200 {"status": "OK"}
+# 2. liveness path: expect the status in the table above
 curl -sS --resolve <app>.480p.com:443:10.10.8.15 https://<app>.480p.com/ping
 
 # 3. full authenticated flow: expect 200 <title>Sonarr</title>
@@ -250,6 +274,8 @@ grep -Ei '^(HTTP/|location:)' /tmp/h
 
 Expected chain: `302 → sso.brauni.dev/application/o/authorize/…` → `302 → https://<app>.480p.com/outpost.goauthentik.io/callback…`
 → `302 → //<app>.480p.com/` (+ `authentik_proxy_<hash>` cookie) → `200 <title>Sonarr</title>`.
+Check the `client_id` in step 1 against the provider for that hostname: it is what proves
+provider matching by `Host` still works when several apps share one gateway.
 
 Gotcha that cost an hour: **do not pass the cookie with `-H "Cookie: …"`** — curl does not carry a
 hand-set `Cookie` header across redirects, so the authorize request arrives unauthenticated and the
@@ -284,6 +310,9 @@ The Authentik-side objects are harmless if left behind.
 - **Keep the outpost HTTPRoute separate** and its Gatus annotation disabled (see steps 2 and 4).
 - **`skip_path_regex` is app-wide**: `^/ping$` exposes the liveness endpoint unauthenticated.
   That is intended for Gatus; do not widen it to paths that leak data.
+- **One provider per hostname, even for one app**: `echo` served on `.480p.com`, `.brauni.dev`
+  and `.riki.boo` needs three providers/applications because matching is by full `Host`; the
+  Gatus swap is then three annotations on three routes.
 - Authentik reference: `authorization_flow` / `invalidation_flow` slugs, provider `client_id`
   (`YF4X9tBQ…` for Sonarr) are stable; new providers get fresh client IDs, which is fine because
   the outpost is configured through the provider itself.
@@ -292,7 +321,7 @@ The Authentik-side objects are harmless if left behind.
 
 Created by hand for the Sonarr/Radarr cutover — a blueprint could bring this into Git later:
 
-- Group `Media` (no roles, `is_superuser: false`), member `brauni`.
+- Groups `Media` and `Platform` (no roles, `is_superuser: false`), member `brauni`.
 - ProxyProvider `Sonarr` (`forward_single`, `https://sonarr.480p.com`, `skip_path_regex: ^/ping$`)
   and `Radarr`; both assigned to `authentik Embedded Outpost`.
 - Applications `Sonarr` (slug `sonarr`) and `Radarr` (slug `radarr`), one `PolicyBinding` each
@@ -301,4 +330,11 @@ Created by hand for the Sonarr/Radarr cutover — a blueprint could bring this i
 - `AltMount` (`altmount`, `skip_path_regex: ^/health$`), `Clonarr` (`clonarr`, `^/api/health$`),
   `Prowlarr` (`prowlarr`, `^/ping$`) and `UmlautAdaptarrEX` (`umlautadaptarrex`, `^/api/health$`):
   `forward_single`, one application each, one `PolicyBinding` → Group `Media`, embedded outpost.
-- Users `brauni` (in `Media`) and `authentik_testuser1` (in no group — the negative-test account).
+- Platform/observability batch (all `forward_single`, embedded outpost, one `PolicyBinding`
+  → Group `Platform`): `Echo 480p`/`echo-480p-com` (`^/healthz$`), `Echo Brauni`/`echo-brauni-dev`
+  (`^/healthz$`), `Echo Riki`/`echo-riki-boo` (`^/healthz$`), `Flux Operator`/`flux-operator`
+  (`^/healthz$`), `Konflate`/`konflate` (`^/healthz$`), `Grafana`/`grafana` (`^/api/health$`),
+  `Prometheus`/`prometheus` (`^/-/healthy$`), `Alertmanager`/`alertmanager` (`^/-/healthy$`),
+  `VictoriaLogs`/`victoria-logs` (`^/health$`), `Kopia`/`kopia` (`^/healthz$`).
+- Users `brauni` (in `Media` + `Platform`) and `authentik_testuser1` (in no group — the
+  negative-test account).
