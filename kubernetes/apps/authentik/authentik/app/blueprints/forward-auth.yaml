@@ -1,0 +1,553 @@
+---
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# Source of truth for every forward-auth object in this cluster: the Envoy Gateway
+# `SecurityPolicy` resources in the app namespaces point their extAuth backend at the
+# embedded outpost, and this blueprint defines the proxy providers/applications those
+# requests are matched against.
+#
+# Managed here: users, groups, proxy providers, applications, application access
+# bindings and the embedded outpost's provider list.
+# Deliberately NOT managed here:
+#   - passwords (set once per user in the UI or with `ak changepassword <username>`;
+#     re-applying this blueprint never touches them)
+#   - `client_id` / `client_secret` (auto-derived by `ProxyProvider.set_oauth_defaults()`
+#     and not settable through the blueprint serializer)
+#   - `property_mappings` (the same `set_oauth_defaults()` call adds the five managed
+#     proxy/oauth2 scope mappings whenever a provider is created or updated)
+#   - everything else on the embedded outpost (its config/name are left untouched)
+#
+# The impersonation cookie is host-only (`cookie_domain: ""`) on purpose: no cookie can
+# span brauni.dev, riki.boo and 480p.com, so each hostname needs its own provider and
+# users log in per app. Access is granted through a group + a policy binding per
+# application - authentik's group bindings have no superuser bypass, so a group member
+# is required even for `akadmin`.
+version: 1
+metadata:
+  name: ovh-ops - Forward Auth
+  labels:
+    blueprints.goauthentik.io/description: Forward-auth providers, applications and access bindings for every host behind the embedded outpost.
+entries:
+  # ---------------------------------------------------------------------------
+  # Reference-only: the two built-in flows every proxy provider is wired to.
+  # These carry no attrs, so the blueprint never modifies the system flows.
+  # ---------------------------------------------------------------------------
+  - id: flow-authorization-implicit-consent
+    model: authentik_flows.flow
+    identifiers:
+      slug: default-provider-authorization-implicit-consent
+  - id: flow-invalidation
+    model: authentik_flows.flow
+    identifiers:
+      slug: default-provider-invalidation-flow
+
+  # ---------------------------------------------------------------------------
+  # Groups. Membership is declared on the user entries below.
+  # ---------------------------------------------------------------------------
+  - id: group-media
+    model: authentik_core.group
+    identifiers:
+      name: Media
+  - id: group-platform
+    model: authentik_core.group
+    identifiers:
+      name: Platform
+
+  # ---------------------------------------------------------------------------
+  # Users. No passwords here - see the header.
+  # `authentik_testuser1` authenticates successfully but belongs to no group, so it
+  # must be denied by every application and is used for negative tests.
+  # ---------------------------------------------------------------------------
+  - id: user-brauni
+    model: authentik_core.user
+    identifiers:
+      username: brauni
+    attrs:
+      name: brauni
+      email: brauni@brauni.dev
+      is_active: true
+      type: internal
+      path: users
+      groups:
+        - !KeyOf group-media
+        - !KeyOf group-platform
+  - id: user-authentik-testuser1
+    model: authentik_core.user
+    identifiers:
+      username: authentik_testuser1
+    attrs:
+      name: authentik_testuser1
+      email: authentik_testuser1@brauni.dev
+      is_active: true
+      type: internal
+      path: users
+      groups: []
+
+  # ---------------------------------------------------------------------------
+  # Media (group: Media)
+  # Liveness paths are skipped by the outpost so the in-cluster Gatus probes can
+  # reach each app unauthenticated - see docs/authentik-forward-auth.md.
+  # ---------------------------------------------------------------------------
+  - id: provider-sonarr
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Sonarr
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://sonarr.480p.com
+      skip_path_regex: ^/ping$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-sonarr
+    model: authentik_core.application
+    identifiers:
+      slug: sonarr
+    attrs:
+      name: Sonarr
+      provider: !KeyOf provider-sonarr
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-sonarr
+      group: !KeyOf group-media
+      order: 0
+
+  - id: provider-radarr
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Radarr
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://radarr.480p.com
+      skip_path_regex: ^/ping$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-radarr
+    model: authentik_core.application
+    identifiers:
+      slug: radarr
+    attrs:
+      name: Radarr
+      provider: !KeyOf provider-radarr
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-radarr
+      group: !KeyOf group-media
+      order: 0
+
+  - id: provider-sonarr4k
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Sonarr 4K
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://sonarr4k.480p.com
+      skip_path_regex: ^/ping$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-sonarr4k
+    model: authentik_core.application
+    identifiers:
+      slug: sonarr4k
+    attrs:
+      name: Sonarr 4K
+      provider: !KeyOf provider-sonarr4k
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-sonarr4k
+      group: !KeyOf group-media
+      order: 0
+
+  - id: provider-radarr4k
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Radarr 4K
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://radarr4k.480p.com
+      skip_path_regex: ^/ping$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-radarr4k
+    model: authentik_core.application
+    identifiers:
+      slug: radarr4k
+    attrs:
+      name: Radarr 4K
+      provider: !KeyOf provider-radarr4k
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-radarr4k
+      group: !KeyOf group-media
+      order: 0
+
+  - id: provider-altmount
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: AltMount
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://altmount.480p.com
+      skip_path_regex: ^/health$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-altmount
+    model: authentik_core.application
+    identifiers:
+      slug: altmount
+    attrs:
+      name: AltMount
+      provider: !KeyOf provider-altmount
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-altmount
+      group: !KeyOf group-media
+      order: 0
+
+  - id: provider-clonarr
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Clonarr
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://clonarr.480p.com
+      skip_path_regex: ^/api/health$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-clonarr
+    model: authentik_core.application
+    identifiers:
+      slug: clonarr
+    attrs:
+      name: Clonarr
+      provider: !KeyOf provider-clonarr
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-clonarr
+      group: !KeyOf group-media
+      order: 0
+
+  - id: provider-prowlarr
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Prowlarr
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://prowlarr.480p.com
+      skip_path_regex: ^/ping$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-prowlarr
+    model: authentik_core.application
+    identifiers:
+      slug: prowlarr
+    attrs:
+      name: Prowlarr
+      provider: !KeyOf provider-prowlarr
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-prowlarr
+      group: !KeyOf group-media
+      order: 0
+
+  - id: provider-umlautadaptarrex
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: UmlautAdaptarrEX
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://umlautadaptarrex.480p.com
+      skip_path_regex: ^/api/health$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-umlautadaptarrex
+    model: authentik_core.application
+    identifiers:
+      slug: umlautadaptarrex
+    attrs:
+      name: UmlautAdaptarrEX
+      provider: !KeyOf provider-umlautadaptarrex
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-umlautadaptarrex
+      group: !KeyOf group-media
+      order: 0
+
+  # ---------------------------------------------------------------------------
+  # Platform (group: Platform). echo is reachable on three hostnames, and provider
+  # matching is by the full request `Host`, hence one provider per hostname.
+  # ---------------------------------------------------------------------------
+  - id: provider-echo-480p-com
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Echo 480p
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://echo.480p.com
+      skip_path_regex: ^/healthz$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-echo-480p-com
+    model: authentik_core.application
+    identifiers:
+      slug: echo-480p-com
+    attrs:
+      name: Echo 480p
+      provider: !KeyOf provider-echo-480p-com
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-echo-480p-com
+      group: !KeyOf group-platform
+      order: 0
+
+  - id: provider-echo-brauni-dev
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Echo Brauni
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://echo.brauni.dev
+      skip_path_regex: ^/healthz$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-echo-brauni-dev
+    model: authentik_core.application
+    identifiers:
+      slug: echo-brauni-dev
+    attrs:
+      name: Echo Brauni
+      provider: !KeyOf provider-echo-brauni-dev
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-echo-brauni-dev
+      group: !KeyOf group-platform
+      order: 0
+
+  - id: provider-echo-riki-boo
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Echo Riki
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://echo.riki.boo
+      skip_path_regex: ^/healthz$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-echo-riki-boo
+    model: authentik_core.application
+    identifiers:
+      slug: echo-riki-boo
+    attrs:
+      name: Echo Riki
+      provider: !KeyOf provider-echo-riki-boo
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-echo-riki-boo
+      group: !KeyOf group-platform
+      order: 0
+
+  - id: provider-flux-operator
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Flux Operator
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://flux-operator.riki.boo
+      skip_path_regex: ^/healthz$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-flux-operator
+    model: authentik_core.application
+    identifiers:
+      slug: flux-operator
+    attrs:
+      name: Flux Operator
+      provider: !KeyOf provider-flux-operator
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-flux-operator
+      group: !KeyOf group-platform
+      order: 0
+
+  - id: provider-konflate
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Konflate
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://konflate.brauni.dev
+      skip_path_regex: ^/healthz$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-konflate
+    model: authentik_core.application
+    identifiers:
+      slug: konflate
+    attrs:
+      name: Konflate
+      provider: !KeyOf provider-konflate
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-konflate
+      group: !KeyOf group-platform
+      order: 0
+
+  - id: provider-grafana
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Grafana
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://grafana.riki.boo
+      skip_path_regex: ^/api/health$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-grafana
+    model: authentik_core.application
+    identifiers:
+      slug: grafana
+    attrs:
+      name: Grafana
+      provider: !KeyOf provider-grafana
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-grafana
+      group: !KeyOf group-platform
+      order: 0
+
+  - id: provider-prometheus
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Prometheus
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://prometheus.riki.boo
+      skip_path_regex: ^/-/healthy$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-prometheus
+    model: authentik_core.application
+    identifiers:
+      slug: prometheus
+    attrs:
+      name: Prometheus
+      provider: !KeyOf provider-prometheus
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-prometheus
+      group: !KeyOf group-platform
+      order: 0
+
+  - id: provider-alertmanager
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Alertmanager
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://alertmanager.riki.boo
+      skip_path_regex: ^/-/healthy$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-alertmanager
+    model: authentik_core.application
+    identifiers:
+      slug: alertmanager
+    attrs:
+      name: Alertmanager
+      provider: !KeyOf provider-alertmanager
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-alertmanager
+      group: !KeyOf group-platform
+      order: 0
+
+  - id: provider-victoria-logs
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: VictoriaLogs
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://victoria-logs.riki.boo
+      skip_path_regex: ^/health$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-victoria-logs
+    model: authentik_core.application
+    identifiers:
+      slug: victoria-logs
+    attrs:
+      name: VictoriaLogs
+      provider: !KeyOf provider-victoria-logs
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-victoria-logs
+      group: !KeyOf group-platform
+      order: 0
+
+  - id: provider-kopia
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Kopia
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://kopia.riki.boo
+      skip_path_regex: ^/healthz$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-kopia
+    model: authentik_core.application
+    identifiers:
+      slug: kopia
+    attrs:
+      name: Kopia
+      provider: !KeyOf provider-kopia
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-kopia
+      group: !KeyOf group-platform
+      order: 0
+
+  # ---------------------------------------------------------------------------
+  # The embedded outpost serves every provider above. This list replaces the
+  # outpost's provider set, so a provider that is removed from this file is also
+  # detached from the outpost.
+  # ---------------------------------------------------------------------------
+  - model: authentik_outposts.outpost
+    identifiers:
+      name: authentik Embedded Outpost
+    attrs:
+      providers:
+        - !KeyOf provider-sonarr
+        - !KeyOf provider-radarr
+        - !KeyOf provider-sonarr4k
+        - !KeyOf provider-radarr4k
+        - !KeyOf provider-altmount
+        - !KeyOf provider-clonarr
+        - !KeyOf provider-prowlarr
+        - !KeyOf provider-umlautadaptarrex
+        - !KeyOf provider-echo-480p-com
+        - !KeyOf provider-echo-brauni-dev
+        - !KeyOf provider-echo-riki-boo
+        - !KeyOf provider-flux-operator
+        - !KeyOf provider-konflate
+        - !KeyOf provider-grafana
+        - !KeyOf provider-prometheus
+        - !KeyOf provider-alertmanager
+        - !KeyOf provider-victoria-logs
+        - !KeyOf provider-kopia
