@@ -8,12 +8,15 @@ platform/observability set (`echo` on all three domains, `flux-operator`, `konfl
 `grafana`, `prometheus`, `alertmanager`, `victoria-logs`, `kopia`). TinyAuth is still
 deployed and still fronts `vaultwarden.brauni.dev/admin`.
 
-Two halves, and they live in different places:
+Two halves, and both live in Git:
 
-| Half                                                                     | Where it lives                          |
-| ------------------------------------------------------------------------ | --------------------------------------- |
-| Envoy `SecurityPolicy`, outpost `HTTPRoute`, Gatus annotations, `ks.yaml` | Git (`kubernetes/apps/<ns>/<app>/`)     |
-| Group, ProxyProvider, Application, PolicyBinding                          | Authentik DB — **created by hand**, not in Git (see [Authentik-side state](#authentik-side-state-not-in-git)) |
+| Half | Where it lives |
+| --- | --- |
+| Envoy `SecurityPolicy`, outpost `HTTPRoute`, Gatus annotations, `ks.yaml` | Git (`kubernetes/apps/<ns>/<app>/`) |
+| Group, ProxyProvider, Application, PolicyBinding, outpost assignment | Git — blueprint `kubernetes/apps/authentik/authentik/app/blueprints/forward-auth.yaml` (see [step 1](#step-1--authentik-objects-git-the-forward-auth-blueprint)) |
+
+Until 2026-09-11 those Authentik objects were created by hand through the API/UI; they are now
+declared in that blueprint and re-applied from Git.
 
 ## Request flow
 
@@ -45,25 +48,117 @@ A domain-wide `forward_domain` provider would need `cookie_domain: .480p.com`, a
 expected — but users only log in once, because every provider reuses the **shared `sso.brauni.dev`
 login session**, so the second app is a silent redirect through the authorize endpoint.
 
-## Step 1 — Authentik objects
+## Step 1 — Authentik objects (Git: the forward-auth blueprint)
 
-Run inside the server pod; everything below is idempotent-ish Python.
+Every Authentik-side object is declared in **one** blueprint file:
 
-```bash
-kubectl exec -n authentik deploy/authentik-server -c server -- ak shell -c '<script>'
+```text
+kubernetes/apps/authentik/authentik/app/blueprints/forward-auth.yaml
 ```
 
-### 1a. Group for access control (already exist: `Media`, `Platform`)
+kustomize turns it into the `authentik-blueprints` ConfigMap and the chart mounts that at
+`/blueprints/custom` in **both** the server and the worker (`global.volumes` / `global.volumeMounts`
+in `helmrelease.yaml`). The worker owns the file watcher (`BlueprintWatcherMiddleware`) and applies a
+changed file right away; on top of that the `blueprints_discovery` schedule re-scans hourly at `:26`
+with `send_on_startup: true`, so a pod restart is always enough to pick the file up. Blueprint state
+is visible as `BlueprintInstance` objects:
 
-One group per batch keeps the migration auditable; `Media` covers the media apps, `Platform`
-the platform/observability apps.
+```bash
+kubectl -n authentik get blueprintinstance   # custom/forward-auth.yaml → successful
+kubectl -n authentik logs deploy/authentik-worker | grep -i blueprint
+```
+
+### 1a. What the blueprint declares
+
+- groups `Media` (media apps) and `Platform` (network / flux-system / observability / volsync).
+- users `brauni` (member of both groups) and `authentik_testuser1` (member of none — the negative
+  test account).
+- reference-only `authentik_flows.flow` entries for
+  `default-provider-authorization-implicit-consent` and `default-provider-invalidation-flow` with
+  **no** attrs: the blueprint points at upstream flows, it does not own them.
+- per hostname one `authentik_providers_proxy.proxyprovider` (`forward_single`,
+  `cookie_domain: ""`, `external_host`, `skip_path_regex`), one `authentik_core.application`
+  (provider → `!KeyOf` the provider) and one `authentik_policies.policybinding` (target → the
+  application, group → `Media`/`Platform`, order 0 = allow).
+- the embedded outpost's `providers` list.
+
+### 1b. Adding a new app
+
+Copy an existing block, change the identifiers, and add the provider to the outpost entry at the end
+of the file:
+
+```yaml
+  - id: provider-prowlarr
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Prowlarr
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://prowlarr.480p.com
+      skip_path_regex: ^/ping$ # Gatus liveness path, see step 4
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-prowlarr
+    model: authentik_core.application
+    identifiers:
+      slug: prowlarr
+    attrs:
+      name: Prowlarr
+      provider: !KeyOf provider-prowlarr
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-prowlarr
+      group: !KeyOf group-media
+      order: 0
+```
+
+…plus `- !KeyOf provider-prowlarr` under the outpost's `providers`. Then do the Kubernetes half
+(steps 2–4) and merge; the worker applies the new state within seconds of the ConfigMap changing.
+
+Validate before pushing: `Importer.validate()` really applies the file and then rolls the
+transaction back, so a pass proves every reference resolves and no serializer rejects the payload
+(it also means events and tasks are emitted and then discarded):
+
+```bash
+B64=$(base64 -w0 kubernetes/apps/authentik/authentik/app/blueprints/forward-auth.yaml)
+kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c "
+import base64
+from authentik.blueprints.v1.importer import Importer
+valid, logs = Importer.from_string(base64.b64decode('$B64').decode(), {}).validate()
+print('MARKVALID', valid)
+print('MARKBAD', [(l.log_level, l.event) for l in logs if l.log_level in ('warning', 'error')])"
+```
+
+`ak apply_blueprint <file> [--dry-run]` does the same from inside the pod.
+
+### 1c. What is deliberately *not* in the blueprint
+
+- **Passwords** — users created without one get an unusable password, so after a fresh install they
+  have to be set once (`ak changepassword <username>`, interactive, or the UI). There is no
+  `ak set_password` in 2026.8. Re-applying never touches them.
+- **`client_id` / `client_secret`** — generated server-side and not settable through the blueprint
+  serializer; they stay stable across applies.
+- **`property_mappings`** — `ProxyProviderSerializer.create()`/`.update()` both call
+  `set_oauth_defaults()`, which (re-)adds the five managed proxy/oauth2 scope mappings.
+- **The rest of the embedded outpost** (name, `config`, …) — only its `providers` list is managed
+  (declaring `name` in that entry would trip `validate_name`'s managed-outpost side effect).
+- **MFA devices** — user-side, UI only (`/if/user/#/settings`).
+
+### 1d. Reference: `ak shell` recipes (one-off only)
+
+Kept for experiments and for creating something outside Git during an incident. The blueprint is
+authoritative for everything it declares: hand-made edits to those objects are reverted on the next
+apply (list fields such as the outpost's `providers` or a user's `groups` are replaced, not merged).
+
+#### Groups
 
 ```python
 from authentik.core.models import Group
 Group.objects.get_or_create(name="Platform", defaults={"is_superuser": False})
 ```
 
-### 1b. Provider + Application + binding
+#### Provider + Application + binding
 
 ```python
 from authentik.core.models import Application, Group
@@ -95,7 +190,7 @@ PolicyBinding.objects.create(  # order/negate/enabled/failure_result: see gotcha
 print("client_id:", provider.client_id)
 ```
 
-### 1c. Users
+#### Users
 
 Create accounts in the UI (`Directory → Users`). Only group membership matters for access:
 
@@ -297,7 +392,23 @@ The Authentik-side objects are harmless if left behind.
 - **`set_oauth_defaults()`**: a raw ORM `create()`/`save()` does *not* populate `grant_types`,
   callback `redirect_uris` and the "Proxy outpost" scope mapping — the API/UI serializer does.
   Without it the provider is incomplete and login fails. Same for later edits: assign the field,
-  then `set_oauth_defaults()` + `save()` if you touched anything OAuth-related.
+  then `set_oauth_defaults()` + `save()` if you touched anything OAuth-related. Only relevant for
+  hand-written Python: the blueprint goes through `ProxyProviderSerializer`, which calls it on
+  create **and** update.
+- **Blueprint `identifiers` are merged into `attrs`** and matched with **all** of them ANDed, so the
+  `name`/`slug` does not need repeating in `attrs`; where several objects share a target (the policy
+  bindings) `order` is what disambiguates them.
+- **List fields are replaced, not merged**: the outpost's `providers` and each user's `groups` are
+  set to exactly what the file declares, so anything added by hand in the UI is dropped on the next
+  apply (at most an hour later, usually seconds after the file changes).
+- **Keep `kustomize.toolkit.fluxcd.io/substitute: disabled` on the generated ConfigMap**: the
+  `skip_path_regex` values end in `$`, which Flux's `postBuild.substitute` would otherwise treat as
+  a variable reference (the app Kustomization does substitute).
+- **One file, not several**: blueprint files are applied per file in arbitrary order, so cross-file
+  `!KeyOf`/`!Find` references can dangle — and an application with **zero** bindings is open to any
+  authenticated user until the next discovery run.
+- **`state: must_created` would fail here** (the objects already exist); the default `present`
+  updates them in place.
 - **Consent**: use `default-provider-authorization-implicit-consent` for forward auth; explicit
   consent adds a click-through page users cannot skip.
 - **Access control is separate from authentication**: `core_default_app_access=True` keeps an
@@ -317,9 +428,14 @@ The Authentik-side objects are harmless if left behind.
   (`YF4X9tBQ…` for Sonarr) are stable; new providers get fresh client IDs, which is fine because
   the outpost is configured through the provider itself.
 
-## Authentik-side state (not in Git)
+## Authentik-side state (Git: the forward-auth blueprint)
 
-Created by hand for the Sonarr/Radarr cutover — a blueprint could bring this into Git later:
+All of it is declared in
+`kubernetes/apps/authentik/authentik/app/blueprints/forward-auth.yaml`, converted from the hand-made
+API/UI objects on 2026-09-11; that file is the source of truth, and re-applying it is a no-op against
+the live state below. The only real change the first apply made was normalising `Sonarr`/`Radarr` to
+`invalidation_flow: default-provider-invalidation-flow` (the other 16 providers already had it,
+because the API serializer sets it):
 
 - Groups `Media` and `Platform` (no roles, `is_superuser: false`), member `brauni`.
 - ProxyProvider `Sonarr` (`forward_single`, `https://sonarr.480p.com`, `skip_path_regex: ^/ping$`)
@@ -338,3 +454,16 @@ Created by hand for the Sonarr/Radarr cutover — a blueprint could bring this i
   `VictoriaLogs`/`victoria-logs` (`^/health$`), `Kopia`/`kopia` (`^/healthz$`).
 - Users `brauni` (in `Media` + `Platform`) and `authentik_testuser1` (in no group — the
   negative-test account).
+
+Not managed, on purpose:
+
+- **Passwords** — users created without one get an unusable password, so after a fresh install they
+  must be set once (`ak changepassword <username>` or the UI). Re-applying never touches them.
+- **`client_id` / `client_secret`** — generated server-side; not settable through the blueprint.
+- **`property_mappings`** — re-added by `set_oauth_defaults()` on every create/update.
+- **The rest of the embedded outpost** (name, `config`, …) — only its `providers` list is managed.
+- **MFA devices** — user-side, UI only.
+
+Because all of the above is (re)created from this file, it doubles as the Authentik half of a
+disaster recovery: restore the database (or start clean), let the worker apply the blueprint, set the
+two passwords, enroll MFA.

@@ -67,14 +67,19 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
-        seccompProfile: { type: RuntimeDefault }
+        seccompProfile: {type: RuntimeDefault}
       volumes:
         - name: media
           persistentVolumeClaim:
             claimName: authentik
+        - name: blueprints
+          configMap:
+            name: authentik-blueprints
       volumeMounts:
         - name: media
           mountPath: /media
+        - name: blueprints
+          mountPath: /blueprints/custom
 
     server:
       serviceAccountName: authentik

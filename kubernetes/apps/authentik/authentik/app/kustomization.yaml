@@ -9,3 +9,11 @@ resources:
   - ./helmrelease.yaml
   - ./dnsendpoints.yaml
   - ./referencegrant.yaml
+configMapGenerator:
+  - name: authentik-blueprints
+    files:
+      - forward-auth.yaml=./blueprints/forward-auth.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+  annotations:
+    kustomize.toolkit.fluxcd.io/substitute: disabled
