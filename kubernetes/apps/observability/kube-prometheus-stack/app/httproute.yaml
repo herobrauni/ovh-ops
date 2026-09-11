@@ -10,6 +10,8 @@ metadata:
     gethomepage.dev/name: Alertmanager
     gethomepage.dev/pod-selector: app.kubernetes.io/name=alertmanager
     gethomepage.dev/icon: alertmanager.png
+    gatus.home-operations.com/endpoint: |-
+      url: https://alertmanager.riki.boo/-/healthy
 spec:
   hostnames:
     - alertmanager.riki.boo
@@ -33,6 +35,8 @@ metadata:
     gethomepage.dev/name: Prometheus
     gethomepage.dev/pod-selector: app.kubernetes.io/name=prometheus
     gethomepage.dev/icon: prometheus.png
+    gatus.home-operations.com/endpoint: |-
+      url: https://prometheus.riki.boo/-/healthy
 spec:
   hostnames:
     - prometheus.riki.boo

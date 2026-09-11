@@ -26,6 +26,8 @@ spec:
       namespace: observability
     - name: rook-ceph-cluster
       namespace: rook-ceph
+    - name: authentik
+      namespace: authentik
   interval: 1h
   path: ./kubernetes/apps/observability/grafana/instance
   prune: true

@@ -10,8 +10,8 @@ spec:
       namespace: volsync-system
     - name: infisical
       namespace: external-secrets
-    - name: tinyauth-riki-boo
-      namespace: network
+    - name: authentik
+      namespace: authentik
     - name: envoy-gateway-riki-boo
       namespace: network
   interval: 1h

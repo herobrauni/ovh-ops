@@ -6,6 +6,8 @@ metadata:
   name: kube-prometheus-stack
 spec:
   dependsOn:
+    - name: authentik
+      namespace: authentik
     - name: rook-ceph-cluster
       namespace: rook-ceph
   interval: 1h

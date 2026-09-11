@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - ./dnsendpoints.yaml
   - ./httproute.yaml
+  - ./httproute-outpost.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
   - ./securitypolicy.yaml
