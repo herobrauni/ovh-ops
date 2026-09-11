@@ -6,7 +6,7 @@ metadata:
   name: echo-riki-boo
   annotations:
     gatus.home-operations.com/endpoint: |-
-      conditions: ["[STATUS] == 200"]
+      url: https://echo.riki.boo/healthz
 spec:
   hostnames:
     - echo.riki.boo
@@ -24,6 +24,9 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: echo-brauni-dev
+  annotations:
+    gatus.home-operations.com/endpoint: |-
+      url: https://echo.brauni.dev/healthz
 spec:
   hostnames:
     - echo.brauni.dev
@@ -41,6 +44,9 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: echo-480p-com
+  annotations:
+    gatus.home-operations.com/endpoint: |-
+      url: https://echo.480p.com/healthz
 spec:
   hostnames:
     - echo.480p.com

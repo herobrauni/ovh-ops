@@ -11,6 +11,8 @@ metadata:
     gethomepage.dev/description: Rendered Flux PR review
     gethomepage.dev/icon: https://github.com/home-operations.png
     gethomepage.dev/pod-selector: app.kubernetes.io/name=konflate
+    gatus.home-operations.com/endpoint: |-
+      url: https://konflate.brauni.dev/healthz
 spec:
   hostnames:
     - konflate.brauni.dev

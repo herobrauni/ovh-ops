@@ -31,6 +31,10 @@ spec:
           gethomepage.dev/name: Victoria Logs
           gethomepage.dev/pod-selector: app.kubernetes.io/name=victoria-logs-single
           gethomepage.dev/icon: victoriametrics.png
+          # Probe /health, not the route root: an Exact "/" rule 302-redirects to
+          # /select/vmui/, and the root is what the sidecar would otherwise derive.
+          gatus.home-operations.com/endpoint: |-
+            url: https://victoria-logs.riki.boo/health
         hostnames:
           - victoria-logs.riki.boo
         parentRefs:

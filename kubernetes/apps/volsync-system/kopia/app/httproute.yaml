@@ -10,6 +10,13 @@ metadata:
     gethomepage.dev/name: Kopia
     gethomepage.dev/pod-selector: app.kubernetes.io/name=kopia
     gethomepage.dev/icon: mdi-folder-sync
+    # Kopia has no anonymous health endpoint and its UI answers 200 on / (it is the
+    # HTML shell; the API behind it is what authenticates). /healthz is skipped by the
+    # outpost so ext-auth does not redirect the probe, and kopia's own 404 proves the
+    # pod answered — same idiom as the konflate/github webhook routes.
+    gatus.home-operations.com/endpoint: |-
+      url: https://kopia.riki.boo/healthz
+      conditions: ["[STATUS] == 404"]
 spec:
   hostnames:
     - kopia.riki.boo

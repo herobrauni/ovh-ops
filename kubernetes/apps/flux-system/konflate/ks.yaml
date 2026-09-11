@@ -8,8 +8,8 @@ spec:
   dependsOn:
     - name: infisical
       namespace: external-secrets
-    - name: tinyauth-brauni-dev
-      namespace: network
+    - name: authentik
+      namespace: authentik
   interval: 1h
   path: ./kubernetes/apps/flux-system/konflate/app
   prune: true

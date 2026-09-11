@@ -10,6 +10,8 @@ metadata:
     gethomepage.dev/name: Grafana
     gethomepage.dev/pod-selector: app=grafana
     gethomepage.dev/icon: grafana.png
+    gatus.home-operations.com/endpoint: |-
+      url: https://grafana.riki.boo/api/health
 spec:
   hostnames:
     - grafana.riki.boo

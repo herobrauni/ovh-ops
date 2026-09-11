@@ -5,6 +5,9 @@ kind: Kustomization
 metadata:
   name: flux-operator
 spec:
+  dependsOn:
+    - name: authentik
+      namespace: authentik
   interval: 1h
   path: ./kubernetes/apps/flux-system/flux-operator/app
   prune: true
