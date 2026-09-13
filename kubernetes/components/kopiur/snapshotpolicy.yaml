@@ -1,0 +1,32 @@
+---
+# yayamlls-disable-file
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kopiur.home-operations.com/snapshotpolicy_v1alpha1.json
+apiVersion: kopiur.home-operations.com/v1alpha1
+kind: SnapshotPolicy
+metadata:
+  name: ${APP}
+spec:
+  compression:
+    compressor: zstd-fastest
+  copyMethod: Snapshot
+  # Pull the projected kopiur-repository credentials into this namespace
+  # (gated by ClusterRepository/sftp credentialProjection.allowed).
+  credentialProjection:
+    enabled: true
+  mover:
+    podSecurityContext:
+      runAsUser: ${KOPIUR_MOVER_UID:=1000}
+      runAsGroup: ${KOPIUR_MOVER_GID:=1000}
+      fsGroup: ${KOPIUR_MOVER_GID:=1000}
+  repository:
+    kind: ClusterRepository
+    name: sftp
+  retention:
+    keepHourly: 24
+    keepDaily: 7
+  sources:
+    - pvc:
+        name: "${KOPIUR_CLAIM:-${APP}}"
+  upload:
+    maxParallelFileReads: 2
+  volumeSnapshotClassName: ${KOPIUR_SNAPSHOTCLASS:=csi-ceph-blockpool}

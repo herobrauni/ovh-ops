@@ -1,0 +1,45 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: kopiur
+spec:
+  interval: 1h
+  path: ./kubernetes/apps/kopiur-system/kopiur/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: kopiur-system
+  wait: false
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: kopiur-repository
+spec:
+  dependsOn:
+    - name: infisical
+      namespace: external-secrets
+    - name: kopiur
+      namespace: kopiur-system
+  interval: 1h
+  path: ./kubernetes/apps/kopiur-system/kopiur/repository
+  prune: true
+  retryInterval: 1m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  targetNamespace: kopiur-system
+  # SFTP connection details are substituted from Infisical (never committed):
+  # the ExternalSecret below creates kopiur-sftp-config in this namespace and
+  # postBuild injects its keys into the ClusterRepository placeholders.
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: kopiur-sftp-config
+  wait: true
