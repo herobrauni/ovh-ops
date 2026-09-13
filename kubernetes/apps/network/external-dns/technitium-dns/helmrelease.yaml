@@ -35,7 +35,9 @@ spec:
       # --- CRD and Filtering ---
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
-      - "--annotation-filter=dns.scope in (technitium,all)"
+      # NOTE: --annotation-filter is broken in external-dns v0.22.0 (set-based selectors silently
+      # match nothing on the CRD source). Scoping uses --label-filter + dns.scope *labels* instead.
+      - "--label-filter=dns.scope in (technitium,all)"
 
     triggerLoopOnEvent: true
     policy: sync
