@@ -26,7 +26,10 @@ spec:
       - --cloudflare-proxied
       - --crd-source-apiversion=externaldns.k8s.io/v1alpha1
       - --crd-source-kind=DNSEndpoint
-      - "--annotation-filter=dns.scope in (cloudflare,all)"
+      # NOTE: --annotation-filter is broken in external-dns v0.22.0 (set-based selectors silently
+      # match nothing on the CRD source, which previously caused a mass record deletion).
+      # Scoping is done via --label-filter + the dns.scope *label* on DNSEndpoints instead.
+      - "--label-filter=dns.scope in (cloudflare,all)"
       # - --gateway-name=kgateway-external
     triggerLoopOnEvent: true
     policy: sync
