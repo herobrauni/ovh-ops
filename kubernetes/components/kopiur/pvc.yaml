@@ -5,6 +5,11 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: "${KOPIUR_CLAIM:-${APP}}"
+  labels:
+    # dataSourceRef is immutable on bound PVCs; never update an existing claim
+    # (apps migrating from the volsync component keep their old dataSourceRef,
+    # which is inert either way once the volume is provisioned).
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
   accessModes:
     - ${KOPIUR_ACCESSMODES:=ReadWriteOnce}
