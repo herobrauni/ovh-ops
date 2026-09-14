@@ -27,6 +27,11 @@ spec:
   sources:
     - pvc:
         name: "${KOPIUR_CLAIM:-${APP}}"
+      # MUST stay /data: kopiur's default source path is /pvc/<name>, but the
+      # volsync fork recorded every snapshot under <app>@<ns>:/data — without
+      # this pin the history forks at migration time and restores cannot see
+      # pre-migration snapshots (kopiur's own migrate tool pins the same value).
+      sourcePathOverride: /data
   upload:
     maxParallelFileReads: 2
   volumeSnapshotClassName: ${KOPIUR_SNAPSHOTCLASS:=csi-ceph-blockpool}
