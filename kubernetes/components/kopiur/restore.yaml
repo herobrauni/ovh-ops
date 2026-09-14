@@ -20,7 +20,10 @@ spec:
       runAsGroup: ${KOPIUR_MOVER_GID:=1000}
       fsGroup: ${KOPIUR_MOVER_GID:=1000}
   policy:
-    onMissingSnapshot: Continue
+    # Greenfield default: keep deploying on an empty repo (deploy-or-restore).
+    # Migrated apps set KOPIUR_ON_MISSING_SNAPSHOT: Fail — their history
+    # already exists, and a silently-empty DR volume is the worse failure.
+    onMissingSnapshot: ${KOPIUR_ON_MISSING_SNAPSHOT:=Continue}
   source:
     fromPolicy:
       name: ${APP}

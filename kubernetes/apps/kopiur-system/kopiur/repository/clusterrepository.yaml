@@ -35,6 +35,9 @@ spec:
       key: KOPIA_PASSWORD
   # Reproduce the volsync fork's snapshot identity (<app>@<namespace>) so the
   # adopted history and new snapshots form one series under one retention.
+  # (The fork additionally sanitizes names — [a-zA-Z0-9-], _→-, drops ., max 50
+  # chars — every current consumer name already satisfies that, so kopia's own
+  # handling is equivalent here; revisit if an app name ever carries _ or .)
   identityDefaults:
     hostnameExpr: namespace
     usernameExpr: policyName

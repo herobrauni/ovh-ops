@@ -5,6 +5,9 @@ kind: Kustomization
 metadata:
   name: kopiur
 spec:
+  dependsOn:
+    - name: infisical
+      namespace: external-secrets
   interval: 1h
   path: ./kubernetes/apps/kopiur-system/kopiur/app
   prune: true
@@ -13,7 +16,9 @@ spec:
     name: flux-system
     namespace: flux-system
   targetNamespace: kopiur-system
-  wait: false
+  # Gate on a healthy operator (CRDs + webhook, failurePolicy: Fail) before
+  # kopiur-repository applies kopiur CRs — same shape as the volsync operator KS.
+  wait: true
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
 apiVersion: kustomize.toolkit.fluxcd.io/v1
@@ -26,6 +31,8 @@ spec:
       namespace: external-secrets
     - name: kopiur
       namespace: kopiur-system
+    - name: snapshot-controller
+      namespace: kube-system
   interval: 1h
   path: ./kubernetes/apps/kopiur-system/kopiur/repository
   prune: true
@@ -36,8 +43,9 @@ spec:
     namespace: flux-system
   targetNamespace: kopiur-system
   # SFTP connection details are substituted from Infisical (never committed):
-  # the ExternalSecret below creates kopiur-sftp-config in this namespace and
-  # postBuild injects its keys into the ClusterRepository placeholders.
+  # the ExternalSecret creating kopiur-sftp-config lives in the kopiur/app
+  # Kustomization (this one depends on it) — a substituteFrom Secret created in
+  # the SAME Kustomization deadlocks the build before anything is applied.
   postBuild:
     substituteFrom:
       - kind: Secret

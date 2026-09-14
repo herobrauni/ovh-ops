@@ -31,6 +31,7 @@ spec:
       APP: *app
       CNPG_NAME: postgres18
       KOPIUR_CAPACITY: 10Gi
+      KOPIUR_ON_MISSING_SNAPSHOT: Fail
   prune: true
   sourceRef:
     kind: GitRepository

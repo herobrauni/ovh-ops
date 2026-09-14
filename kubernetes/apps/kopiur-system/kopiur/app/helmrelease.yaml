@@ -12,13 +12,20 @@ spec:
   driftDetection:
     mode: enabled
   values:
+    # Grants the operator secrets create/patch/delete so it can project
+    # kopiur-repository into mover namespaces (opt-in chart flag; without it
+    # every mover Job 403s and no backup ever runs). Necessarily unscoped:
+    # `create` cannot be resourceName-scoped.
+    features:
+      credentialProjection:
+        enabled: true
     monitoring:
       dashboards:
         enabled: true
         grafanaOperator:
           enabled: true
           matchLabels:
-            dashboards: grafana
+            grafana.internal/instance: grafana
       prometheusRule:
         enabled: true
       serviceMonitor:
