@@ -5,8 +5,10 @@ Runbook for replacing TinyAuth with Authentik's **embedded outpost** as the Envo
 (2026-09-10); use it as the template for the next app. Migrated so far: the media set
 (`sonarr`, `radarr`, both 4K, `altmount`, `clonarr`, `prowlarr`, `umlautadaptarrex`) and the
 platform/observability set (`echo` on all three domains, `flux-operator`, `konflate`,
-`grafana`, `prometheus`, `alertmanager`, `victoria-logs`, `kopia`). TinyAuth is still
-deployed and still fronts `vaultwarden.brauni.dev/admin`.
+`grafana`, `prometheus`, `alertmanager`, `victoria-logs`, `kopia`) plus `vaultwarden`, where only
+`/admin` is protected (step 2). TinyAuth is still deployed but no longer fronts anything: every
+remaining `securitypolicy.yaml` that mentions `tinyauth-*` belongs to an app that is commented out of
+its namespace `kustomization.yaml`.
 
 Two halves, and both live in Git:
 
@@ -310,8 +312,17 @@ spec:
 ```
 
 **`httproute.yaml`** — keep the existing route (Homepage annotations stay), add the Gatus override
-(step 4). TinyAuth's Kustomization, ReferenceGrant and secret stay deployed for the apps that have
-not migrated; mix-and-match per route is fine.
+(step 4).
+
+**Protecting only part of a hostname** (`vaultwarden`, 2026-09-11): when the app is public but one
+prefix is not — Vaultwarden's `/admin` panel, while the Bitwarden clients need `/api/*` and
+`/identity/*` unauthenticated on the same host — leave the app's own public HTTPRoute untouched and
+give the protected prefix a **separate** HTTPRoute (here `vaultwarden-admin`, `PathPrefix /admin`)
+that the `SecurityPolicy` targets. That hostname still needs exactly one
+`/outpost.goauthentik.io` HTTPRoute (shared by both routes) and its own Gatus treatment (step 4);
+the proxy provider needs **no** `skip_path_regex`, because the public paths never reach ext-auth.
+TinyAuth's Kustomization, ReferenceGrant and secret stay deployed for the apps that have not
+migrated; mix-and-match per route is fine.
 
 ## Step 3 — ReferenceGrant (once per consumer namespace)
 
@@ -320,7 +331,7 @@ Cross-namespace `backendRef` from `SecurityPolicy`/`HTTPRoute` in `<ns>` to Serv
 (`kubernetes/apps/authentik/authentik/app/referencegrant.yaml`). One `from` entry **per kind and
 namespace pair** — a missing `HTTPRoute` entry accepts the SecurityPolicy but leaves the outpost
 route unresolved, which surfaces as an ext-auth loop rather than a clear error. Scoped today to
-`flux-system`, `media`, `network`, `observability`, `volsync-system`.
+`flux-system`, `media`, `network`, `observability`, `selfhosted`, `volsync-system`.
 
 ## Step 4 — Gatus
 
@@ -343,6 +354,7 @@ Three things, because the sidecar (`--auto-httproute`) derives endpoints from ro
    | prometheus, alertmanager | `/-/healthy` | |
    | victoria-logs | `/health` | its route has an `Exact /` rule that 302s to `/select/vmui/` |
    | kopia | `/healthz` | **no anonymous path** — skipped from ext-auth and the endpoint asserts `[STATUS] == 404` (see below) |
+   | vaultwarden | none | only `/admin` is behind ext-auth and there is no anonymous path to assert, so its endpoint asserts the outpost's 302 (see below) |
 
    To find one for a new app, probe the Service from a throwaway pod first:
 
@@ -373,6 +385,17 @@ Three things, because the sidecar (`--auto-httproute`) derives endpoints from ro
 2. On the app's HTTPRoute, override the probed URL:
    `gatus.home-operations.com/endpoint: |- url: https://<app>.480p.com/<liveness-path>`
    (conditions/group/interval/headers are inherited from the `envoy-480p-com-public` Gateway).
+   Where nothing can be probed anonymously, assert the **redirect** that proves the ext-auth chain is
+   engaged: `vaultwarden`'s `/admin` is green because a 302 means the outpost answered (a 200 there
+   would mean ext-auth had been bypassed). Gatus **follows redirects by default**, so the client must
+   opt out:
+
+   ```yaml
+   gatus.home-operations.com/endpoint: |-
+     client:
+       ignore-redirect: true # default is false → gatus would follow the 302 to sso.brauni.dev
+     conditions: ["[STATUS] == 302"]
+   ```
 3. On the outpost HTTPRoute, `gatus.home-operations.com/enabled: "false"`, otherwise the sidecar
    emits a second endpoint for `https://<app>.480p.com/outpost.goauthentik.io` that fails.
 
@@ -448,8 +471,10 @@ in the audit log are harmless.)
 ## Rollback
 
 One squash commit per app ⇒ `git revert <merge-commit>`. TinyAuth stays deployed and its
-ReferenceGrant already covers `media`, so a revert restores the previous behaviour immediately.
-The Authentik-side objects are harmless if left behind.
+ReferenceGrant already covers `media`, so a revert restores the previous behaviour immediately
+(`vaultwarden`'s `SecurityPolicy` points back at `tinyauth-brauni-dev`). The Authentik-side objects
+are harmless if left behind — but the blueprint's outpost entry **replaces** the outpost's provider
+list, so a provider deleted from the file is detached from the outpost on the next apply.
 
 ## Gotchas
 
@@ -483,6 +508,9 @@ The Authentik-side objects are harmless if left behind.
   closed as not planned). Desktop browsers and curl resolve it correctly; mobile Chrome/Brave have
   been reported to mishandle it. Nothing to fix in this repo.
 - **Keep the outpost HTTPRoute separate** and its Gatus annotation disabled (see steps 2 and 4).
+- **Partial-host protection**: a `SecurityPolicy` targets an HTTPRoute, never a hostname/path, so
+  protecting `/admin` alone means giving that prefix its own HTTPRoute and pointing the policy at it
+  (see step 2) — with the outpost route still needed once per hostname.
 - **`BlueprintInstance` is a DB model, not a CRD**: check/force applies through `ak shell` (see
   1c). An apply can report `successful` with the correct hash and still miss a change; re-applying
   converges. Forging a session for end-to-end tests must go through `login()` (step 5), otherwise
@@ -506,8 +534,9 @@ the live state below. The only real change the first apply made was normalising 
 because the API serializer sets it) — and it only landed on the **second** apply: the first reported
 `successful` while both fields stayed `null` (see
 [1c](#1c-applying-verifying-and-re-applying)). Confirmed afterwards through the real gateway with a
-forged `brauni` session on all 18 hostnames (`200` from the app itself) and `authentik_testuser1`
-ending on “Request has been denied” (see [step 5](#step-5--verification)):
+forged `brauni` session on all 18 hostnames that existed then (`200` from the app itself) and
+`authentik_testuser1` ending on “Request has been denied” (see [step 5](#step-5--verification));
+`Vaultwarden` was appended to the same file afterwards (provider 19):
 
 - Groups `Media` and `Platform` (no roles, `is_superuser: false`), member `brauni`.
 - ProxyProvider `Sonarr` (`forward_single`, `https://sonarr.480p.com`, `skip_path_regex: ^/ping$`)
@@ -523,7 +552,9 @@ ending on “Request has been denied” (see [step 5](#step-5--verification)):
   (`^/healthz$`), `Echo Riki`/`echo-riki-boo` (`^/healthz$`), `Flux Operator`/`flux-operator`
   (`^/healthz$`), `Konflate`/`konflate` (`^/healthz$`), `Grafana`/`grafana` (`^/api/health$`),
   `Prometheus`/`prometheus` (`^/-/healthy$`), `Alertmanager`/`alertmanager` (`^/-/healthy$`),
-  `VictoriaLogs`/`victoria-logs` (`^/health$`), `Kopia`/`kopia` (`^/healthz$`).
+  `VictoriaLogs`/`victoria-logs` (`^/health$`), `Kopia`/`kopia` (`^/healthz$`) and — the
+  `selfhosted` addition — `Vaultwarden`/`vaultwarden` (`https://vaultwarden.brauni.dev`, no
+  `skip_path_regex`: only `/admin` is behind ext-auth).
 - Users `brauni` (in `Media` + `Platform`) and `authentik_testuser1` (in no group — the
   negative-test account).
 
