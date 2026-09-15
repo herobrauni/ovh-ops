@@ -1,4 +1,14 @@
 ---
+cluster:
+  etcd:
+    extraArgs:
+      # Expose etcd metrics for kube-prometheus-stack (kube-etcd job scrapes
+      # <node-ip>:2381/metrics); without this etcd binds metrics to localhost
+      # only and all etcd targets go down (TargetDown / etcdMembersDown alerts)
+      listen-metrics-urls: http://0.0.0.0:2381
+    advertisedSubnets:
+      - 10.10.8.0/24
+---
 # Drop Talos' default PodSecurity admission plugin config
 apiVersion: v1alpha1
 kind: KubeAdmissionControlConfig
