@@ -40,7 +40,7 @@ spec:
           app:
             image:
               repository: docker.io/fireflyiii/core
-              tag: latest@sha256:ae69fdd95cdef9038cd7a460a5aec731f14813973e4f096511d5a4ea9ff0e972
+              tag: latest@sha256:9ba5eb94bbe6a36e67b9b70ff0d079304bf41127d8a9e84665ffd467dbfa60c3
             env:
               APP_ENV: production
               APP_DEBUG: "false"
