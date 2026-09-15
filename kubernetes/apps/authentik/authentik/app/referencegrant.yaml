@@ -35,6 +35,12 @@ spec:
       namespace: observability
     - group: gateway.envoyproxy.io
       kind: SecurityPolicy
+      namespace: selfhosted
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: selfhosted
+    - group: gateway.envoyproxy.io
+      kind: SecurityPolicy
       namespace: volsync-system
     - group: gateway.networking.k8s.io
       kind: HTTPRoute

@@ -30,6 +30,14 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: vaultwarden-admin
+  annotations:
+    # /admin is behind authentik's ext-auth, so an unauthenticated probe is a 302 to
+    # sso.brauni.dev instead of a 200. Without `ignore-redirect` gatus would follow
+    # that redirect and end up asserting the login form, so assert the 302 itself.
+    gatus.home-operations.com/endpoint: |-
+      client:
+        ignore-redirect: true
+      conditions: ["[STATUS] == 302"]
 spec:
   hostnames:
     - vaultwarden.brauni.dev

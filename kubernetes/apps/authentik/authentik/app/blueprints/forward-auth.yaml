@@ -524,6 +524,36 @@ entries:
       order: 0
 
   # ---------------------------------------------------------------------------
+  # Selfhosted (group: Platform). Only Vaultwarden's `/admin` panel is protected:
+  # the Bitwarden clients speak to `/api/*` and `/identity/*` on the same hostname
+  # and must stay reachable without authenticating, so the SecurityPolicy targets
+  # the separate `vaultwarden-admin` HTTPRoute. Nothing is skipped here on purpose:
+  # Gatus asserts the 302 the outpost returns for `/admin` instead of a 200.
+  # ---------------------------------------------------------------------------
+  - id: provider-vaultwarden
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Vaultwarden
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://vaultwarden.brauni.dev
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-vaultwarden
+    model: authentik_core.application
+    identifiers:
+      slug: vaultwarden
+    attrs:
+      name: Vaultwarden
+      provider: !KeyOf provider-vaultwarden
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-vaultwarden
+      group: !KeyOf group-platform
+      order: 0
+
+  # ---------------------------------------------------------------------------
   # The embedded outpost serves every provider above. This list replaces the
   # outpost's provider set, so a provider that is removed from this file is also
   # detached from the outpost.
@@ -551,3 +581,4 @@ entries:
         - !KeyOf provider-alertmanager
         - !KeyOf provider-victoria-logs
         - !KeyOf provider-kopia
+        - !KeyOf provider-vaultwarden
