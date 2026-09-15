@@ -167,7 +167,7 @@ print('MARKQUEUED', b.pk)"
 Equivalent: `POST /api/v3/blueprints/instances/<pk>/apply/` with an API token (the `pk` of that row),
 or *System → Blueprints → Apply* in the UI. Applying an already-applied file is a no-op.
 
-Two gotchas:
+Three gotchas:
 
 - **`successful` does not prove the change landed.** The first apply of this file finished
   `successful` with a matching `last_applied_hash` while `Sonarr`/`Radarr` still had
@@ -175,6 +175,13 @@ Two gotchas:
   through a stuck `Terminating` replica, and re-triggering it converged immediately. So when an
   expected diff is missing but the hash matches, just re-apply (recipe above) — and do **not**
   `kubectl rollout restart deploy/authentik-worker` while a first apply is in flight.
+- **A racing apply can fail with a Postgres deadlock, not a blueprint error.** The 2026-09-15 apply
+  (the `vaultwarden` provider) landed while the worker was being replaced and died in the *proxy*
+  connect signal: `{"name": "proxy_set_defaults", "event": "Failed to run reconcile", "exc":
+  "OperationalError('deadlock detected … while deleting tuple (0,170) in relation
+  \"guardian_roleobjectpermission\"')"}`, leaving the instance in `status: error` with the **old**
+  hash. The watcher re-enqueued `apply_blueprint` 16 s later and it converged (`successful`, new
+  hash) — so re-check the instance before intervening, and allow several minutes for a first apply.
 - **`default/flow-oobe.yaml` sits in `status: error`, and that is not your blueprint.** Its content
   changed with the 2026.8.2 image, and an OOBE blueprint cannot re-apply once the instance is set
   up; it is `enabled: false` and unrelated to `custom/forward-auth.yaml`. Do not chase it while
@@ -324,6 +331,16 @@ the proxy provider needs **no** `skip_path_regex`, because the public paths neve
 TinyAuth's Kustomization, ReferenceGrant and secret stay deployed for the apps that have not
 migrated; mix-and-match per route is fine.
 
+**Ordering**: the blueprint's provider must exist **before** the app's `SecurityPolicy` flips. When
+one Kustomization ships both halves — as `vaultwarden` did — the outpost answers `404`, *not* a
+redirect loop, on the protected path for as long as the provider is missing: Gatus recorded 7 failed
+probes (`404 != 302`) in the ~3 min window between `vaultwarden` reconciling and the blueprint's
+apply landing. Force the apply right after the ConfigMap rolls (see
+[1c](#1c-applying-verifying-and-re-applying)), then reconcile the app
+(`flux reconcile kustomization <app> -n <ns>`). Expect Flux to gate all of this on the dependency
+chain (`authentik` → `volsync-system/volsync` → `dbms/cloudnative-pg-cluster` → …), so a
+`flux reconcile` alone may look like it does nothing.
+
 ## Step 3 — ReferenceGrant (once per consumer namespace)
 
 Cross-namespace `backendRef` from `SecurityPolicy`/`HTTPRoute` in `<ns>` to Service
@@ -455,18 +472,24 @@ flow silently degrades into the login form. Put it in the cookie jar instead.
 
 Negative test: repeat with a user that is **not** in the group (`authentik_testuser1`) → the chain
 stops at `sso.brauni.dev` on Authentik's "Request has been denied" page. Clean up the forged
-sessions afterwards — by `sid` (`SessionStore(session_key=<sid>).delete()`) or by user agent:
+sessions afterwards, by `sid` (`SessionStore(session_key=<sid>).delete()`) or by the fingerprint
+`RequestFactory` leaves behind:
 
 ```bash
 kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c "
 from authentik.core.models import Session
-qs = Session.objects.filter(last_user_agent='curl-e2e-test')
+qs = Session.objects.filter(last_ip='255.255.255.255')
 print('MARKCLEAN', qs.count(), qs.delete())"
 ```
 
 (`authentik.core.models.Session` is the model that matters — `django.contrib.sessions.models` is
 unused here; the cascade also drops the `AuthenticatedSession` row. The `login_event` Events left
-in the audit log are harmless.)
+in the audit log are harmless.) **Filtering by `last_user_agent` does not work for these forged
+sessions**: `HTTP_USER_AGENT='…'` on the `RequestFactory` request only reaches the audit `Event`,
+the session row keeps `last_user_agent: ''` (verified 2026-09-15: 2 sessions, 0 matches by UA).
+`last_ip='255.255.255.255'` is the reliable test-only signal — the real browser sessions carry the
+client's own address. Check `AuthenticatedSession.objects.count()` before and after, so you do not
+delete a session someone is actually using.
 
 ## Rollback
 
