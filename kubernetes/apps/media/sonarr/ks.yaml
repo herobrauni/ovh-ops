@@ -11,27 +11,28 @@ spec:
       app.kubernetes.io/name: *app
   components:
     - ../../../../components/cnpg
-    - ../../../../components/volsync
+    - ../../../../components/kopiur
   dependsOn:
     - name: cloudnative-pg-cluster
       namespace: dbms
     - name: infisical
       namespace: external-secrets
+    - name: kopiur-repository
+      namespace: kopiur-system
     - name: rook-ceph-cluster
       namespace: rook-ceph
     - name: authentik
       namespace: authentik
     - name: symlinks
       namespace: media
-    - name: volsync
-      namespace: volsync-system
   interval: 1h
   path: ./kubernetes/apps/media/sonarr/app
   postBuild:
     substitute:
       APP: *app
       CNPG_NAME: postgres18
-      VOLSYNC_CAPACITY: 5Gi
+      KOPIUR_CAPACITY: 5Gi
+      KOPIUR_ON_MISSING_SNAPSHOT: Fail
   prune: true
   sourceRef:
     kind: GitRepository

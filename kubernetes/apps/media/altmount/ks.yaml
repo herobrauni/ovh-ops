@@ -10,8 +10,10 @@ spec:
     labels:
       app.kubernetes.io/name: *app
   components:
-    - ../../../../components/volsync
+    - ../../../../components/kopiur
   dependsOn:
+    - name: kopiur-repository
+      namespace: kopiur-system
     - name: rook-ceph-cluster
       namespace: rook-ceph
     - name: symlinks
@@ -23,7 +25,8 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      VOLSYNC_CAPACITY: 10Gi
+      KOPIUR_CAPACITY: 10Gi
+      KOPIUR_ON_MISSING_SNAPSHOT: Fail
   prune: true
   sourceRef:
     kind: GitRepository
