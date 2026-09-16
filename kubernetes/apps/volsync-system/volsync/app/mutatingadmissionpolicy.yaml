@@ -6,14 +6,7 @@ metadata:
   name: volsync-mover-jitter
 spec:
   policyName: volsync-mover-jitter
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicybinding-admissionregistration-v1beta1.json
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingAdmissionPolicyBinding
-metadata:
-  name: volsync-kopia-maint-keyfile
-spec:
-  policyName: volsync-kopia-maint-keyfile
+
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicybinding-admissionregistration-v1beta1.json
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -22,6 +15,7 @@ metadata:
   name: volsync-pgdump-rw-rootfs
 spec:
   policyName: volsync-pgdump-rw-rootfs
+
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicy-admissionregistration-v1beta1.json
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -72,77 +66,7 @@ spec:
               }
             }
           ]
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicy-admissionregistration-v1beta1.json
-apiVersion: admissionregistration.k8s.io/v1beta1
-kind: MutatingAdmissionPolicy
-metadata:
-  name: volsync-kopia-maint-keyfile
-spec:
-  matchConstraints:
-    resourceRules:
-      - apiGroups:
-          - batch
-        apiVersions:
-          - v1
-        operations:
-          - CREATE
-        resources:
-          - jobs
-  matchConditions:
-    - name: has-kopia-maint-job-name-prefix
-      expression: >-
-        object.metadata.name.startsWith("kopia-maint-")
-    - name: has-kopia-maint-label
-      expression: >-
-        object.metadata.?labels["volsync.backube/kopia-maintenance"].orValue("") == "true"
-    - name: missing-kopia-ssh-volume
-      expression: >-
-        object.spec.template.spec.?volumes.orValue([]).all(v, v.name != "kopia-ssh-key")
-    - name: missing-kopia-ssh-mount
-      expression: >-
-        object.spec.template.spec.containers[0].?volumeMounts.orValue([]).all(m, m.mountPath != "/tmp/kopia-ssh")
-    - name: missing-kopia-keyfile-env
-      expression: >-
-        object.spec.template.spec.containers[0].?env.orValue([]).all(e, e.name != "SFTP_KEY_FILE")
-  failurePolicy: Fail
-  reinvocationPolicy: IfNeeded
-  mutations:
-    - patchType: JSONPatch
-      jsonPatch:
-        expression: >-
-          [
-            JSONPatch{
-              op: "add", path: "/spec/template/spec/volumes/-",
-              value: Object.spec.template.spec.volumes{
-                name: "kopia-ssh-key",
-                secret: Object.spec.template.spec.volumes.secret{
-                  secretName: "kopia-secret",
-                  items: [
-                    Object.spec.template.spec.volumes.secret.items{
-                      key: "SFTP_KEY_FILE",
-                      path: "id_ed25519"
-                    }
-                  ]
-                }
-              }
-            },
-            JSONPatch{
-              op: "add", path: "/spec/template/spec/containers/0/volumeMounts/-",
-              value: Object.spec.template.spec.containers.volumeMounts{
-                name: "kopia-ssh-key",
-                mountPath: "/tmp/kopia-ssh",
-                readOnly: true
-              }
-            },
-            JSONPatch{
-              op: "add", path: "/spec/template/spec/containers/0/env/-",
-              value: Object.spec.template.spec.containers.env{
-                name: "SFTP_KEY_FILE",
-                value: "/tmp/kopia-ssh/id_ed25519"
-              }
-            }
-          ]
+
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/yannh/kubernetes-json-schema/refs/heads/master/v1.34.0/mutatingadmissionpolicy-admissionregistration-v1beta1.json
 apiVersion: admissionregistration.k8s.io/v1beta1
