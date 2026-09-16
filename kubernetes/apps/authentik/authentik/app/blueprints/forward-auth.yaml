@@ -1,4 +1,5 @@
 ---
+# yayamlls-disable-file (embedded blueprint ConfigMap; the goauthentik.io schema now mismatches the ConfigMap wrapper)
 # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
 # Source of truth for every forward-auth object in this cluster: the Envoy Gateway
 # `SecurityPolicy` resources in the app namespaces point their extAuth backend at the

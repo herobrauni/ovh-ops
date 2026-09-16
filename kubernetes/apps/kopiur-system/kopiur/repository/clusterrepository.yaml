@@ -1,0 +1,53 @@
+---
+# yayamlls-disable-file
+# SFTP endpoint details are Flux-substituted from the kopiur-sftp-config Secret
+# (see externalsecret.yaml / the kopiur-repository Kustomization postBuild) so
+# the external host, account and port never land in Git.
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kopiur.home-operations.com/clusterrepository_v1alpha1.json
+apiVersion: kopiur.home-operations.com/v1alpha1
+kind: ClusterRepository
+metadata:
+  name: sftp
+spec:
+  # Adopted in place: this is the same kopia repository the volsync fork's
+  # movers wrote to (no create block — a mis-render must never format a new
+  # empty repo). All existing snapshots are preserved.
+  allowedNamespaces:
+    all: true
+  backend:
+    sftp:
+      auth:
+        secretRef:
+          name: kopiur-repository
+          namespace: kopiur-system
+      host: ${SFTP_HOST}
+      path: ${SFTP_PATH}
+      port: ${SFTP_PORT}
+      username: ${SFTP_USERNAME}
+  # Movers run in consumer namespaces; the operator projects kopiur-repository
+  # into them (each SnapshotPolicy/Restore opts in via credentialProjection).
+  credentialProjection:
+    allowed: true
+  encryption:
+    passwordSecretRef:
+      name: kopiur-repository
+      namespace: kopiur-system
+      key: KOPIA_PASSWORD
+  # Reproduce the volsync fork's snapshot identity (<app>@<namespace>) so the
+  # adopted history and new snapshots form one series under one retention.
+  # (The fork additionally sanitizes names — [a-zA-Z0-9-], _→-, drops ., max 50
+  # chars — every current consumer name already satisfies that, so kopia's own
+  # handling is equivalent here; revisit if an app name ever carries _ or .)
+  identityDefaults:
+    hostnameExpr: namespace
+    usernameExpr: policyName
+  maintenance:
+    schedule:
+      quick:
+        cron: 0 * * * *
+        jitter: 10m
+      full:
+        cron: 0 3 * * *
+        jitter: 1h
+  scheduleDefaults:
+    timezone: Europe/Paris
