@@ -21,18 +21,19 @@ spec:
   repository:
     kind: ClusterRepository
     name: sftp
-  # GFS retention. Hourly/daily are the volsync-era defaults; the remaining
-  # buckets stay unset unless an app opts in (see AGENTS.md). Points outside the
-  # configured window are pruned over time, so long-horizon history (the volsync
-  # fork kept weekly/monthly points effectively forever) must be asked for
-  # explicitly via KOPIUR_KEEP_WEEKLY / KOPIUR_KEEP_MONTHLY / KOPIUR_KEEP_ANNUAL.
+  # GFS retention — the ONLY thing that prunes successful snapshots, and the
+  # buckets are a union in which an ABSENT bucket keeps nothing, so each one is
+  # declared explicitly (see AGENTS.md). These defaults keep the long-horizon
+  # points the volsync fork effectively kept forever, bounded to ~6 months:
+  # ~3 days at 6-hourly granularity, daily out to 2 weeks, weekly out to
+  # 2 months, then monthly. Override per app with the KOPIUR_KEEP_* substitutes.
   retention:
-    keepHourly: ${KOPIUR_KEEP_HOURLY:=24}
-    keepDaily: ${KOPIUR_KEEP_DAILY:=7}
+    keepHourly: ${KOPIUR_KEEP_HOURLY:=12}
+    keepDaily: ${KOPIUR_KEEP_DAILY:=14}
     keepLatest: ${KOPIUR_KEEP_LATEST:=}
-    keepWeekly: ${KOPIUR_KEEP_WEEKLY:=}
-    keepMonthly: ${KOPIUR_KEEP_MONTHLY:=}
-    keepAnnual: ${KOPIUR_KEEP_ANNUAL:=}
+    keepWeekly: ${KOPIUR_KEEP_WEEKLY:=8}
+    keepMonthly: ${KOPIUR_KEEP_MONTHLY:=6}
+    keepAnnual: ${KOPIUR_KEEP_ANNUAL:=1}
   sources:
     - pvc:
         name: "${KOPIUR_CLAIM:-${APP}}"
