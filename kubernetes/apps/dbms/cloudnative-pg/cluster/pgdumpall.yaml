@@ -89,83 +89,60 @@ spec:
             - name: tmp
               emptyDir: {}
 ---
-# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/external-secrets.io/externalsecret_v1.json
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: postgres18-pgdumpall-volsync
-spec:
-  secretStoreRef:
-    kind: ClusterSecretStore
-    name: infisical
-  target:
-    name: postgres18-pgdumpall-volsync-secret
-    template:
-      data:
-        KOPIA_REPOSITORY: "{{ .KOPIA_REPOSITORY }}"
-        KOPIA_PASSWORD: "{{ .KOPIA_PASSWORD }}"
-        SFTP_HOST: "{{ .SFTP_HOST }}"
-        SFTP_PORT: "{{ .SFTP_PORT }}"
-        SFTP_USERNAME: "{{ .SFTP_USERNAME }}"
-        SFTP_PATH: "{{ .SFTP_PATH }}"
-        SFTP_KEY_FILE: "{{ .SFTP_KEY_FILE }}"
-        SFTP_KNOWN_HOSTS_DATA: "{{ .SFTP_KNOWN_HOSTS_DATA }}"
-  data:
-    - secretKey: KOPIA_REPOSITORY
-      remoteRef:
-        key: /volsync-template/KOPIA_REPOSITORY
-    - secretKey: KOPIA_PASSWORD
-      remoteRef:
-        key: /volsync-template/KOPIA_PASSWORD
-    - secretKey: SFTP_HOST
-      remoteRef:
-        key: /volsync-template/SFTP_HOST
-    - secretKey: SFTP_PORT
-      remoteRef:
-        key: /volsync-template/SFTP_PORT
-    - secretKey: SFTP_USERNAME
-      remoteRef:
-        key: /volsync-template/SFTP_USERNAME
-    - secretKey: SFTP_PATH
-      remoteRef:
-        key: /volsync-template/SFTP_PATH
-    - secretKey: SFTP_KEY_FILE
-      remoteRef:
-        key: /volsync-template/SFTP_KEY_FILE
-    - secretKey: SFTP_KNOWN_HOSTS_DATA
-      remoteRef:
-        key: /kopia_known_hosts/SFTP_KNOWN_HOSTS_DATA
----
-# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/volsync.backube/replicationsource_v1alpha1.json
-apiVersion: volsync.backube/v1alpha1
-kind: ReplicationSource
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kopiur.home-operations.com/snapshotpolicy_v1alpha1.json
+apiVersion: kopiur.home-operations.com/v1alpha1
+kind: SnapshotPolicy
 metadata:
   name: postgres18-pgdumpall
 spec:
-  sourcePVC: postgres18-pgdumpall
-  trigger:
-    schedule: 30 3 * * *
-# Upstream k8s-schemas pins volsync CRDs older than spec.kopia
-# yayamlls-disable
-  kopia:
-    accessModes:
-      - ReadWriteOnce
-    compression: zstd-fastest
-    copyMethod: Snapshot
-    moverSecurityContext:
+  compression:
+    compressor: zstd-fastest
+  copyMethod: Snapshot
+  credentialProjection:
+    enabled: true
+  mover:
+    # The dump CronJob writes as 0:0/fsGroup 1000 (postgres image), keep the same
+    # context so the mover can read the dumps.
+    podSecurityContext:
       runAsUser: 0
       runAsGroup: 0
       fsGroup: 1000
-    parallelism: 2
-    repository: postgres18-pgdumpall-volsync-secret
-    retain:
-      latest: 10
-      weekly: 6
-      monthly: 6
-      yearly: 2
-    storageClassName: ceph-block
-    volumeSnapshotClassName: csi-ceph-blockpool
-# yayamlls-enable
+  repository:
+    kind: ClusterRepository
+    name: sftp
+  # Explicit GFS, translated field-for-field from the volsync ReplicationSource
+  # (`retain: {latest: 10, weekly: 6, monthly: 6, yearly: 2}`). Kopiur buckets are
+  # a union and an absent bucket keeps nothing, so these must stay explicit.
+  retention:
+    keepLatest: 10
+    keepWeekly: 6
+    keepMonthly: 6
+    keepAnnual: 2
+  sources:
+    - pvc:
+        name: postgres18-pgdumpall
+      # MUST stay /data: the volsync fork recorded every snapshot under
+      # <app>@<ns>:/data and the history must stay addressable.
+      sourcePathOverride: /data
+  upload:
+    maxParallelFileReads: 2
+  volumeSnapshotClassName: csi-ceph-blockpool
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kopiur.home-operations.com/snapshotschedule_v1alpha1.json
+apiVersion: kopiur.home-operations.com/v1alpha1
+kind: SnapshotSchedule
+metadata:
+  name: postgres18-pgdumpall
+spec:
+  policyRef:
+    name: postgres18-pgdumpall
+  # 03:30 Europe/Paris (k8tz on the operator) = 01:30 UTC, exactly the fork's
+  # `trigger.schedule: 30 3 * * *`, three hours after the 00:30 UTC dump.
+  schedule:
+    cron: "30 3 * * *"
+# No Restore CR here, unlike the app component: a passive-populator Restore sits
+# at Ready=False/AwaitingPvcDataSourceRef until a claim references it, and this
+# Kustomization runs with `wait: true`. Restores are created on demand instead.
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/persistentvolumeclaim_v1.json
 apiVersion: v1
@@ -257,80 +234,57 @@ spec:
             - name: tmp
               emptyDir: {}
 ---
-# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/external-secrets.io/externalsecret_v1.json
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: immich-pgdumpall-volsync
-spec:
-  secretStoreRef:
-    kind: ClusterSecretStore
-    name: infisical
-  target:
-    name: immich-pgdumpall-volsync-secret
-    template:
-      data:
-        KOPIA_REPOSITORY: "{{ .KOPIA_REPOSITORY }}"
-        KOPIA_PASSWORD: "{{ .KOPIA_PASSWORD }}"
-        SFTP_HOST: "{{ .SFTP_HOST }}"
-        SFTP_PORT: "{{ .SFTP_PORT }}"
-        SFTP_USERNAME: "{{ .SFTP_USERNAME }}"
-        SFTP_PATH: "{{ .SFTP_PATH }}"
-        SFTP_KEY_FILE: "{{ .SFTP_KEY_FILE }}"
-        SFTP_KNOWN_HOSTS_DATA: "{{ .SFTP_KNOWN_HOSTS_DATA }}"
-  data:
-    - secretKey: KOPIA_REPOSITORY
-      remoteRef:
-        key: /volsync-template/KOPIA_REPOSITORY
-    - secretKey: KOPIA_PASSWORD
-      remoteRef:
-        key: /volsync-template/KOPIA_PASSWORD
-    - secretKey: SFTP_HOST
-      remoteRef:
-        key: /volsync-template/SFTP_HOST
-    - secretKey: SFTP_PORT
-      remoteRef:
-        key: /volsync-template/SFTP_PORT
-    - secretKey: SFTP_USERNAME
-      remoteRef:
-        key: /volsync-template/SFTP_USERNAME
-    - secretKey: SFTP_PATH
-      remoteRef:
-        key: /volsync-template/SFTP_PATH
-    - secretKey: SFTP_KEY_FILE
-      remoteRef:
-        key: /volsync-template/SFTP_KEY_FILE
-    - secretKey: SFTP_KNOWN_HOSTS_DATA
-      remoteRef:
-        key: /kopia_known_hosts/SFTP_KNOWN_HOSTS_DATA
----
-# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/volsync.backube/replicationsource_v1alpha1.json
-apiVersion: volsync.backube/v1alpha1
-kind: ReplicationSource
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kopiur.home-operations.com/snapshotpolicy_v1alpha1.json
+apiVersion: kopiur.home-operations.com/v1alpha1
+kind: SnapshotPolicy
 metadata:
   name: immich-pgdumpall
 spec:
-  sourcePVC: immich-pgdumpall
-  trigger:
-    schedule: 0 4 * * *
-# Upstream k8s-schemas pins volsync CRDs older than spec.kopia
-# yayamlls-disable
-  kopia:
-    accessModes:
-      - ReadWriteOnce
-    compression: zstd-fastest
-    copyMethod: Snapshot
-    moverSecurityContext:
+  compression:
+    compressor: zstd-fastest
+  copyMethod: Snapshot
+  credentialProjection:
+    enabled: true
+  mover:
+    # The dump CronJob writes as 0:0/fsGroup 1000 (postgres image), keep the same
+    # context so the mover can read the dumps.
+    podSecurityContext:
       runAsUser: 0
       runAsGroup: 0
       fsGroup: 1000
-    parallelism: 2
-    repository: immich-pgdumpall-volsync-secret
-    retain:
-      latest: 10
-      weekly: 6
-      monthly: 6
-      yearly: 2
-    storageClassName: ceph-block
-    volumeSnapshotClassName: csi-ceph-blockpool
-# yayamlls-enable
+  repository:
+    kind: ClusterRepository
+    name: sftp
+  # Explicit GFS, translated field-for-field from the volsync ReplicationSource
+  # (`retain: {latest: 10, weekly: 6, monthly: 6, yearly: 2}`). Kopiur buckets are
+  # a union and an absent bucket keeps nothing, so these must stay explicit.
+  retention:
+    keepLatest: 10
+    keepWeekly: 6
+    keepMonthly: 6
+    keepAnnual: 2
+  sources:
+    - pvc:
+        name: immich-pgdumpall
+      # MUST stay /data: the volsync fork recorded every snapshot under
+      # <app>@<ns>:/data and the history must stay addressable.
+      sourcePathOverride: /data
+  upload:
+    maxParallelFileReads: 2
+  volumeSnapshotClassName: csi-ceph-blockpool
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kopiur.home-operations.com/snapshotschedule_v1alpha1.json
+apiVersion: kopiur.home-operations.com/v1alpha1
+kind: SnapshotSchedule
+metadata:
+  name: immich-pgdumpall
+spec:
+  policyRef:
+    name: immich-pgdumpall
+  # 04:00 Europe/Paris (k8tz on the operator) = 02:00 UTC, exactly the fork's
+  # `trigger.schedule: 0 4 * * *`, three hours after the 01:00 UTC dump.
+  schedule:
+    cron: "0 4 * * *"
+# No Restore CR here, unlike the app component: a passive-populator Restore sits
+# at Ready=False/AwaitingPvcDataSourceRef until a claim references it, and this
+# Kustomization runs with `wait: true`. Restores are created on demand instead.
