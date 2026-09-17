@@ -17,12 +17,12 @@ the rollout; agents implementing parts of it should update the checkboxes and no
 | # | Decision | Status | Resolution |
 |---|----------|--------|------------|
 | D1 | Mail backend | **decided** | **Full in-cluster stack**: Postfix (SMTP) + Dovecot CE (IMAP/LMTP/Sieve), lab-battery architecture (see §4) |
-| D2 | Hostnames | **decided** | `ox.brauni.dev` + `dav.ox.brauni.dev`; Collabora gets `office.ox.brauni.dev` (see §5); mail host `mail.480p.com` (D6) |
+| D2 | Hostnames | **decided** | `ox.brauni.dev` + `dav.ox.brauni.dev`; Collabora gets `office.ox.brauni.dev` (see §5); mail hosts `mail1/2/3.480p.com` (D6/D7) |
 | D3 | Namespace | **decided** | `ox` |
 | D4 | MariaDB deployment flavor | **decided** | **(b) Light StatefulSet** — plain MariaDB STS in `ox` ns, `mariadb-dump` cronjob → S3, manual restore runbook (§3.1) |
 | D5 | Feature scope | **decided** | **Full App Suite 8**: documents + Collabora + Gotenberg + Guard + office-web + user guides ON. Switchboard/EAS/Booking = explicit opt-in follow-ups (§2.1) |
-| D6 | Mail domain | **decided** | **`480p.com`** — MX/SPF/DKIM/DMARC go on that zone; mail host `mail.480p.com` |
-| D7 | Outbound mail path | **decided** | **(a) Direct delivery** — empirically verified 2026-09-17 from cluster pods: outbound TCP/25 reaches Google, OVH and Microsoft MXs and gets `220` banners (OVH's "blocked by default" applies to Public Cloud instances in certain zones, not this egress). Egress is **per dedicated server**: ovhsbg1 → 54.38.92.92 (avoid — it's the Ceph host IP), ovhsbg2 → 54.38.94.158, ovhsbg3 → 54.38.94.150 — pick ONE as the mail IP; postfix gets nodeAffinity-pinned to it so PTR/SPF stay aligned (§4.1). ⚠️ chosen IP's PTR is currently NXDOMAIN — set to `mail.480p.com` in the OVH manager before sending real mail (§4.2). Smarthost stays a one-line `relayhost` fallback if reputation disappoints |
+| D6 | Mail domain | **decided** | **`480p.com`** — MX/SPF/DKIM/DMARC go on that zone; mail hosts `mail1/2/3.480p.com` (one per host, D7) |
+| D7 | Outbound mail path | **decided** | **(a) Direct delivery, multi-MX HA** — outbound TCP/25 verified open from all three per-server egress IPs (ovhsbg1→54.38.92.92, ovhsbg2→54.38.94.158, ovhsbg3→54.38.94.150; OVH's "blocked by default" applies to Public Cloud instances, not these). Design: one pinned postfix per host (`mail1/2/3.480p.com`, each with matching PTR), MX 10/20/20, SPF `mx` — any single host failure keeps mail flowing (§4.1). ⚠️ all three PTRs currently NXDOMAIN — set in OVH manager before real mail. Smarthost stays a one-line `relayhost` fallback if reputation disappoints |
 | D8 | External MUA access | **decided** | **Webmail-only for now.** Outlook desktop planned for later via plain **IMAP/SMTP** (OX has no EWS/MAPI; EAS/"Outlook mobile native sync" is the licensed Business-Mobility piece, not planned). When needed: expose IMAPS 993 + submission 587 on the mail LB, cert-manager TLS, Dovecot per-user passwd entries (§4.4) — additive, no rework |
 
 ## 1. Research summary (verified 2026-09-17)
@@ -141,26 +141,35 @@ license headers when vendoring; the postfix image is published at
 build it):
 
 ```
-Internet ──MX 25──► NodePort/LB Service ──► postfix (STS, in): relay_domains=<mail-domain>
-                                                  │ LMTP (in-cluster)
-                                                  ▼
+Internet ──MX 25──► (host DNAT, one rule per Proxmox host)
+                        │
+                        ▼
+                   smtp LB (Cilium L2 IP, floating) ──► ox-postfix-{1,2,3}
+                                                        (one per host, pinned;
+                                                         each egresses its own
+                                                         host IP = its mailN A/PTR)
+                                                        │ LMTP (in-cluster)
+                                                        ▼
                                              dovecot-ce (maildir PVC, IMAP 143, sieve 4190,
-                                                  │            submission 587, doveadm)
-                                                  │ IMAP 143 (in-cluster, master-password auth)
-                                                  ▼
+                                                        │            submission 587, doveadm)
+                                                        │ IMAP 143 (in-cluster, master-password auth)
+                                                        ▼
                              core-mw  ◄──SMTP 25 (in-cluster)──  users compose mail
                              (sieve filters pushed to dovecot :4190)
-Outbound: postfix ──25──► (D7: direct w/ OVH unblock+PTR+DKIM  OR  smarthost relay)
+Outbound: ox-postfix-N ──25──► direct, from its own host IP whose PTR = its mailN name
+                               (+ SPF mx / DKIM / DMARC; smarthost = escape hatch)
 ```
 
 Key facts from the batteries:
 
-- **Postfix** (`appsuite-operation-guides/postfix` image, plain StatefulSet + Service):
+- **Postfix** (`appsuite-operation-guides/postfix` image, per-host pinned Deployments +
+  shared Service, §4.1):
   lab config relays `<domain>` via `relay_domains`/`transport_maps` to LMTP at dovecot and
   **discards everything else** (`transport: * discard:`) — lab-grade! For us, main.cf needs
-  real outbound, TLS (cert-manager cert for `mail.480p.com` STARTTLS),
+  real outbound, TLS (cert-manager cert for `mailN.480p.com` STARTTLS),
   message size limits, and DKIM (see gap G1). Chart exposes `main.cf.replace`/`.append`
-  ConfigMaps — fully overridable without forking.
+  ConfigMaps — fully overridable without forking; we ship our own manifests rather than
+  the lab chart so the per-host pinning + spool PVCs are declarative.
 - **Dovecot CE** (upstream `dovecot/dovecot` image, StatefulSet + PVC + ConfigMap/Secret):
   ports imap/lmtp/submission/sieve/doveadm; `passwd-file` auth by default; TLS optional
   (we terminate at gateway/in-cluster plaintext for OX; enable TLS for external MUAs only
@@ -187,8 +196,8 @@ A/MX/TXT/DMARC records → no `sync`-takeover risk):
 
 | Record | Type | Value |
 |---|---|---|
-| `mail.480p.com` | A | chosen host IP (`54.38.94.150` or `54.38.94.158` — §4.1, **not** 92.92) |
-| `480p.com` | MX | `10 mail.480p.com.` |
+| `mail1/mail2/mail3.480p.com` | A | per-host: → `54.38.92.92` / `54.38.94.158` / `54.38.94.150` (§4.1) |
+| `480p.com` | MX | `10 mail1.`, `20 mail2.`, `20 mail3.` |
 | `480p.com` | TXT | `"v=spf1 mx -all"` (SPF) |
 | `_dmarc.480p.com` | TXT | `"v=DMARC1; p=none; rua=mailto:dmarc@480p.com"` → tighten later |
 | `<sel>._domainkey.480p.com` | TXT | DKIM public key (public by design — fine in Git) |
@@ -204,28 +213,58 @@ tunnels** (proxied records). Cloudflare cannot proxy SMTP. Verified per-node egr
 (one pod per node): nodes on ovhsbg1 → `54.38.92.92`, ovhsbg2 → `54.38.94.158`,
 ovhsbg3 → `54.38.94.150` — each dedicated server NATs its own VMs.
 
-**Mail IP model** (answer to "forward on each? one?"): **exactly ONE host** — whichever
-dedicated server's public IP becomes `mail.480p.com`. Recommendation: pick
-`54.38.94.150` (ovhsbg3) or `54.38.94.158` (ovhsbg2); **avoid `54.38.92.92`** (it is the
-ovhsbg1 Proxmox/external-Ceph host IP with existing duties).
+**Mail IP model — HA by design: one postfix per dedicated server, three MX records**
+(the classic SMTP HA pattern; supersedes the earlier single-host-pin idea):
 
-On that ONE host (Proxmox-level, outside this repo, one-time):
+- **3 postfix Deployments** (`ox-postfix-{1,2,3}`), each `nodeAffinity`-pinned to one
+  dedicated server, all selected by one shared in-cluster Service. Each instance then
+  egresses via *its own* host's public IP — deterministic, and every host IP gets a
+  matching PTR so FCrDNS/SPF stay aligned on all three:
 
-- DNAT `<host-ip>:25` → `<smtp-lb-ip>:25` where the SMTP LoadBalancer Service picks a
-  fresh IP from the Cilium pool via the `lbipam.cilium.io/ips: 10.10.8.x` annotation
-  (mirroring `envoy-brauni-dev-public` → 10.10.8.16). The LB IP floats across nodes on
-  all hosts (flat L2), so the forward itself never needs re-pointing; on node failover
-  expect a short ARP-cache delay on the host (~30–60s).
-- later: same for 587/993 when the Outlook-desktop follow-up lands (D8).
-- **Outbound alignment (critical)**: postfix must also LEAVE via that same host IP —
-  otherwise mail egresses from whichever host schedules the pod and PTR/SPF break.
-  Implementation: `nodeAffinity` pinning the postfix pod to the chosen dedicated server
-  (single replica anyway). Trade-off: that host down = mail down (senders retry for
-  days, postfix queues outbound — acceptable homelab).
-- If that DNAT can't be made: fallback = keep MXRouting as MX for 480p.com and have OX
-  fetch via external IMAP account (last resort, loses the "full in-cluster" goal).
+  | instance | pinned to | egress/inbound IP | A record + PTR |
+  |---|---|---|---|
+  | ox-postfix-1 | ovhsbg1 | 54.38.92.92 | `mail1.480p.com` |
+  | ox-postfix-2 | ovhsbg2 | 54.38.94.158 | `mail2.480p.com` |
+  | ox-postfix-3 | ovhsbg3 | 54.38.94.150 | `mail3.480p.com` |
+
+  (Using 92.92 is fine here: it only needs a *separate PTR name* — sharing the IP with
+  the Ceph host doesn't conflict, DNS-wise mail1 is just another name for it. If that
+  feels dirty, run 2 instances instead of 3 — any two hosts suffice.)
+- **Inbound**: one-time DNAT `:25` → `<smtp-lb-ip>:25` **on each of the hosts used**,
+  all pointing at the same SMTP LoadBalancer IP (fresh Cilium pool IP via
+  `lbipam.cilium.io/ips`, mirroring envoy → 10.10.8.16). Cilium picks a healthy backend
+  anywhere; return traffic re-traverses the ingress node (non-DSR LB semantics) so the
+  reply leaves via the same host IP that received it. **Verify this return path with
+  tcpdump during P2** — if replies ever egress the wrong host IP, switch the Service to
+  `externalTrafficPolicy: Local` + per-host backend selection (deterministic fallback).
+- **DNS** (all via DNSEndpoint, §4.1): MX `10 mail1`, `20 mail2`, `20 mail3`; SPF
+  `v=spf1 mx -all` (covers all three); each `mailN` A → its host IP.
+- **Shared identity across instances**: same DKIM key (Secret from Infisical → all
+  three) with one selector, same TLS certs (cert-manager) — receivers
+  don't care which MX delivered. Postfix `myhostname` per instance = its `mailN` name.
+- **Queue durability**: per-instance small RWO PVC (`ceph-block`) for
+  `/var/spool/postfix` so a pod restart doesn't drop queued mail.
+- **Failure behavior**: any one host down → its MX stops answering, senders fall back
+  to the other MXs within their retry interval (minutes); outbound flows via the two
+  surviving instances; OX→Service round-robins to whichever postfix is up.
+- **Minimal variant** (if three instances feels heavy): same design with any ONE host
+  = the earlier single-pin — mail-down-when-host-down, senders retry for days.
+- If host-level DNAT can't be made at all: fallback = keep MXRouting as MX for 480p.com
+  and have OX fetch via external IMAP account (last resort, loses "full in-cluster").
 - Also noted: `brauni.dev` currently has MX → `glacier{,-relay}.mxrouting.net` (existing
   hosted mail) — we are **not** touching brauni.dev mail; 480p.com is a clean slate.
+
+### 4.1.1 HA posture of everything else
+
+| Component | Default posture | What a host failure costs | Upgrade path (if ever needed) |
+|---|---|---|---|
+| postfix | 3× per-host (above) | nothing user-visible | — |
+| dovecot | 1 replica, maildir on external-Ceph RWO PVC | ~1–2 min (pod reschedules; PVC is reachable from every node) | Dovecot replication/director (big project, skip) |
+| MariaDB | 1 replica, RWO on external Ceph | ~1–2 min reschedule | mariadb-operator Galera (= the D4=a we shelved) |
+| OX middleware/ui | replicas + topology spread (set `replicas: 2` once green) | nothing | more replicas |
+| Redis | 1 replica, no persistence (sessions/cache only) | ~1 min + everyone re-logs in | chart supports sentinel mode (littlered) |
+| external Ceph | Proxmox-side, 3 servers | degraded-but-alive if sized accordingly | not our project |
+| whole cluster down | — | senders queue mail for days; OX webmail down | that's what backups are for |
 
 ### 4.2 Deliverability checklist (D7 = direct, port 25 verified open)
 
@@ -236,16 +275,15 @@ by default" policy targets Public Cloud instances/local zones; also note OVH can
 network-level blocks *reactively* on spam abuse — keep postfix locked down to our subnet
 + authenticated submission only).
 
-- [ ] **Choose the mail host** (§4.1: 54.38.94.150 or .158) — everything below refers to
-      that one IP; pin postfix to that server via nodeAffinity
-- [ ] **PTR / reverse DNS**: `<chosen-ip>` → `mail.480p.com` — currently **NXDOMAIN**;
+- [ ] **PTR / reverse DNS** for each host IP used: `54.38.92.92→mail1`,
+      `54.38.94.158→mail2`, `54.38.94.150→mail3` `.480p.com` — all currently **NXDOMAIN**;
       set in OVH manager (IP → reverse DNS). This is the single biggest blocker today:
       Outlook.com hard-rejects PTR-less senders, Gmail heavily penalizes.
-- [ ] **SPF** TXT on `480p.com`: `v=spf1 mx -all` (MX = `mail.480p.com` → same IP)
+- [ ] **SPF** TXT on `480p.com`: `v=spf1 mx -all` (MX = mail1/2/3, covers all three IPs)
 - [ ] **DKIM**: sign via rspamd/opendkim (G1) with `480p.com` selector, publish DNS TXT
 - [ ] **DMARC** TXT on `480p.com`: start `p=none; rua=mailto:...` then tighten
 - [ ] Postfix: `smtpd_relay_restrictions` already permit-only-our-networks; helo checks,
-      TLS (STARTTLS, cert `mail.480p.com` from cert-manager), sane `message_size_limit`,
+      TLS (STARTTLS, certs `mail1/2/3.480p.com` from cert-manager), sane `message_size_limit`,
       rate limiting; monitor bounces
 - [ ] Validate: mail-tester.com ≥ 8/10, plus a real send to a Gmail **and** an
       Outlook.com test address (Microsoft is the strictest about cloud-IP reputation)
@@ -342,11 +380,11 @@ kubernetes/apps/ox/
 └── mail/
     ├── ks.yaml
     └── app/
-        ├── postfix/                           # STS + main.cf ConfigMaps (real outbound, TLS, G1/G2),
-        │                                      #   image appsuite-operation-guides/postfix (digest-pinned)
+        ├── postfix/                           # 3 pinned Deployments (one per host) + main.cf ConfigMaps,
+        │                                      #   spool PVCs; image appsuite-operation-guides/postfix (digest)
         ├── dovecot/                           # STS + dovecot.conf ConfigMap, passwd-file/secret, maildir PVC
-        ├── smtp-loadbalancer.yaml             # Service LB :25 (+993/465/587 for the Outlook follow-up)
-        └── certificates.yaml                  # cert-manager cert for mail.480p.com (STARTTLS)
+        ├── services.yaml                      # shared postfix Service + SMTP LB (lbipam.cilium.io/ips, §4.1)
+        └── certificates.yaml                  # cert-manager certs for mail1/2/3.480p.com (STARTTLS)
 ```
 
 (D4=a operator variant dropped — revisit only if HA needs arise.)
@@ -450,16 +488,16 @@ Grants: `ox` app user + `root` for init/registration/update jobs.
 | gotenberg | 512Mi | PDF conversion |
 | mariadb | 1.5Gi | |
 | redis | 256Mi | |
-| postfix / dovecot | 256Mi / 512Mi | maildir on PVC |
+| postfix ×3 / dovecot | 3×256Mi / 512Mi | per-host spool PVCs; maildir on PVC |
 | **Total** | **~13–14Gi** | spread across 3×24Gi workers; keep middleware+collabora on different nodes if convenient |
 
 ## 9. Rollout plan (ordered, with validation gates)
 
 - [ ] **P0 — decisions + external pre-reqs**: ✅ decisions resolved (D1–D8, §0). Outside
       Git, brauni to do early:
-      - [ ] Pick the mail host IP (54.38.94.150 = ovhsbg3 or 54.38.94.158 = ovhsbg2)
-      - [ ] OVH manager: set PTR for that IP → `mail.480p.com` (slow propagation)
-      - [ ] On that ONE Proxmox host: one-time DNAT `:25` → SMTP LB IP
+      - [ ] OVH manager: set PTRs — `54.38.92.92→mail1.480p.com`,
+            `54.38.94.158→mail2.480p.com`, `54.38.94.150→mail3.480p.com` (slow propagation)
+      - [ ] On EACH Proxmox host: one-time DNAT `<host-ip>:25` → SMTP LB IP
             (Cilium pool, e.g. `10.10.8.17`, see §4.1); later also 587/993 for Outlook
 - [ ] **P1 — foundations**:
       - [ ] Namespace layer `kubernetes/apps/ox/` (namespace, kustomization, alerts +
@@ -468,13 +506,16 @@ Grants: `ox` app user + `root` for init/registration/update jobs.
             Gate: healthy pod, backup object in S3, `mariadb-admin status` green.
       - [ ] Redis StatefulSet `ox-redis` (7.4, digest-pinned, no persistence). Gate: ping.
       - [ ] OBCs `ox-filestore`, `ox-guardstore`. Gate: buckets listed via toolbox pod.
-- [ ] **P2 — mail stack**:
-      - [ ] Postfix STS with real config (D7 path; DKIM if D7a; smarthost creds if D7b).
+- [ ] **P2 — mail stack (multi-MX HA, §4.1)**:
+      - [ ] Postfix: 3 per-host pinned Deployments + shared Service + spool PVCs, real
+            config (outbound, TLS, DKIM). Gate: each instance's egress IP reflects its host.
       - [ ] Dovecot STS: maildir PVC, masterauth secret, sieve, LMTP; submission host.
-      - [ ] SMTP LoadBalancer Service + DNSEndpoint (A `mail.480p.com`, MX, SPF/DMARC TXT,
-            DKIM TXT). Gate: external mail TO a test address lands in the maildir
-            (swaks/mail-tester from outside); outbound to Gmail lands in spam folder at
-            worst, inbox at best — iterate on DNS until mail-tester ≥ 8/10.
+      - [ ] SMTP LoadBalancer Service (`lbipam.cilium.io/ips`); DNSEndpoints: A
+            `mail1/2/3.480p.com`, MX 10/20/20, SPF + DMARC TXT, DKIM TXT. Gate: external
+            mail TO a test address lands in the maildir (swaks/mail-tester from outside);
+            outbound to Gmail/Outlook ≥ mail-tester 8/10 — iterate DNS/PTR until then.
+      - [ ] Validate inbound return path (tcpdump on hosts, R13): replies must leave via
+            the same host IP that received them; else switch Service to trafficPolicy Local.
 - [ ] **P3 — App Suite core (full suite values)**:
       - [ ] ocirepository + helmrelease (§7), HTTPRoutes (§5), DNSEndpoints for ox/dav/office,
             Homepage annotations, CiliumNetworkPolicies.
@@ -531,8 +572,9 @@ Grants: `ox` app user + `root` for init/registration/update jobs.
 - **R12**: `registerdatabase`/userdb schemas bind MariaDB credentials into configdb rows —
   rotating `OX_MARIADB_OX_PASSWORD` later requires SQL updates in configdb, not just a
   secret roll. Prefer long static password from day one.
-- **R13**: Inbound SMTP depends on a DNAT on the ONE chosen Proxmox host (no public IP
-  is routed to the cluster; HTTP rides Cloudflare tunnels which can't carry SMTP).
-  Outbound equally depends on pinning postfix to that host (per-server egress). If the
-  forward can't be made, inbound falls back to MXRouting + OX external-account fetch —
-  decide before P2 mail validation.
+- **R13**: Inbound SMTP depends on host-level DNATs (no public IP is routed to the
+  cluster; HTTP rides Cloudflare tunnels which can't carry SMTP); outbound depends on
+  per-host postfix pinning (per-server egress). HA model: 3 per-host instances + 3 MX
+  records (§4.1). Validate the Cilium LB return path during P2; if replies egress the
+  wrong host IP, switch to `externalTrafficPolicy: Local`. If DNAT can't be made at
+  all, inbound falls back to MXRouting + OX external-account fetch — decide before P2.
