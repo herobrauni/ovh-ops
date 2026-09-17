@@ -179,14 +179,40 @@ Key facts from the batteries:
 
 ### 4.1 Exposure & DNS (inbound)
 
-- SMTP-25 must bypass Cloudflare (no proxy) → dedicated `Service type: LoadBalancer`
-  (Cilium L2/BGP announcement — check how `public.brauni.dev` LB is done today and mirror)
-  or NodePort 30025 + A record. DNSEndpoint A record `mail.480p.com` → LB/egress IP; MX
-  record `480p.com` → `mail.480p.com` (Cloudflare API via external-dns supports MX? —
-  our external-dns is DNSEndpoint-driven, so yes via `recordType: MX`).
-- IMAPS/submission (993/465/587) exposed only when the Outlook-desktop follow-up lands
-  (D8: webmail-only now); same LB service, TLS via
-  cert-manager).
+**All DNS records are GitOps via `DNSEndpoint` + external-dns** — the `cloudflare-dns`
+instance sources the CRD with `policy: sync` and picks up endpoints labeled
+`dns.scope: cloudflare|all`; the CRD source carries A/MX/TXT just like CNAME. Records to
+manage in `ox/mail/app/dnsendpoints.yaml` (verified 480p.com apex currently has **no**
+A/MX/TXT/DMARC records → no `sync`-takeover risk):
+
+| Record | Type | Value |
+|---|---|---|
+| `mail.480p.com` | A | `54.38.94.158` (the cluster egress IP — see NAT note below) |
+| `480p.com` | MX | `10 mail.480p.com.` |
+| `480p.com` | TXT | `"v=spf1 mx -all"` (SPF) |
+| `_dmarc.480p.com` | TXT | `"v=DMARC1; p=none; rua=mailto:dmarc@480p.com"` → tighten later |
+| `<sel>._domainkey.480p.com` | TXT | DKIM public key (public by design — fine in Git) |
+
+**Not** external-dns-able: the **PTR** (reverse zones aren't hosted at Cloudflare) →
+manual in the OVH manager (P0 item).
+
+**⚠️ Real prerequisite discovered (2026-09-17): the cluster has NO publicly routed IP.**
+Envoy Gateway LBs sit on private Cilium L2 addresses (10.10.8.13–16 from the `pool`
+CiliumLoadBalancerIPPool + `l2-policy` announcement); public HTTP enters through
+**Cloudflare tunnels** (proxied records). Cloudflare cannot proxy SMTP. Therefore inbound
+TCP/25 needs a **one-time DNAT/port-forward on the edge device that owns 54.38.94.158**
+(the cluster egress NAT):
+
+- forward `54.38.94.158:25` → `<smtp-lb-ip>:25`, where the SMTP LoadBalancer Service
+  picks a fresh IP from the same Cilium pool via the `lbipam.cilium.io/ips: 10.10.8.x`
+  annotation (mirroring `envoy-brauni-dev-public` → 10.10.8.16);
+- later: same for 587/993 when the Outlook-desktop follow-up lands (D8).
+- This router-level change lives **outside this repo** — brauni does it manually, tracked
+  as a P0 item next to the PTR. If that NAT can't forward inbound 25, fallback: keep
+  MXRouting as MX for 480p.com and have OX fetch via external IMAP account (last resort,
+  loses the "full in-cluster" goal).
+- Also noted: `brauni.dev` currently has MX → `glacier{,-relay}.mxrouting.net` (existing
+  hosted mail) — we are **not** touching brauni.dev mail; 480p.com is a clean slate.
 
 ### 4.2 Deliverability checklist (D7 = direct, port 25 verified open)
 
@@ -486,3 +512,7 @@ Grants: `ox` app user + `root` for init/registration/update jobs.
 - **R12**: `registerdatabase`/userdb schemas bind MariaDB credentials into configdb rows —
   rotating `OX_MARIADB_OX_PASSWORD` later requires SQL updates in configdb, not just a
   secret roll. Prefer long static password from day one.
+- **R13**: Inbound SMTP depends on a router-level DNAT on the egress IP (no public IP is
+  routed to the cluster; HTTP rides Cloudflare tunnels which can't carry SMTP). If that
+  forward can't be made, inbound falls back to MXRouting + OX external-account fetch —
+  decide before P2 mail validation.
