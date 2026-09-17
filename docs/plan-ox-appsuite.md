@@ -1,6 +1,6 @@
 # Plan: Open-Xchange (OX App Suite 8) on the cluster — FULL SUITE
 
-> Status: **DRAFT v2 — scope upgraded to full suite incl. mail backend; D4 still open**
+> Status: **DRAFT v3 — all decisions resolved; ready to implement**
 > Owner: brauni · Collaborators: any agent · Track this file until the rollout is done,
 > then distill durable findings into `AGENTS.md` and delete/archive this plan.
 
@@ -17,13 +17,13 @@ the rollout; agents implementing parts of it should update the checkboxes and no
 | # | Decision | Status | Resolution |
 |---|----------|--------|------------|
 | D1 | Mail backend | **decided** | **Full in-cluster stack**: Postfix (SMTP) + Dovecot CE (IMAP/LMTP/Sieve), lab-battery architecture (see §4) |
-| D2 | Hostnames | **decided** | `ox.brauni.dev` + `dav.ox.brauni.dev`; Collabora gets `office.ox.brauni.dev` (see §5); mail host `mail.<mail-domain>` (D6) |
+| D2 | Hostnames | **decided** | `ox.brauni.dev` + `dav.ox.brauni.dev`; Collabora gets `office.ox.brauni.dev` (see §5); mail host `mail.480p.com` (D6) |
 | D3 | Namespace | **decided** | `ox` |
-| D4 | MariaDB deployment flavor | **open — brauni thinking** | See comparison §3.1. Nothing else in P1 blocks on it besides the MariaDB PR itself |
+| D4 | MariaDB deployment flavor | **decided** | **(b) Light StatefulSet** — plain MariaDB STS in `ox` ns, `mariadb-dump` cronjob → S3, manual restore runbook (§3.1) |
 | D5 | Feature scope | **decided** | **Full App Suite 8**: documents + Collabora + Gotenberg + Guard + office-web + user guides ON. Switchboard/EAS/Booking = explicit opt-in follow-ups (§2.1) |
-| D6 | Mail domain | **open** | Which domain receives mail (`brauni.dev`? `480p.com`? dedicated)? Sets MX/SPF/DKIM/DMARC records + mail hostnames |
-| D7 | Outbound mail path | **open** | (a) direct: OVH outbound port-25 unblock + PTR + SPF/DKIM, or (b) smarthost relay via an existing provider. Deliverability risk differs hugely (§4.3) |
-| D8 | External MUA access | **open** | Thunderbird/phone via IMAP+SMTP-submission from outside the cluster? (adds Dovecot passwd-file sync or LDAP/Keycloak decision, §4.4) — App Suite itself needs neither |
+| D6 | Mail domain | **decided** | **`480p.com`** — MX/SPF/DKIM/DMARC go on that zone; mail host `mail.480p.com` |
+| D7 | Outbound mail path | **decided** | **(a) Direct delivery** — empirically verified 2026-09-17 from a cluster pod: outbound TCP/25 reaches Google, OVH and Microsoft MXs and gets `220` banners (OVH's "blocked by default" applies to Public Cloud instances in certain zones, not this egress). Egress IP **54.38.94.158** (shared cluster egress). ⚠️ its PTR is currently **NXDOMAIN** — must be set to `mail.480p.com` in the OVH manager before sending real mail (§4.2). Smarthost stays a one-line `relayhost` fallback if reputation disappoints |
+| D8 | External MUA access | **decided** | **Webmail-only for now.** Outlook desktop planned for later via plain **IMAP/SMTP** (OX has no EWS/MAPI; EAS/"Outlook mobile native sync" is the licensed Business-Mobility piece, not planned). When needed: expose IMAPS 993 + submission 587 on the mail LB, cert-manager TLS, Dovecot per-user passwd entries (§4.4) — additive, no rework |
 
 ## 1. Research summary (verified 2026-09-17)
 
@@ -124,21 +124,14 @@ The user asked to double-check this. Findings, with sources:
 - Practical consequence: whatever runs the DB must be wire-compatible MySQL/MariaDB of the
   supported versions. No CNPG, no Cockroach, no Vitess-sharded exotic flavors.
 
-### 3.1 D4 comparison (decide when ready)
+### 3.1 D4 — resolved: light StatefulSet (b)
 
-| | (a) mariadb-operator | (b) light StatefulSet |
-|---|---|---|
-| Style | matches repo operator-first pattern (CNPG, Rook) | like lab `mariadb-light`, hand-rolled |
-| CRD surface | `MariaDB`/`Database`/`User`/`Backup`/`Restore` CRs, Flux-friendly | plain STS + ConfigMaps + Jobs |
-| Backups | `Backup` CR → S3, scheduled, incremental-ish (physical xtrabackup-style + logical) | cronjob `mariadb-dump` → S3, restore manual |
-| HA | Galera optional later | none (accept downtime) |
-| Cost | +1 operator deployment, CRDs cluster-wide, learning curve | zero extra moving parts |
-| Restoration drill | `Restore` CR, documented | manual SQL import |
-
-Full-suite OX makes the DB even more central (configdb + N userdb schemas +
-objectcachedb + guard). Both options work for a homelab; (a) gives the better DR story and
-matches the repo, (b) is less machinery. **The rest of the plan is agnostic** — only the
-`kubernetes/apps/ox/mariadb/` (or `dbms/`) subtree differs.
+Chosen: plain MariaDB StatefulSet in the `ox` namespace (lab `mariadb-light` pattern),
+`mariadb-dump` cronjob → S3 OBC, restore = documented manual runbook + one drilled
+restore before relying on it. Revisit the operator later only if HA/physical backups
+become a requirement. MariaDB version: **11.4 LTS** (supported by OX, in support until
+2029; 10.11 EOL 2028 — 11.4 maximizes runway). Config: `utf8mb4`, InnoDB, sensible
+`innodb_buffer_pool_size` (~70% of its 1.5Gi), `max_connections` ~200.
 
 ## 4. Mail backend (full, in-cluster)
 
@@ -165,7 +158,7 @@ Key facts from the batteries:
 - **Postfix** (`appsuite-operation-guides/postfix` image, plain StatefulSet + Service):
   lab config relays `<domain>` via `relay_domains`/`transport_maps` to LMTP at dovecot and
   **discards everything else** (`transport: * discard:`) — lab-grade! For us, main.cf needs
-  real outbound (or smarthost), TLS (cert-manager cert for `mail.<domain>` STARTTLS),
+  real outbound, TLS (cert-manager cert for `mail.480p.com` STARTTLS),
   message size limits, and DKIM (see gap G1). Chart exposes `main.cf.replace`/`.append`
   ConfigMaps — fully overridable without forking.
 - **Dovecot CE** (upstream `dovecot/dovecot` image, StatefulSet + PVC + ConfigMap/Secret):
@@ -188,22 +181,34 @@ Key facts from the batteries:
 
 - SMTP-25 must bypass Cloudflare (no proxy) → dedicated `Service type: LoadBalancer`
   (Cilium L2/BGP announcement — check how `public.brauni.dev` LB is done today and mirror)
-  or NodePort 30025 + A record. DNSEndpoint A record `mail.<domain>` → LB IP; MX record
-  for the mail domain → `mail.<domain>` (Cloudflare API via external-dns supports MX? —
+  or NodePort 30025 + A record. DNSEndpoint A record `mail.480p.com` → LB/egress IP; MX
+  record `480p.com` → `mail.480p.com` (Cloudflare API via external-dns supports MX? —
   our external-dns is DNSEndpoint-driven, so yes via `recordType: MX`).
-- IMAPS/submission (993/465/587) exposed only if D8 = yes (same LB service, TLS via
+- IMAPS/submission (993/465/587) exposed only when the Outlook-desktop follow-up lands
+  (D8: webmail-only now); same LB service, TLS via
   cert-manager).
 
-### 4.2 Deliverability checklist (D7 = direct)
+### 4.2 Deliverability checklist (D7 = direct, port 25 verified open)
 
-- [ ] OVH: request outbound port-25 unblock for the account (OVH blocks SMTP egress by
-      default on public cloud / VPS ranges)
-- [ ] PTR/reverse DNS of the egress IP → `mail.<domain>` (OVH manager)
-- [ ] SPF TXT, DKIM (see G1), DMARC records for the mail domain
-- [ ] Postfix: helo restrictions, TLS, rate limiting; monitor bounces
-- Smarthost alternative: relay via existing provider (e.g. OVH email, mailbox.org,
-  SES…) — no unblock/PTR needed, DKIM by provider; still set SPF include + custom
-  Return-Path handling if needed.
+Verified 2026-09-17: cluster egress 54.38.94.158 reaches `aspmx.l.google.com:25`,
+`mx1.ovh.net:25`, `outlook-…protection.outlook.com:25` with `220` banners — **no OVH
+block on this egress** (their "blocked by default" policy targets Public Cloud
+instances/local zones; also note OVH network-level blocks can be applied *reactively*
+on spam abuse — keep postfix locked down to our subnet + authenticated submission only).
+
+- [ ] **PTR / reverse DNS**: 54.38.94.158 → `mail.480p.com` — currently **NXDOMAIN**;
+      set in OVH manager (IP → reverse DNS). This is the single biggest blocker today:
+      Outlook.com hard-rejects PTR-less senders, Gmail heavily penalizes.
+- [ ] **SPF** TXT on `480p.com`: `v=spf1 mx -all` (MX = `mail.480p.com` → same IP)
+- [ ] **DKIM**: sign via rspamd/opendkim (G1) with `480p.com` selector, publish DNS TXT
+- [ ] **DMARC** TXT on `480p.com`: start `p=none; rua=mailto:...` then tighten
+- [ ] Postfix: `smtpd_relay_restrictions` already permit-only-our-networks; helo checks,
+      TLS (STARTTLS, cert `mail.480p.com` from cert-manager), sane `message_size_limit`,
+      rate limiting; monitor bounces
+- [ ] Validate: mail-tester.com ≥ 8/10, plus a real send to a Gmail **and** an
+      Outlook.com test address (Microsoft is the strictest about cloud-IP reputation)
+- [ ] Fallback switch if reputation disappoints: `relayhost = [smarthost]:587` + creds
+      from Infisical — one configmap change, no redesign
 
 ### 4.3 Gaps in lab batteries (must fix for real use)
 
@@ -285,10 +290,10 @@ kubernetes/apps/ox/
 │       ├── dnsendpoints.yaml                  # ox/dav/office CNAMEs + mail A/MX/TXT (§4.1)
 │       └── ciliumnetworkpolicy.yaml           # egress: mariadb, redis, rgw, dovecot, postfix, dns
 ├── mariadb/
-│   ├── ks.yaml                                # dependsOn mariadb-operator if D4=a
-│   └── app|cluster/                           # MariaDB CR (10.11/11.4, single replica, ceph-block ~30Gi),
-│                                             #   configdb/userdb/objectcachedb_v2/guardstore DBs+grants,
-│                                             #   Backup CR → OBC ox-mariadb-backups (or dump cronjob for D4=b)
+│   ├── ks.yaml                                # dependsOn: redis, mail, (rook-ceph for OBCs)
+│   └── cluster/                               # D4=b: MariaDB StatefulSet (11.4, ceph-block ~30Gi),
+│                                             #   configdb/userdb/objectcachedb_v2/guardstore init SQL Job,
+│                                             #   mariadb-dump cronjob → OBC ox-mariadb-backups
 ├── redis/
 │   ├── ks.yaml
 │   └── app/                                   # single redis:7.4 StatefulSet, no persistence
@@ -298,12 +303,13 @@ kubernetes/apps/ox/
         ├── postfix/                           # STS + main.cf ConfigMaps (real outbound, TLS, G1/G2),
         │                                      #   image appsuite-operation-guides/postfix (digest-pinned)
         ├── dovecot/                           # STS + dovecot.conf ConfigMap, passwd-file/secret, maildir PVC
-        ├── smtp-loadbalancer.yaml             # Service LB :25 (+993/465/587 if D8)
-        └── certificates.yaml                  # cert-manager certs for mail.<domain> (STARTTLS)
+        ├── smtp-loadbalancer.yaml             # Service LB :25 (+993/465/587 for the Outlook follow-up)
+        └── certificates.yaml                  # cert-manager cert for mail.480p.com (STARTTLS)
 ```
 
-Plus (D4=a): `kubernetes/apps/dbms/mariadb-operator/{ks.yaml,app/…}` + entry in the dbms
-namespace kustomization. Renovate: chart + the OX/battery images; OX tags are
+(D4=a operator variant dropped — revisit only if HA needs arise.)
+
+Renovate: chart + the OX/battery images; OX tags are
 `8.52.<build>` — pin the **chart** and let it carry its tested image set, but
 digest-pin images we override ourselves.
 
@@ -407,18 +413,20 @@ Grants: `ox` app user + `root` for init/registration/update jobs.
 
 ## 9. Rollout plan (ordered, with validation gates)
 
-- [ ] **P0 — decisions**: D4, D6, D7, D8 answered. Record above.
+- [ ] **P0 — decisions**: ✅ all resolved (D1–D8, see §0). Pre-req outside Git: set PTR
+      for 54.38.94.158 → `mail.480p.com` in the OVH manager (do early, propagation takes
+      a while).
 - [ ] **P1 — foundations**:
       - [ ] Namespace layer `kubernetes/apps/ox/` (namespace, kustomization, alerts +
             gateway-route-access components).
-      - [ ] MariaDB per D4; DBs + grants + Backup. Gate: healthy pod, backup object in S3,
-            `mariadb-admin status` green.
+      - [ ] MariaDB **light StatefulSet** (11.4) + init SQL Job + dump cronjob → S3.
+            Gate: healthy pod, backup object in S3, `mariadb-admin status` green.
       - [ ] Redis StatefulSet `ox-redis` (7.4, digest-pinned, no persistence). Gate: ping.
       - [ ] OBCs `ox-filestore`, `ox-guardstore`. Gate: buckets listed via toolbox pod.
 - [ ] **P2 — mail stack**:
       - [ ] Postfix STS with real config (D7 path; DKIM if D7a; smarthost creds if D7b).
       - [ ] Dovecot STS: maildir PVC, masterauth secret, sieve, LMTP; submission host.
-      - [ ] SMTP LoadBalancer Service + DNSEndpoint (A `mail.<domain>`, MX, SPF/DMARC TXT,
+      - [ ] SMTP LoadBalancer Service + DNSEndpoint (A `mail.480p.com`, MX, SPF/DMARC TXT,
             DKIM TXT). Gate: external mail TO a test address lands in the maildir
             (swaks/mail-tester from outside); outbound to Gmail lands in spam folder at
             worst, inbox at best — iterate on DNS until mail-tester ≥ 8/10.
@@ -451,8 +459,11 @@ Grants: `ox` app user + `root` for init/registration/update jobs.
   Renovate must only bump the chart, never individual images. Digest-pin overrides.
 - **R2**: Envoy Gateway `sessionPersistence` + `URLRewrite` on the same rule — supported
   on EG ≥1.3 (we run 1.9.x); DAV header-stickiness support to verify (fallback: none).
-- **R3**: Mail deliverability (D7a): OVH port-25 unblock + PTR are account-level asks with
-  lead time; without them outbound must go smarthost (D7b). DKIM tooling gap G1.
+- **R3**: Mail deliverability: port 25 is open (verified), but the egress IP is a
+  shared OVH cloud IP with **no PTR today** — set it before any real sending, and
+  expect Outlook.com/Gmail to judge 54.38.x.x cloud ranges harshly until
+  SPF+DKIM+DMARC+PTR are all in place. DKIM tooling gap G1. If reputation stays bad,
+  the one-line smarthost `relayhost` is the escape hatch.
 - **R4**: DBs must exist before first middleware boot (init Job) — Flux dependsOn chain
   mariadb → appsuite. Same for OBC buckets before registration (registration is manual
   anyway, so only boot-time needs: mariadb + redis).
@@ -460,8 +471,8 @@ Grants: `ox` app user + `root` for init/registration/update jobs.
   Helm install timeout default 15m is enough.
 - **R6**: Public-images-but-subscription-positioned upstream: pin versions, upgrade
   deliberately, read operation-guides `UPDATING.md` first.
-- **R7**: No kopia/kopiur for MariaDB — operator `Backup` CR (or dump cronjob) + a
-  **restore drill** before trusting it. Maildir backups: decide snapshot vs sync.
+- **R7**: No kopia/kopiur for MariaDB (D4=b): dump cronjob to S3 + a **drilled manual
+  restore runbook** before trusting it. Maildir backups: decide snapshot vs sync.
 - **R8**: CiliumNetworkPolicies: middleware egress (mariadb/redis/RGW/dovecot/postfix/DNS),
   collabora egress (documents fetch via middleware), postfix/dovecot ingress from LB +
   middleware; check opencloud CNP as template.
