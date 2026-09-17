@@ -16,7 +16,7 @@ spec:
       app.kubernetes.io/name: *app
   components:
     - ../../../../components/cnpg
-    - ../../../../components/volsync
+    - ../../../../components/kopiur
   dependsOn:
     - name: cloudnative-pg-cluster
       namespace: dbms
@@ -24,19 +24,19 @@ spec:
       namespace: external-secrets
     - name: rook-ceph-cluster
       namespace: rook-ceph
-    - name: volsync
-      namespace: volsync-system
+    - name: kopiur-repository
+      namespace: kopiur-system
   interval: 1h
   path: ./kubernetes/apps/authentik/authentik/app
   postBuild:
     substitute:
       APP: *app
       CNPG_NAME: postgres18
-      VOLSYNC_CAPACITY: 1Gi
-      VOLSYNC_ACCESSMODES: ReadWriteMany
-      VOLSYNC_STORAGECLASS: ceph-filesystem
-      VOLSYNC_SNAPSHOTCLASS: csi-ceph-filesystem
-      VOLSYNC_SNAP_ACCESSMODES: ReadOnlyMany
+      KOPIUR_CAPACITY: 1Gi
+      KOPIUR_ON_MISSING_SNAPSHOT: Fail
+      KOPIUR_ACCESSMODES: ReadWriteMany
+      KOPIUR_STORAGECLASS: ceph-filesystem
+      KOPIUR_SNAPSHOTCLASS: csi-ceph-filesystem
   prune: true
   sourceRef:
     kind: GitRepository
