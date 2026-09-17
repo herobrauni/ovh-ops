@@ -217,9 +217,10 @@ ovhsbg3 → `54.38.94.150` — each dedicated server NATs its own VMs.
 (the classic SMTP HA pattern; supersedes the earlier single-host-pin idea):
 
 - **3 postfix Deployments** (`ox-postfix-{1,2,3}`), each `nodeAffinity`-pinned to one
-  dedicated server, all selected by one shared in-cluster Service. Each instance then
-  egresses via *its own* host's public IP — deterministic, and every host IP gets a
-  matching PTR so FCrDNS/SPF stay aligned on all three:
+  dedicated server; inbound traffic reaches each via its **own** per-host Service, while
+  in-cluster submission (OX → postfix) uses a shared ClusterIP Service (both below). Each
+  instance then egresses via *its own* host's public IP — deterministic, and every host IP
+  gets a matching PTR so FCrDNS/SPF stay aligned on all three:
 
   | instance | pinned to | egress/inbound IP | A record + PTR |
   |---|---|---|---|
@@ -230,13 +231,52 @@ ovhsbg3 → `54.38.94.150` — each dedicated server NATs its own VMs.
   (Using 92.92 is fine here: it only needs a *separate PTR name* — sharing the IP with
   the Ceph host doesn't conflict, DNS-wise mail1 is just another name for it. If that
   feels dirty, run 2 instances instead of 3 — any two hosts suffice.)
-- **Inbound**: one-time DNAT `:25` → `<smtp-lb-ip>:25` **on each of the hosts used**,
-  all pointing at the same SMTP LoadBalancer IP (fresh Cilium pool IP via
-  `lbipam.cilium.io/ips`, mirroring envoy → 10.10.8.16). Cilium picks a healthy backend
-  anywhere; return traffic re-traverses the ingress node (non-DSR LB semantics) so the
-  reply leaves via the same host IP that received it. **Verify this return path with
-  tcpdump during P2** — if replies ever egress the wrong host IP, switch the Service to
-  `externalTrafficPolicy: Local` + per-host backend selection (deterministic fallback).
+- **Inbound — the symmetry invariant ("does mail leave the same way it entered?"):**
+  yes, but it must be engineered, not assumed. Mechanically: the Proxmox host DNATs
+  `<host-ip>:25 → <lb-ip>:25` and its conntrack reverse-translates the reply **only if the
+  reply reaches that same host as `src=<lb-ip>:25`**. With Cilium LB + ETP=Cluster the
+  reply's *client-facing* source is restored to `<lb-ip>:25` on the node that did the LB
+  translation, and that node forwards it to its own default gateway = **its own host's
+  NAT** — which un-NATs it to `<host-ip>:25` and the peer's TCP stays valid (a
+  same-IP-different-port reply would break the SMTP handshake, not merely look odd).
+  Therefore the invariant is: **the LB-translating node must live on the host that
+  received the packet** → the LB IP must be announced *only by that host's nodes*.
+  Consequences (designed, not hoped for):
+  - **One LB IP per host**, not one shared floating IP: `ox-smtp-{1,2,3}` Services, each
+    `lbipam.cilium.io/ips: 10.10.8.{2x}` + `externalTrafficPolicy: Cluster` (⚠️ **NOT
+    `Local`** — Cilium documents L2 announcement as *incompatible* with ETP=Local, it
+    announces on nodes without local pods → traffic drops; ETP=Cluster is also what makes
+    the reply restore `<lb-ip>:25`), each selecting **only that host's** postfix pod.
+  - **One `CiliumL2AnnouncementPolicy` per host**: `nodeSelector` =
+    `kubernetes.io/hostname in (c-ovhsbgN, w-ovhsbgN)`, `serviceSelector` = that host's
+    mail label (Cilium v1.20.1 CRD verified to support both). ⚠️ Announcement eligibility
+    is the **union over all matching policies**, and the existing `l2-policy` is a
+    catch-all (nodeSelector `kubernetes.io/os=linux`, no serviceSelector) — it matches
+    the mail services too, which would let *any* node announce them and silently break
+    the invariant. So the cilium layer in this repo must be amended: give `l2-policy` a
+    `serviceSelector` that excludes the mail services (e.g. `ox-mail-host` DoesNotExist)
+    before adding the per-host policies.
+  - **Per-host Service selectors matter**: the three inbound Services must not share one
+    common selector. If they did, host X's endpoint loss would leave the other hosts'
+    pods as backends for host X's IP → cross-host serving → asymmetric reply → broken
+    SMTP. Host X's service must have endpoints only from host X's pod (pod pinned to that
+    host); when they're gone the service has no endpoints, Cilium stops announcing it,
+    that MX goes quiet and senders fail over — the desired failure mode.
+  - **In-cluster submission uses a separate ClusterIP Service** (`ox-postfix-internal`,
+    selector = all three pods) — internal pod→pod traffic has no host-NAT involved, so
+    asymmetry doesn't apply there.
+  - **Pinning is per host, not per node**: postfix pods get nodeAffinity matching the
+    host's two nodes, so a node loss just reschedules within the same host — the
+    invariant (and, with per-host LB IPS, availability) is preserved without extra work.
+  - **Simpler fallback** if amending the shared `l2-policy` is unwanted: skip LB IPs and
+    DNAT each host to that host's node IP:NodePort (`ETP=Cluster`), e.g.
+    `<host-ip>:25 → 10.10.8.182:30025`. Equally deterministic (the DNAT target *is* the
+    translating node, which is on the host by construction); costs a per-MX node SPOF
+    (the MX goes quiet until that node returns — tolerable given MX failover, and
+    mitigate by round-robin DNAT to both of the host's node IPs).
+  - Optional future nicety: real client IPs inside postfix (for rspamd/blacklists) need
+    Cilium DSR/hybrid LB mode; not required for delivery, and the current design leaves
+    postfix seeing a node IP as the SMTP client.
 - **DNS** (all via DNSEndpoint, §4.1): MX `10 mail1`, `20 mail2`, `20 mail3`; SPF
   `v=spf1 mx -all` (covers all three); each `mailN` A → its host IP.
 - **Shared identity across instances**: same DKIM key (Secret from Infisical → all
@@ -383,7 +423,8 @@ kubernetes/apps/ox/
         ├── postfix/                           # 3 pinned Deployments (one per host) + main.cf ConfigMaps,
         │                                      #   spool PVCs; image appsuite-operation-guides/postfix (digest)
         ├── dovecot/                           # STS + dovecot.conf ConfigMap, passwd-file/secret, maildir PVC
-        ├── services.yaml                      # shared postfix Service + SMTP LB (lbipam.cilium.io/ips, §4.1)
+        ├── services.yaml                      # 3 per-host inbound LB Services (own IP + ox-mail-host label,
+        │                                      #   ETP=Cluster) + ox-postfix-internal ClusterIP (§4.1)
         └── certificates.yaml                  # cert-manager certs for mail1/2/3.480p.com (STARTTLS)
 ```
 
@@ -507,15 +548,35 @@ Grants: `ox` app user + `root` for init/registration/update jobs.
       - [ ] Redis StatefulSet `ox-redis` (7.4, digest-pinned, no persistence). Gate: ping.
       - [ ] OBCs `ox-filestore`, `ox-guardstore`. Gate: buckets listed via toolbox pod.
 - [ ] **P2 — mail stack (multi-MX HA, §4.1)**:
-      - [ ] Postfix: 3 per-host pinned Deployments + shared Service + spool PVCs, real
-            config (outbound, TLS, DKIM). Gate: each instance's egress IP reflects its host.
+      - [ ] Cilium layer first: carve the mail services out of the catch-all `l2-policy`
+            (`kubernetes/apps/kube-system/cilium/app/networking.yaml` — add a
+            `serviceSelector` excluding `ox-mail-host`), then add 3 per-host
+            `CiliumL2AnnouncementPolicy`s (nodeSelector = that host's two nodes,
+            serviceSelector = its `ox-mail-host` label). Independent finding for a
+            drive-by cleanup: that same file contains a **duplicate/dead
+            `CiliumLoadBalancerIPPool/pool`** (cidr 10.10.8.0/24, allowFirstLastIPs No) that
+            fights `cilium/config/pool.yaml` (.10–150, Yes) — the config one wins live;
+            consider deleting the stale copy.
+      - [ ] Postfix: 3 per-host pinned Deployments (labels `ox-mail-host: N`) + **3 separate
+            inbound Services** (one per host — never a shared selector, §4.1) +
+            `ox-postfix-internal` ClusterIP for OX submission + spool PVCs, real config
+            (outbound, TLS, per-instance `myhostname: mailN`, shared DKIM key).
       - [ ] Dovecot STS: maildir PVC, masterauth secret, sieve, LMTP; submission host.
-      - [ ] SMTP LoadBalancer Service (`lbipam.cilium.io/ips`); DNSEndpoints: A
-            `mail1/2/3.480p.com`, MX 10/20/20, SPF + DMARC TXT, DKIM TXT. Gate: external
-            mail TO a test address lands in the maildir (swaks/mail-tester from outside);
-            outbound to Gmail/Outlook ≥ mail-tester 8/10 — iterate DNS/PTR until then.
-      - [ ] Validate inbound return path (tcpdump on hosts, R13): replies must leave via
-            the same host IP that received them; else switch Service to trafficPolicy Local.
+      - [ ] DNSEndpoints: A `mail1/2/3.480p.com`, MX 10/20/20, SPF + DMARC TXT, DKIM TXT.
+      - [ ] **Symmetry verification (the "same way in and out" proof, §4.1)**:
+            (1) `kubectl get lease -n kube-system | grep ox-smtp` → each LB IP's holder is
+                a node of the expected host;
+            (2) from an external host: `nc -v <hostN-ip> 25` → postfix banner (an
+                asymmetric reply fails the TCP handshake outright) for **all three** MX IPs;
+            (3) packet capture on the receiving host while (2) runs → reply on the wire is
+                `src=<hostN-ip>:25`;
+            (4) force a send through each instance (pin a test pod per host or set
+                `smtp_bind_address`) → received headers say `mailN.480p.com` and the
+                connecting IP's PTR matches mailN; mail-tester ≥ 8/10 per instance;
+            (5) negative test: delete host N's postfix pod → its MX goes quiet, the other
+                two keep serving, and nothing is served cross-host.
+      - [ ] Gate: external mail TO a test address lands in the maildir; outbound to
+            Gmail/Outlook ≥ mail-tester 8/10 — iterate DNS/PTR until then.
 - [ ] **P3 — App Suite core (full suite values)**:
       - [ ] ocirepository + helmrelease (§7), HTTPRoutes (§5), DNSEndpoints for ox/dav/office,
             Homepage annotations, CiliumNetworkPolicies.
@@ -574,7 +635,16 @@ Grants: `ox` app user + `root` for init/registration/update jobs.
   secret roll. Prefer long static password from day one.
 - **R13**: Inbound SMTP depends on host-level DNATs (no public IP is routed to the
   cluster; HTTP rides Cloudflare tunnels which can't carry SMTP); outbound depends on
-  per-host postfix pinning (per-server egress). HA model: 3 per-host instances + 3 MX
-  records (§4.1). Validate the Cilium LB return path during P2; if replies egress the
-  wrong host IP, switch to `externalTrafficPolicy: Local`. If DNAT can't be made at
-  all, inbound falls back to MXRouting + OX external-account fetch — decide before P2.
+  per-host postfix pinning (per-server egress). Symmetry is engineered via per-host LB
+  IPs + host-scoped L2 announcement + **ETP=Cluster** (the earlier "fall back to
+  ETP=Local" note was wrong: Cilium documents L2 announcement as incompatible with
+  ETP=Local) + one Service per host; see §4.1 for the invariant and the 5-step
+  verification. Main risk to watch: announcement eligibility is a union over policies,
+  so the catch-all `l2-policy` must be carved out or any node may announce a mail IP.
+  If DNAT can't be made at all, inbound falls back to MXRouting + OX external-account
+  fetch — decide before P2.
+- **R14**: `kubernetes/apps/kube-system/cilium/app/networking.yaml` declares a second
+  `CiliumLoadBalancerIPPool/pool` that conflicts with `cilium/config/pool.yaml`
+  (cidr/allowFirstLastIPs differ); the `cilium-config` copy wins live. Harmless today but
+  it means the pool is defined twice in Git — clean up before relying on pool semantics
+  (e.g. when picking fixed mail LB IPs).
