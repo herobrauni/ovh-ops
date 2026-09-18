@@ -1,0 +1,18 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/storage.k8s.io/persistentvolumeclaim_v1.json
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${APP}-dragonfly-snapshots
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    # Sized for a single snapshot set plus headroom, not for history: with the
+    # fixed --dbfilename in cluster.yaml each snapshot overwrites the previous
+    # one, so usage stays flat at roughly the dataset size. Overriding
+    # DRAGONFLY_SNAPSHOT_DBFILENAME with a {timestamp} macro would write a NEW
+    # set per run that Dragonfly never prunes and fill the volume.
+    requests:
+      storage: ${DRAGONFLY_SNAPSHOT_CAPACITY:=128Mi}
+  storageClassName: ${DRAGONFLY_SNAPSHOT_STORAGECLASS:=ceph-block}
