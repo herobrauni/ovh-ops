@@ -11,10 +11,13 @@ spec:
   credentialProjection:
     enabled: true
   mover:
-    # Large kopia restores exceeded smaller caches in the volsync era
-    # (EmptyDir eviction); keep the proven 32Gi default.
+    # 16Gi fits the repo-wide kopia budgets (8192 content + 2x2048 metadata /
+    # index-blobs MiB) with headroom; the volume is a per-run generic ephemeral
+    # RBD and only materializes while a restore actually runs.
     cache:
-      capacity: ${KOPIUR_CACHE_CAPACITY:=32Gi}
+      capacity: ${KOPIUR_CACHE_CAPACITY:=16Gi}
+      mode: Ephemeral
+      storageClassName: ceph-block
     podSecurityContext:
       runAsUser: ${KOPIUR_MOVER_UID:=1000}
       runAsGroup: ${KOPIUR_MOVER_GID:=1000}
