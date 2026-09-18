@@ -1,0 +1,7 @@
+---
+# Weekly online metadata scrub for XFS volumes (EPHEMERAL), mirroring
+# cluster-template's talos/all/71-filesystem patch. The weekly trim already
+# renders from the topf base; scrub is additive and only reads/checks.
+apiVersion: v1alpha1
+kind: FilesystemScrubConfig
+interval: 168h0m0s
