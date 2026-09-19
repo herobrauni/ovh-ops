@@ -49,17 +49,5 @@ spec:
       full:
         cron: 0 3 * * *
         jitter: 1h
-  moverDefaults:
-    cache:
-      # Kopia defaults to 5000 MiB per budget and never sweeps under them; an
-      # explicit pair keeps cache usage a deliberate choice. Note the metadata
-      # budget applies twice: kopia caps the index-blobs cache at the same
-      # size. 8192 + 2x2048 stays under the 16Gi per-run ephemeral cache
-      # volumes the kopiur component provisions. Capacity is deliberately NOT
-      # set here (upstream pattern: budgets repo-wide, capacity per-recipe) —
-      # unset capacity keeps e.g. maintenance jobs on a plain emptyDir, which
-      # is fine for their tiny index-only cache.
-      contentCacheSizeMb: 8192
-      metadataCacheSizeMb: 2048
   scheduleDefaults:
     timezone: Europe/Paris
