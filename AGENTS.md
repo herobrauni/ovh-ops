@@ -204,3 +204,4 @@ History follows Conventional Commits (for example `feat(network): ...`, `fix(ech
 - Never commit plaintext secrets or credentials.
 - Store secrets as `*.sops.yaml` and decrypt only via configured `SOPS_AGE_KEY_FILE`/`age.key`.
 - Treat `kubeconfig` and Talos client config as sensitive files.
+- **Always `git pull --ff-only` before working in this repo.** Renovate merges PRs continuously (multiple per day), so a stale local checkout silently diverges from what Flux is reconciling in-cluster. Check `git status -sb` is even with `origin/main` and that HEAD matches `kubectl get kustomization cluster-apps -n flux-system`'s applied revision before making local edits or diagnosing state — this has already caused a merge-batch verification session to chase "missing" workloads that were actually just un-pulled commits.
