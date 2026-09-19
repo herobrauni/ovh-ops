@@ -14,14 +14,6 @@ spec:
   credentialProjection:
     enabled: true
   mover:
-    cache:
-      # Generic ephemeral volume (per-run, thin RBD, auto-GC'd): bounds
-      # kopia's cache off the node-local emptyDir it would otherwise use
-      # unbounded. 16Gi fits the repo-wide budgets (8192 + 2x2048 MiB) with
-      # headroom; backups barely touch the content cache.
-      capacity: ${KOPIUR_CACHE_CAPACITY:=16Gi}
-      mode: Ephemeral
-      storageClassName: ceph-block
     podSecurityContext:
       runAsUser: ${KOPIUR_MOVER_UID:=1000}
       runAsGroup: ${KOPIUR_MOVER_GID:=1000}
