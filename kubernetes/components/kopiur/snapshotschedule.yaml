@@ -10,3 +10,7 @@ spec:
     name: ${APP}
   schedule:
     cron: "${KOPIUR_SCHEDULE:=0 */6 * * *}"
+    # Deterministic per-schedule jitter, derived from (scheduleUID, slot): each
+    # app fires within 10m after the top of the slot instead of 28 simultaneous
+    # SFTP logins (hostypanel rejects concurrent subsystem requests).
+    jitter: 10m
