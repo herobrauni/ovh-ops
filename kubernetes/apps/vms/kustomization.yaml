@@ -9,4 +9,4 @@ components:
 
 resources:
   - ./namespace.yaml
-  - ./smoke-test/ks.yaml
+  # - ./smoke-test/ks.yaml
