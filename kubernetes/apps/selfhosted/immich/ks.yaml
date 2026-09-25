@@ -32,7 +32,7 @@ spec:
     substitute:
       APP: *app
       CNPG_NAME: immich
-      KOPIUR_CAPACITY: 100Gi
+      KOPIUR_CAPACITY: 200Gi
       KOPIUR_ON_MISSING_SNAPSHOT: Fail
   prune: true
   sourceRef:
