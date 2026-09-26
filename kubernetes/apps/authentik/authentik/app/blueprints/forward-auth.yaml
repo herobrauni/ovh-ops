@@ -7,7 +7,8 @@
 # requests are matched against.
 #
 # Managed here: users, groups, proxy providers, applications, application access
-# bindings and the embedded outpost's provider list.
+# bindings, the embedded outpost's provider list and the login stage's session
+# duration.
 # Deliberately NOT managed here:
 #   - passwords (set once per user in the UI or with `ak changepassword <username>`;
 #     re-applying this blueprint never touches them)
@@ -553,6 +554,18 @@ entries:
       target: !KeyOf app-vaultwarden
       group: !KeyOf group-platform
       order: 0
+
+  # ---------------------------------------------------------------------------
+  # The login stage signs the authenticated session. `seconds=0` (the default)
+  # makes it a browser-session cookie, i.e. a fresh login every day; a fixed
+  # duration gives a persistent cookie instead. 30 days was chosen so routine
+  # SSO usage no longer requires daily logins.
+  # ---------------------------------------------------------------------------
+  - model: authentik_stages_user_login.userloginstage
+    identifiers:
+      name: default-authentication-login
+    attrs:
+      session_duration: days=30
 
   # ---------------------------------------------------------------------------
   # The embedded outpost serves every provider above. This list replaces the
