@@ -60,7 +60,7 @@ spec:
             resources:
               requests:
                 cpu: 100m
-                memory: 1Gi
+                memory: 2Gi
     service:
       app:
         forceRename: altmount
