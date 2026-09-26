@@ -31,6 +31,10 @@ spec:
               PGID: "1000"
               PORT: &port 8080
               COOKIE_DOMAIN: altmount.480p.com
+              # No container memory limit is set, so altmount cannot auto-derive
+              # its Go soft limit from cgroups (it would default to ~750MB and
+              # thrash the segment-cache tier). Pin it just under the request.
+              GOMEMLIMIT: 1800MiB
             envFrom:
               - secretRef:
                   name: altmount-secret
