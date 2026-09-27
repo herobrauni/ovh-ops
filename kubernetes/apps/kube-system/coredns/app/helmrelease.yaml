@@ -8,10 +8,9 @@ spec:
   chartRef:
     kind: OCIRepository
     name: coredns
-  interval: 1h
+  interval: 5m
   driftDetection:
     mode: enabled
-    interval: 5m
   values:
     fullnameOverride: coredns
     image:
