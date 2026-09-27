@@ -11,6 +11,7 @@ spec:
   interval: 1h
   driftDetection:
     mode: enabled
+    interval: 5m
   values:
     fullnameOverride: coredns
     image:
