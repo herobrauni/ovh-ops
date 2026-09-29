@@ -83,6 +83,15 @@ spec:
                   storage: 50Gi
     prometheus-node-exporter:
       fullnameOverride: node-exporter
+      # Feeds the filesystem-readonly-probe DaemonSet (filesystem-probe.yaml),
+      # which writes fs-readonly.prom into the hostPath dir below.
+      extraArgs:
+        - --collector.textfile.directory=/var/lib/node_exporter/textfile
+      extraHostVolumeMounts:
+        - name: textfile-dir
+          hostPath: /var/lib/node_exporter/textfile
+          mountPath: /var/lib/node_exporter/textfile
+          readOnly: true
     kube-state-metrics:
       fullnameOverride: kube-state-metrics
       # KubeVirt's NoAvailableNodes alert selects on
@@ -134,3 +143,47 @@ spec:
                 expr: (kube_pod_container_status_restarts_total - kube_pod_container_status_restarts_total offset 10m >= 1) and ignoring (reason) min_over_time(kube_pod_container_status_last_terminated_reason{reason="OOMKilled"}[10m]) == 1
                 labels:
                   severity: critical
+      filesystem-rules:
+        groups:
+          - name: filesystem-readonly
+            rules:
+              # Metrics written by the filesystem-readonly-probe DaemonSet into the
+              # node-exporter textfile directory. ext4 on 6.18+ kernels goes
+              # "emergency_ro" after RBD I/O errors WITHOUT flipping the VFS mount to
+              # ro, so node_filesystem_readonly never sees it - the probe greps
+              # /proc/1/mounts instead. First victim: altmount's config PVC, 2026-09-27.
+              - alert: NodeFilesystemEmergencyReadonly
+                expr: node_filesystem_emergency_readonly == 1
+                for: 2m
+                annotations:
+                  summary: >-
+                    Filesystem {{ $labels.device }} at {{ $labels.mountpoint }} on node {{ $labels.node }} was emergency-remounted read-only by the kernel after I/O errors - writes are failing, restart the consuming workload
+                labels:
+                  severity: critical
+
+              - alert: NodeKubeletVolumeMountedReadonly
+                expr: node_filesystem_mounted_readonly{mountpoint=~"/var/lib/kubelet/.*"} == 1
+                for: 5m
+                annotations:
+                  summary: >-
+                    Kubelet-mounted filesystem {{ $labels.device }} at {{ $labels.mountpoint }} on node {{ $labels.node }} is mounted read-only - workload writes are failing
+                labels:
+                  severity: critical
+
+              - alert: NodeFilesystemReadonlyProbeStale
+                expr: time() - node_filesystem_emergency_ro_last_check > 300
+                for: 10m
+                annotations:
+                  summary: >-
+                    Filesystem readonly probe on node {{ $labels.node }} has not reported for {{ $value | humanizeDuration }}
+                labels:
+                  severity: warning
+
+              - alert: NodeFilesystemReadonlyProbeMissing
+                expr: kube_node_info unless on(node) node_filesystem_emergency_ro_last_check
+                for: 15m
+                annotations:
+                  summary: >-
+                    Filesystem readonly probe has never reported for node {{ $labels.node }}
+                labels:
+                  severity: warning
