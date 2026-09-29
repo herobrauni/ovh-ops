@@ -43,7 +43,7 @@ spec:
                   awk -v node="$NODE_NAME" '$4 ~ /(^|,)ro(,|$)/ {mp=$2; gsub(/\\0[0-9][0-9]/, "_", mp); print "node_filesystem_mounted_readonly{node=\"" node "\",device=\"" $1 "\",mountpoint=\"" mp "\"} 1"}' /host/proc/1/mounts
                   echo "# HELP node_filesystem_emergency_ro_last_check Unix timestamp of the last filesystem readonly probe run."
                   echo "# TYPE node_filesystem_emergency_ro_last_check gauge"
-                  echo "node_filesystem_emergency_ro_last_check{node=\"$NODE\"} $now"
+                  echo "node_filesystem_emergency_ro_last_check{node=\"$NODE_NAME\"} $now"
                 } > /textfile/.fs-readonly.prom.tmp
                 mv /textfile/.fs-readonly.prom.tmp /textfile/fs-readonly.prom
                 sleep 30
