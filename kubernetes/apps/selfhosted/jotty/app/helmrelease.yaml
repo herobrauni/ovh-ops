@@ -31,7 +31,7 @@ spec:
           app:
             image:
               repository: ghcr.io/fccview/jotty
-              tag: 1.27.0@sha256:4c51a4ccc02644dc6bc96b0ecd9a5a881b4af47416726e14fa81b316f0b72759
+              tag: 1.28.0@sha256:df965e56fe2e3ce056351425b8ff5d7df991a6596dfa807c73c91cf5eaa30c86
             env:
               APP_URL: https://jotty.brauni.dev
               NODE_ENV: production
