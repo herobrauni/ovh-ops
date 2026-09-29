@@ -6,6 +6,7 @@ resources:
   - ./alertmanagerconfig.yaml
   - ./dnsendpoints.yaml
   - ./externalsecret.yaml
+  - ./filesystem-probe.yaml
   - ./helmrelease.yaml
   - ./httproute.yaml
   - ./httproute-outpost.yaml

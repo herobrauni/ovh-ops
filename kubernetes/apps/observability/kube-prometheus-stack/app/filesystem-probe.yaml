@@ -1,0 +1,81 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/apps/daemonset_v1.json
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filesystem-readonly-probe
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: filesystem-readonly-probe
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: filesystem-readonly-probe
+    spec:
+      automountServiceAccountToken: false
+      tolerations:
+        - operator: Exists
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+        runAsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: probe
+          # Renovate: datasource=docker depName=ghcr.io/home-operations/busybox
+          image: ghcr.io/home-operations/busybox:1.38.0@sha256:7e2c04dd50ede647bf4a7a4c8dbd629dd4971cd139b9b88fb22bfc3c7a6c13df
+          command:
+            - /bin/sh
+            - -c
+            - |-
+              while :; do
+                now=$(date +%s)
+                {
+                  echo "# HELP node_filesystem_emergency_readonly Filesystems remounted read-only by the kernel after I/O errors (ext4 emergency_ro)."
+                  echo "# TYPE node_filesystem_emergency_readonly gauge"
+                  awk -v node="$NODE_NAME" '$4 ~ /(^|,)emergency_ro($|,)/ {mp=$2; gsub(/\\0[0-9][0-9]/, "_", mp); print "node_filesystem_emergency_readonly{node=\"" node "\",device=\"" $1 "\",mountpoint=\"" mp "\"} 1"}' /host/proc/1/mounts
+                  echo "# HELP node_filesystem_mounted_readonly Filesystem mounts that are read-only at the VFS level."
+                  echo "# TYPE node_filesystem_mounted_readonly gauge"
+                  awk -v node="$NODE_NAME" '$4 ~ /(^|,)ro(,|$)/ {mp=$2; gsub(/\\0[0-9][0-9]/, "_", mp); print "node_filesystem_mounted_readonly{node=\"" node "\",device=\"" $1 "\",mountpoint=\"" mp "\"} 1"}' /host/proc/1/mounts
+                  echo "# HELP node_filesystem_emergency_ro_last_check Unix timestamp of the last filesystem readonly probe run."
+                  echo "# TYPE node_filesystem_emergency_ro_last_check gauge"
+                  echo "node_filesystem_emergency_ro_last_check{node=\"$NODE\"} $now"
+                } > /textfile/.fs-readonly.prom.tmp
+                mv /textfile/.fs-readonly.prom.tmp /textfile/fs-readonly.prom
+                sleep 30
+              done
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 2m
+              memory: 16Mi
+            limits:
+              memory: 32Mi
+          volumeMounts:
+            - name: host-proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: textfile
+              mountPath: /textfile
+      volumes:
+        - name: host-proc
+          hostPath:
+            path: /proc
+            type: Directory
+        - name: textfile
+          hostPath:
+            path: /var/lib/node_exporter/textfile
