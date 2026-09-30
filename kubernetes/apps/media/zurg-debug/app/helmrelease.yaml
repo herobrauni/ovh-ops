@@ -47,7 +47,11 @@ spec:
               - |
                 umount -l /host-mount/rclone-zurg-debug 2>/dev/null || true
                 mkdir -p /host-mount/rclone-zurg-debug
+                # zurg-auth carries the plaintext basic-auth password; rclone
+                # wants the obscured form for the webdav backend flag, so
+                # obscure it here rather than store a second pre-obscured copy.
                 exec rclone mount zurg:/ /host-mount/rclone-zurg-debug \
+                  --webdav-pass="$(rclone obscure "$ZURG_WEBDAV_PASSWORD")" \
                   --dir-cache-time=20s \
                   --vfs-cache-mode=full \
                   --vfs-cache-max-age=24h \
