@@ -69,6 +69,11 @@ spec:
               # A remote without a config file does not get pacer_min_sleep;
               # without it one unservable file slows every other read down.
               RCLONE_CONFIG_ZURG_PACER_MIN_SLEEP: "0"
+            envFrom:
+              # zurg's global basic auth is on (it is what unlocks /mcp), so
+              # every /dav consumer has to authenticate.
+              - secretRef:
+                  name: zurg-auth
             probes:
               liveness: &rclone-probes
                 enabled: true
