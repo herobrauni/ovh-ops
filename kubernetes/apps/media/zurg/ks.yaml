@@ -25,9 +25,11 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      # /config holds the NZB watch directory and the parsed-index caches; the
-      # NZBs are the only copy of the library, so keep a real backup window.
-      KOPIUR_CAPACITY: 20Gi
+      # /config holds the NZB watch directory (the raw NZBs are the only copy
+      # of the library, and zurg keeps them uncompressed unlike altmount's
+      # .nzbz store), the mmap article indexes, and up to sidecar_budget_mb of
+      # *arr/Bazarr sidecars.
+      KOPIUR_CAPACITY: 30Gi
       # Greenfield app: deploy empty on a missing snapshot instead of failing.
       KOPIUR_ON_MISSING_SNAPSHOT: Continue
   prune: true
