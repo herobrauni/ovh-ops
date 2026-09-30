@@ -1,0 +1,28 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: zurg-480p-com
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: Media
+    gethomepage.dev/name: Zurg
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=zurg
+    gethomepage.dev/icon: mdi-cloud-sync-outline
+    # Gatus liveness: /http/version.txt is on zurg's unprotected router and is
+    # skipped by the outpost (skip_path_regex on the provider), so it answers
+    # 200 without a session.
+    gatus.home-operations.com/endpoint: |-
+      url: https://zurg.480p.com/http/version.txt
+spec:
+  hostnames:
+    - zurg.480p.com
+  parentRefs:
+    - name: envoy-480p-com-public
+      namespace: network
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: zurg
+          port: 9999
