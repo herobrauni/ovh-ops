@@ -98,8 +98,10 @@ spec:
               requests:
                 cpu: 100m
                 memory: 512Mi
+              # ~7,400 releases / ~95M segments needs ~4 GB RSS with the mmap
+              # article index, so the earlier 4Gi limit left no headroom.
               limits:
-                memory: 4Gi
+                memory: 8Gi
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
