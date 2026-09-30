@@ -639,7 +639,17 @@ When the policy returns `False` the password stage is skipped and the switch fal
 authenticator stage. There is no bundled MFA stage in this cluster yet, so passwordless switching is
 the whole flow for now; adding stages without the policy would require them on every switch.
 
-Verified 2026-09-30 on 2026.8.3: the full blueprint passes `Importer.validate()` in the worker
-(rolled-back dry run); the earlier attempts deadlocked on `guardian_rolemodelpermission` while
-racing the worker's own apply — same signature as the 2026-09-15 `vaultwarden` note above, retry
-until the worker is idle or validate a minimal delta document instead.
+Verified 2026-09-30 on 2026.8.3: converged live (flow + binding + brand applied, forward-auth probes still
+`200`/`302`, outpost still serving all 20 providers) after `flux reconcile kustomization cluster-apps
+--with-source`. Two operational notes from that rollout:
+
+- The chart rolls both pods when the blueprint ConfigMap changes. During the rolling update the old and
+  new workers applied the same file concurrently and deadlocked on `guardian_roleobjectpermission`
+  (`outpost_send_update` → `build_user_permissions` racing the apply's own transaction — re-saving all 20
+  providers fires a signal per provider, even for no-op updates). It converged on the 3rd re-enqueue of
+  `apply_blueprint.send_with_options(args=(b.pk,), rel_obj=b)` ~30s apart, matching the vaultwarden
+  precedent above.
+- A worker restart landing mid-apply gets its task swept by `clear_failed_blueprints`; the instance can
+  then sit `status: error` with `last_applied_hash` already equal to the file hash — since the watcher and
+  hourly discovery only re-apply on a hash change, force it by re-enqueueing the task again (the apply is
+  idempotent).
