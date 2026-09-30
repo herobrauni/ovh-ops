@@ -97,12 +97,13 @@ spec:
             resources:
               requests:
                 cpu: 100m
-                # The 7,400-release Usenet library sits near 2GiB of live heap;
-                # reserve enough that the scheduler does not pack a second
-                # memory-hungry pod onto the same node.
                 memory: 1Gi
               limits:
-                memory: 6Gi
+                # Go tracks memory_limit_mb (5120 MiB) at ~0.95x and GC bounds
+                # the heap at ~4.4 GB, so the hard limit must sit well above
+                # the soft one: at 6Gi the cgroup ran at 89-93% with only page
+                # cache left to reclaim. 8Gi leaves ~35% headroom.
+                memory: 8Gi
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
