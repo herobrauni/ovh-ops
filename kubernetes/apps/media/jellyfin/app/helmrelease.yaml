@@ -101,73 +101,82 @@ spec:
               capabilities:
                 drop:
                   - ALL
-          rclone-altmount:
-            image:
-              repository: docker.io/rclone/rclone
-              tag: 1.75@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5
-            command:
-              - /bin/sh
-              - -c
-              - |
-                umount -l /host-mount/rclone-jellyfin-altmount 2>/dev/null || true
-                mkdir -p /host-mount/rclone-jellyfin-altmount
-                exec rclone mount altmount:/ /host-mount/rclone-jellyfin-altmount \
-                  --dir-cache-time=20s \
-                  --vfs-cache-mode=full \
-                  --vfs-cache-max-age=24h \
-                  --vfs-cache-max-size=20G \
-                  --vfs-cache-poll-interval=30s \
-                  --buffer-size=0M \
-                  --vfs-read-ahead=512M \
-                  --vfs-fast-fingerprint \
-                  --links \
-                  --use-cookies \
-                  --no-modtime \
-                  --no-checksum \
-                  --allow-other \
-                  --cache-dir=/cache
-            env:
-              RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
-              RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav/
-              RCLONE_CONFIG_ALTMOUNT_VENDOR: other
-            envFrom:
-              - secretRef:
-                  name: rclone-altmount-secret
-            probes:
-              liveness: &rclone-altmount-probes
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - test -d /host-mount/rclone-jellyfin-altmount/complete
-                  initialDelaySeconds: 10
-                  periodSeconds: 30
-                  timeoutSeconds: 5
-                  failureThreshold: 6
-              readiness: *rclone-altmount-probes
-              startup:
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - test -d /host-mount/rclone-jellyfin-altmount/complete
-                  failureThreshold: 30
-                  periodSeconds: 5
-            securityContext:
-              runAsUser: 0
-              runAsGroup: 0
-              runAsNonRoot: false
-              privileged: true
-              readOnlyRootFilesystem: true
-              capabilities:
-                drop:
-                  - ALL
+          # PARKED 2026-09-30: jellyfin's libraries moved to zurg only
+          # (/aio/remote/zurg/__magic__/tv and /movies), so the altmount
+          # sidecar is commented out rather than deleted while the zurg
+          # evaluation runs. To re-enable: uncomment this container and the
+          # rclone-altmount entries under `fuse`, `rclone-cache-altmount`,
+          # `host-tmp` and `altmount` in persistence below. If the node keeps
+          # a stale FUSE mount at /tmp/rclone-jellyfin-altmount after the
+          # switch, `umount -l` it there — the start command cleans it up on
+          # re-enable either way.
+          # rclone-altmount:
+          #   image:
+          #     repository: docker.io/rclone/rclone
+          #     tag: 1.75@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5
+          #   command:
+          #     - /bin/sh
+          #     - -c
+          #     - |
+          #       umount -l /host-mount/rclone-jellyfin-altmount 2>/dev/null || true
+          #       mkdir -p /host-mount/rclone-jellyfin-altmount
+          #       exec rclone mount altmount:/ /host-mount/rclone-jellyfin-altmount \
+          #         --dir-cache-time=20s \
+          #         --vfs-cache-mode=full \
+          #         --vfs-cache-max-age=24h \
+          #         --vfs-cache-max-size=20G \
+          #         --vfs-cache-poll-interval=30s \
+          #         --buffer-size=0M \
+          #         --vfs-read-ahead=512M \
+          #         --vfs-fast-fingerprint \
+          #         --links \
+          #         --use-cookies \
+          #         --no-modtime \
+          #         --no-checksum \
+          #         --allow-other \
+          #         --cache-dir=/cache
+          #   env:
+          #     RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
+          #     RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav/
+          #     RCLONE_CONFIG_ALTMOUNT_VENDOR: other
+          #   envFrom:
+          #     - secretRef:
+          #         name: rclone-altmount-secret
+          #   probes:
+          #     liveness: &rclone-altmount-probes
+          #       enabled: true
+          #       custom: true
+          #       spec:
+          #         exec:
+          #           command:
+          #             - /bin/sh
+          #             - -c
+          #             - test -d /host-mount/rclone-jellyfin-altmount/complete
+          #       initialDelaySeconds: 10
+          #       periodSeconds: 30
+          #       timeoutSeconds: 5
+          #       failureThreshold: 6
+          #     readiness: *rclone-altmount-probes
+          #     startup:
+          #       enabled: true
+          #       custom: true
+          #       spec:
+          #         exec:
+          #           command:
+          #             - /bin/sh
+          #             - -c
+          #             - test -d /host-mount/rclone-jellyfin-altmount/complete
+          #       failureThreshold: 30
+          #       periodSeconds: 5
+          #   securityContext:
+          #     runAsUser: 0
+          #     runAsGroup: 0
+          #     runAsNonRoot: false
+          #     privileged: true
+          #     readOnlyRootFilesystem: true
+          #     capabilities:
+          #       drop:
+          #         - ALL
           # zurg (the new Usenet backend) mounted at zurg's own mount_path.
           # Media libraries get added at /aio/remote/zurg/__magic__/tv and
           # /movies ONLY — never __magic__ itself: __magic__/__all__ mirrors
@@ -292,16 +301,16 @@ spec:
         hostPathType: CharDevice
         advancedMounts:
           jellyfin:
-            rclone-altmount:
-              - path: /dev/fuse
+            # rclone-altmount:
+            #   - path: /dev/fuse
             rclone-zurg:
               - path: /dev/fuse
-      rclone-cache-altmount:
-        type: emptyDir
-        advancedMounts:
-          jellyfin:
-            rclone-altmount:
-              - path: /cache
+      # rclone-cache-altmount:
+      #   type: emptyDir
+      #   advancedMounts:
+      #     jellyfin:
+      #       rclone-altmount:
+      #         - path: /cache
       rclone-cache-zurg:
         type: emptyDir
         advancedMounts:
@@ -314,21 +323,21 @@ spec:
         hostPathType: Directory
         advancedMounts:
           jellyfin:
-            rclone-altmount:
-              - path: /host-mount
-                mountPropagation: Bidirectional
+            # rclone-altmount:
+            #   - path: /host-mount
+            #     mountPropagation: Bidirectional
             rclone-zurg:
               - path: /host-mount
                 mountPropagation: Bidirectional
-      altmount:
-        type: hostPath
-        hostPath: /tmp/rclone-jellyfin-altmount
-        hostPathType: DirectoryOrCreate
-        advancedMounts:
-          jellyfin:
-            app:
-              - path: /aio/remote/altmount
-                mountPropagation: HostToContainer
+      # altmount:
+      #   type: hostPath
+      #   hostPath: /tmp/rclone-jellyfin-altmount
+      #   hostPathType: DirectoryOrCreate
+      #   advancedMounts:
+      #     jellyfin:
+      #       app:
+      #         - path: /aio/remote/altmount
+      #           mountPropagation: HostToContainer
       zurg:
         type: hostPath
         hostPath: /tmp/rclone-jellyfin-zurg
