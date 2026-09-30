@@ -209,6 +209,33 @@ entries:
       group: !KeyOf group-media
       order: 0
 
+  - id: provider-zurg
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Zurg
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://zurg.480p.com
+      # Gatus liveness path; zurg serves /http/version.txt on its unprotected
+      # router, so the probe answers 200 without a session. The SABnzbd endpoint
+      # bypasses ext-auth entirely via its own HTTPRoute + API key.
+      skip_path_regex: ^/http/version\.txt$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-zurg
+    model: authentik_core.application
+    identifiers:
+      slug: zurg
+    attrs:
+      name: Zurg
+      provider: !KeyOf provider-zurg
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-zurg
+      group: !KeyOf group-media
+      order: 0
+
   - id: provider-clonarr
     model: authentik_providers_proxy.proxyprovider
     identifiers:
@@ -582,6 +609,7 @@ entries:
         - !KeyOf provider-sonarr4k
         - !KeyOf provider-radarr4k
         - !KeyOf provider-altmount
+        - !KeyOf provider-zurg
         - !KeyOf provider-clonarr
         - !KeyOf provider-prowlarr
         - !KeyOf provider-umlautadaptarrex

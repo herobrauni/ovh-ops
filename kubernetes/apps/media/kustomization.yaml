@@ -14,6 +14,7 @@ resources:
   - ./booklore/ks.yaml
   # - ./cleanuparr/ks.yaml
   - ./altmount/ks.yaml
+  - ./zurg/ks.yaml
   # - ./nzbdav/ks.yaml
   # - ./nzbdav-sync-helper/ks.yaml
   - ./clonarr/ks.yaml
@@ -24,6 +25,7 @@ resources:
   - ./jellyfin/ks.yaml
   # - ./kometa/ks.yaml
   - ./media-debug/ks.yaml
+  - ./zurg-debug/ks.yaml
   # - ./profilarr/ks.yaml
   - ./prowlarr/ks.yaml
   # - ./repair/ks.yaml
