@@ -47,11 +47,7 @@ spec:
               - |
                 umount -l /host-mount/rclone-zurg-debug 2>/dev/null || true
                 mkdir -p /host-mount/rclone-zurg-debug
-                # zurg-auth carries the plaintext basic-auth password; rclone
-                # wants the obscured form for the webdav backend flag, so
-                # obscure it here rather than store a second pre-obscured copy.
                 exec rclone mount zurg:/ /host-mount/rclone-zurg-debug \
-                  --webdav-pass="$(rclone obscure "$ZURG_WEBDAV_PASSWORD")" \
                   --dir-cache-time=20s \
                   --vfs-cache-mode=full \
                   --vfs-cache-max-age=24h \
@@ -73,11 +69,6 @@ spec:
               # A remote without a config file does not get pacer_min_sleep;
               # without it one unservable file slows every other read down.
               RCLONE_CONFIG_ZURG_PACER_MIN_SLEEP: "0"
-            envFrom:
-              # zurg's global basic auth is on (it is what unlocks /mcp), so
-              # every /dav consumer has to authenticate.
-              - secretRef:
-                  name: zurg-auth
             probes:
               liveness: &rclone-probes
                 enabled: true
