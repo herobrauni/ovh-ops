@@ -1,0 +1,38 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app zurg
+spec:
+  targetNamespace: media
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  components:
+    - ../../../../components/kopiur
+  dependsOn:
+    - name: infisical
+      namespace: external-secrets
+    - name: kopiur-repository
+      namespace: kopiur-system
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
+    - name: authentik
+      namespace: authentik
+  interval: 1h
+  path: ./kubernetes/apps/media/zurg/app
+  postBuild:
+    substitute:
+      APP: *app
+      # /config holds the NZB watch directory and the parsed-index caches; the
+      # NZBs are the only copy of the library, so keep a real backup window.
+      KOPIUR_CAPACITY: 20Gi
+      # Greenfield app: deploy empty on a missing snapshot instead of failing.
+      KOPIUR_ON_MISSING_SNAPSHOT: Continue
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false

@@ -1,0 +1,131 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: zurg
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: zurg
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      imagePullSecrets:
+        - name: zurg-ghcr
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+    controllers:
+      zurg:
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: zurg-config
+        initContainers:
+          # /config is the source of truth from Git: overwrite config.yml on
+          # every start, keep data/ and nzbs/ on the PVC.
+          config-init:
+            image:
+              repository: ghcr.io/home-operations/busybox
+              tag: 1.38.0@sha256:7e2c04dd50ede647bf4a7a4c8dbd629dd4971cd139b9b88fb22bfc3c7a6c13df
+            command:
+              - /bin/sh
+              - -c
+              - |
+                set -eu
+                cp /config-seed/config.yml /config/config.yml
+                chmod 600 /config/config.yml
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+        containers:
+          app:
+            image:
+              repository: ghcr.io/debridmediamanager/zurg
+              tag: 2026.09.28.2240-nightly@sha256:166e3642709f37d94491792f782dd6141758cef5bfe1d0957f9f111e5d201fe6
+            args:
+              - -c
+              - /config/config.yml
+            env:
+              LOG_LEVEL: INFO
+            probes:
+              # zurg claims the port early and only serves from it once the
+              # library has loaded, so a large Usenet library can take many
+              # minutes to become ready. Give the startup probe a long runway
+              # and keep liveness on the socket, which is open the whole time.
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /http/version.txt
+                    port: 9999
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 120
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /http/version.txt
+                    port: 9999
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 9999
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 4Gi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    service:
+      app:
+        controller: zurg
+        ports:
+          http:
+            port: 9999
+    persistence:
+      config:
+        existingClaim: zurg
+        globalMounts:
+          - path: /config
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
+      seed:
+        type: secret
+        name: zurg-config
+        advancedMounts:
+          zurg:
+            config-init:
+              - path: /config-seed
+                readOnly: true
