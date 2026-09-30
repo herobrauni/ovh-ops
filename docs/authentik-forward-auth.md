@@ -593,3 +593,53 @@ Not managed, on purpose:
 Because all of the above is (re)created from this file, it doubles as the Authentik half of a
 disaster recovery: restore the database (or start clean), let the worker apply the blueprint, set the
 two passwords, enroll MFA.
+
+## User switching (2026.8)
+
+Since 2026.8 authentik can keep multiple accounts signed in per browser and switch between them from
+the user interface header ([upstream docs](https://docs.goauthentik.io/users-sources/user/user-switching/)).
+The switcher is disabled unless the brand has a **User switch flow**; the blueprint declares one:
+
+- Flow `user-switch-flow` (designation `authentication`) with a single binding to the shared
+  `default-authentication-login` stage (`days=30`, `terminate_other_sessions: false` — the latter is
+  load-bearing, it must never terminate the browser's other switch targets).
+- Brand `authentik-default` (identifier: `domain`; the stock default brand matches every hostname,
+  `sso.brauni.dev` serves no dedicated brand) with `flow_user_switch` pointed at that flow. The
+  entry is a partial update — branding and the other default-flow assignments are untouched.
+
+Behaviour, from the upstream implementation and tests (`authentik/core/tests/test_user_switch.py`):
+
+- Switching is only offered to accounts with a **live session in the same browser** (grouped via the
+  `authentik_browser` user-switching token cookie), and the target session is re-verified
+  immediately before the login stage completes the switch. Flow-level policies are evaluated against
+  the **source** user, not the target.
+- **"Add user" does not use this flow** — it plans the brand's normal `flow_authentication`
+  (a full login) with `user_switch_add_user` context, which is what preserves the already-signed-in
+  sessions.
+- The switch replaces the target session and supersedes the source session; the previous user stays
+  in the switcher, but its old session cookie can no longer act as that user. Switches are logged as
+  `login` events with `is_user_switch: true`.
+- Because the flow contains nothing but the login stage, **a switch requires no password and no
+  MFA** — the deliberate Google-style tradeoff: whoever controls an unlocked browser controls every
+  account signed in there. Both accounts still require the full login the first time.
+
+To tighten it later (require password only for targets not used recently, per the upstream docs),
+add Password and Authenticator Validation stage bindings before the login stage and bind this
+expression policy to the **password stage binding** (skip only when the target was recently active):
+
+```python
+from datetime import timedelta
+
+from authentik.core.user_switching import is_user_switch_target_recent
+
+return not is_user_switch_target_recent(request, timedelta(hours=24))
+```
+
+When the policy returns `False` the password stage is skipped and the switch falls through to the
+authenticator stage. There is no bundled MFA stage in this cluster yet, so passwordless switching is
+the whole flow for now; adding stages without the policy would require them on every switch.
+
+Verified 2026-09-30 on 2026.8.3: the full blueprint passes `Importer.validate()` in the worker
+(rolled-back dry run); the earlier attempts deadlocked on `guardian_rolemodelpermission` while
+racing the worker's own apply — same signature as the 2026-09-15 `vaultwarden` note above, retry
+until the worker is idle or validate a minimal delta document instead.

@@ -7,8 +7,8 @@
 # requests are matched against.
 #
 # Managed here: users, groups, proxy providers, applications, application access
-# bindings, the embedded outpost's provider list and the login stage's session
-# duration.
+# bindings, the embedded outpost's provider list, the login stage's session
+# duration, and the user switch flow that powers the 2026.8 account switcher.
 # Deliberately NOT managed here:
 #   - passwords (set once per user in the UI or with `ak changepassword <username>`;
 #     re-applying this blueprint never touches them)
@@ -23,6 +23,18 @@
 # users log in per app. Access is granted through a group + a policy binding per
 # application - authentik's group bindings have no superuser bypass, so a group member
 # is required even for `akadmin`.
+#
+# User switching (2026.8): the browser switcher is enabled by pointing the brand's
+# `flow_user_switch` at a dedicated authentication-designated flow. That flow runs
+# ONLY for switches to accounts already signed in in the same browser (the "Add
+# user" action goes through the brand's normal authentication flow instead, i.e. a
+# full login), and authentik re-verifies the target session immediately before the
+# login stage completes the switch. It contains nothing but the login stage, so a
+# switch is instant: no password, no MFA. That is the deliberate Google-style
+# tradeoff - whoever controls an unlocked browser controls every account signed in
+# there. If that ever needs tightening, bind the docs' `is_user_switch_target_recent`
+# expression policy to the stage binding below (see docs/authentik-forward-auth.md,
+# "User switching").
 version: 1
 metadata:
   name: ovh-ops - Forward Auth
@@ -588,11 +600,56 @@ entries:
   # duration gives a persistent cookie instead. 30 days was chosen so routine
   # SSO usage no longer requires daily logins.
   # ---------------------------------------------------------------------------
-  - model: authentik_stages_user_login.userloginstage
+  - id: stage-login-default
+    model: authentik_stages_user_login.userloginstage
     identifiers:
       name: default-authentication-login
     attrs:
       session_duration: days=30
+
+  # ---------------------------------------------------------------------------
+  # User switching (authentik 2026.8). The brand below points `flow_user_switch`
+  # at this flow; without it the switcher in the user interface header is
+  # disabled entirely. The flow is authentication-designated but never runs for
+  # normal logins: only the switch endpoint plans it, with the target user (a
+  # live session in the same browser) pre-resolved as `pending_user`.
+  #
+  # A single login-stage binding is the whole flow: the switch completes with no
+  # credential re-entry. Two properties of the shared login stage matter here:
+  # `session_duration: days=30` also applies to switch-created sessions, and
+  # `terminate_other_sessions` must stay false or every switch would destroy the
+  # browser's other switch targets (it is false by default and unset above).
+  # Upstream ships no default switch flow, so the slug deliberately does not use
+  # the `default-` prefix to avoid a future collision.
+  # ---------------------------------------------------------------------------
+  - id: flow-user-switch
+    model: authentik_flows.flow
+    identifiers:
+      slug: user-switch-flow
+    attrs:
+      name: User switch flow
+      title: Switch user account
+      designation: authentication
+      authentication: none
+  - model: authentik_flows.flowstagebinding
+    identifiers:
+      target: !KeyOf flow-user-switch
+      stage: !KeyOf stage-login-default
+    attrs:
+      order: 0
+
+  # ---------------------------------------------------------------------------
+  # The brand identifies by `domain` (the stock default brand matches every
+  # hostname; sso.brauni.dev serves no dedicated brand). This is a partial
+  # update: branding and the other default-flow assignments are untouched, only
+  # `flow_user_switch` is set. Removing this entry (or the flow) disables the
+  # switcher again - nothing else on the brand depends on it.
+  # ---------------------------------------------------------------------------
+  - model: authentik_brands.brand
+    identifiers:
+      domain: authentik-default
+    attrs:
+      flow_user_switch: !KeyOf flow-user-switch
 
   # ---------------------------------------------------------------------------
   # The embedded outpost serves every provider above. This list replaces the
