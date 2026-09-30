@@ -34,3 +34,6 @@ plans
 
 # Added by ggshield
 .cache_ggshield
+
+# Local NZB export (altmount store)
+/nzb-export/
