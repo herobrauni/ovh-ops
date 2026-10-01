@@ -27,7 +27,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 
 | Phase | Status | Note |
 | --- | --- | --- |
-| 0 — reconcile the missing content | `[~]` | list + classification done (108 entries); **placements not started — gate for Phase 3** |
+| 0 — reconcile the missing content | `[x]` | **dropped by decision (2026-10-01)** — the missing set will simply re-grab after Phase 3; worklist kept for reference only |
 | 1 — Git: zurg sidecar on the four \*arrs | `[x]` | `feat(media): add zurg sidecar to the *arrs` |
 | 2 — switch the download clients | `[ ]` | one app at a time; needs Phase 1 merged |
 | 3 — repoint \*arr root folders | `[ ]` | riskiest; needs Phase 0 done first |
@@ -66,6 +66,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   Note for the next session: `zurg_library_search` `query` is a literal substring
   and misses dotted release names — use `regex`. Nothing placed yet, so the
   worklist is the resume point.
+- **2026-10-01** — **Phase 0 dropped.** Decision: do not hand-place the missing
+  entries. After Phase 3 repoints the roots, any series/movie whose content is
+  absent shows as missing and the \*arrs re-grab it unattended; the 30 GONE
+  entries are largely the 2026-09-30 cleanup's deliberate removals. The
+  classification in
+  [`zurg-migration-phase0-worklist.md`](./zurg-migration-phase0-worklist.md) is
+  kept for reference only. Phase 0 therefore no longer gates Phase 3.
 
 ---
 
