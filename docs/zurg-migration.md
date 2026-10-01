@@ -31,7 +31,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 | 1 — Git: zurg sidecar on the four \*arrs | `[x]` | deployed & verified 2026-10-01 (PR #1329 / main `364cd58b`) |
 | 2 — switch the download clients | `[x]` | deployed & verified 2026-10-01 (all four apps) |
 | 3 — repoint \*arr root folders | `[x]` | bulk repoint done 2026-10-01; 0 files lost, old roots dropped |
-| 4 — Plex cutover | `[ ]` | Jellyfin already done |
+| 4 — Plex cutover | `[~]` | all 5 sections switched to magic-only; Movies/Movies4k/Other converged, TV scanning |
 | 5 — teardown | `[ ]` | only after 1–2 quiet weeks |
 
 ### Log
@@ -395,6 +395,41 @@ the paths in the Postgres tables (`/aio/symlinks` → `/aio/remote/zurg/__magic_
 while the app is stopped. Unsupported surgery; snapshot/backup first; only if needed.
 
 ## Phase 4 — finish the Plex cutover (Jellyfin is done)
+
+**Status: in progress 2026-10-01.** All five Plex sections are now configured with the
+`__magic__` location only (the old `/aio/symlinks/...` location was removed). Movies,
+Movies4k and Other have converged; TV Shows was still scanning at the time of writing.
+
+What was learned doing the switch:
+
+- **The old location must go before the magic side can populate.** While dual-pathed,
+  Plex's scan was pinned at `Scanning Movies4k 11%` for 15+ minutes because it was
+  reading the **old** location — whose entries are symlinks into
+  `/aio/remote/altmount/complete/...`, i.e. the AltMount backend, which was thrashing on
+  rotted releases (`HTTP 503 File unavailable`, `File corrupted`, zero-filled
+  segments). Removing the old location is what unstuck it; zurg was idle at the time.
+- **After removal + one scan, Plex purges the removed location's parts** for every item
+  that has a magic match, and keeps only items with no magic counterpart. Movies
+  492→131, Movies4k 344→126, Other 59→17 symlink parts — and in each case the survivors
+  are exactly the Phase 0 "missing in zurg" set (e.g. `Avatar: The Way of Water`,
+  `Baby Driver`), which now go to trash and are the \*arr's to re-grab.
+- **Plex's `/activities` progress lies.** It showed `idle` while `Plex Media Scanner
+  --analyze` subprocesses were running, and `Scanning Movies4k 11%` while stuck on the
+  old backend. Trust `ps -ef | grep 'Plex Media Scanner'` and the per-section part
+  counts instead. Scan rate through the zurg mount was ~1.4–1.6%/min for a movie
+  section (≈6 magic parts/min).
+- **`autoEmptyTrash=0` confirmed** before any removal (plus FSEvents off and
+  `GenerateBIFBehavior=never`), so nothing is destroyed and the trash is the rollback.
+
+> **Phase 3 addendum — Radarr *collections* carry a `rootFolderPath` too.** Repointing
+> movies/series did NOT move them: the bulk editor call covers `movieIds`/`seriesIds`
+> only, and a Radarr **Collection** has its own `rootFolderPath`. Radarr4k raised
+> `Missing root folder for movie collection: /aio/symlinks/plex_4k/movies` and Radarr
+> stayed quiet but was equally wrong. Fixed 2026-10-01 with a per-collection
+> `PUT /api/v3/collection/<id>` (109 on radarr4k + 116 on radarr; there is **no**
+> `collection/editor` endpoint). After that: health clear in all four \*arrs and zero
+> remaining `/aio/symlinks` references in roots, collections or item paths. **Check
+> collections as part of any future root move.**
 
 Per section (Movies, Movies 4K, Shows, Shows 4K, Other):
 
