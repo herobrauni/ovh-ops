@@ -11,7 +11,7 @@ to v12. All facts below were verified against the live cluster on 2026-09-30.
 - **Phase 1 backups DONE**:
   - PG logical dump: `~/Backups/jellyfin/jellyfin-pre-v12.pgdump` (13.4 MB, `-Fc`, verified with `pg_restore --list`)
   - Config tarball (excl. re-fetchable `metadata/`/`log`/`cache`): `~/Backups/jellyfin/jellyfin-config-pre-v12.tgz` (5.5 MB)
-  - Pinned kopiur snapshot: `Snapshot/jellyfin-pre-v12` (ns media, `spec.pin: true`, tag `reason: pre-upgrade`)
+  - Pinned kopiur snapshot: `Snapshot/jellyfin-pre-v12` (ns media, `spec.pin: true`, tag `reason: pre-upgrade`) — **Succeeded** 2026-10-01
 
 ## Current state (verified)
 
