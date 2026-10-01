@@ -38,7 +38,11 @@ spec:
           app:
             image:
               repository: ghcr.io/jpvenson/jellyfin.pgsql
-              tag: 10.11.11-1@sha256:67ffa31823880bd76b9dbe3cde57ed3d31e06f6a955d544247cd370c67d58306
+              # 12.1-2 = upstream 12.1 base + PG plugin, built 2026-09-29 from
+              # main@a5957c7 (includes the 12.1 PG migration fixes, PRs #48/#49).
+              # One-way DB migration: rollback = pg_dump + pinned kopiur snapshot,
+              # see docs/jellyfin-v12-upgrade.md
+              tag: 12.1-2@sha256:b1cafefc4732895b9bece7da1787690aa462ee2e46e968b99c735754d95c785d
             env:
               JELLYFIN_PublishedServerUrl: https://jellyfin.480p.com
               POSTGRES_HOST:
@@ -93,7 +97,11 @@ spec:
                 spec:
                   tcpSocket:
                     port: *port
-                  failureThreshold: 30
+                  # TEMP(v12 upgrade): 30x10s = 5min was too tight for the one-way
+                  # EF Core migration + first-boot path cleanup; bump to 30min
+                  # headroom. Revert to 30 once the post-upgrade scans are done
+                  # (docs/jellyfin-v12-upgrade.md).
+                  failureThreshold: 180
                   periodSeconds: 10
             securityContext:
               allowPrivilegeEscalation: false
