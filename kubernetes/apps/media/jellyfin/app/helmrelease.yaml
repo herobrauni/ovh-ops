@@ -97,11 +97,11 @@ spec:
                 spec:
                   tcpSocket:
                     port: *port
-                  # TEMP(v12 upgrade): 30x10s = 5min was too tight for the one-way
-                  # EF Core migration + first-boot path cleanup; bump to 30min
+                  # TEMP(v12 upgrade): migration passes (path-based cleanup over
+                  # the zurg mount) need way more than 5min; 600x10s = 100min
                   # headroom. Revert to 30 once the post-upgrade scans are done
                   # (docs/jellyfin-v12-upgrade.md).
-                  failureThreshold: 180
+                  failureThreshold: 600
                   periodSeconds: 10
             securityContext:
               allowPrivilegeEscalation: false
