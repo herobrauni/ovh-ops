@@ -28,7 +28,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 | Phase | Status | Note |
 | --- | --- | --- |
 | 0 — reconcile the missing content | `[x]` | **dropped by decision (2026-10-01)** — the missing set will simply re-grab after Phase 3; worklist kept for reference only |
-| 1 — Git: zurg sidecar on the four \*arrs | `[x]` | `feat(media): add zurg sidecar to the *arrs` |
+| 1 — Git: zurg sidecar on the four \*arrs | `[x]` | deployed & verified 2026-10-01 (PR #1329 / main `364cd58b`) |
 | 2 — switch the download clients | `[ ]` | one app at a time; needs Phase 1 merged |
 | 3 — repoint \*arr root folders | `[ ]` | riskiest; needs Phase 0 done first |
 | 4 — Plex cutover | `[ ]` | Jellyfin already done |
@@ -54,8 +54,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   mount are deliberately **left in place** (removal is Phase 5), so rollback is
   simply reverting this commit. Validated with `flate test all -p
   ./kubernetes/flux/cluster` → 255 passed, 0 errors (only the 3 pre-existing
-  offline warnings). **Not yet applied** — needs merge + Flux reconcile before
-  Phase 2.
+  offline warnings). **Deployed 2026-10-01 in PR #1329** (squash-merged as main
+  `364cd58b`); Flux applied it unprompted and the rollout converged.
+  **Verified live:** all four pods `3/3 Running` with `rclone-zurg` ready and 0
+  restarts, and `/aio/remote/zurg/__magic__` lists `__all__ other plex_4k plex_hd`
+  inside every \*arr pod — the Phase 1 acceptance criterion.
 - **2026-10-01** — **Phase 0 started (classification only, no writes).** The
   missing set is **108** entries, not 91: `plex_hd/shows` 1, `plex_hd/movies` 64,
   `plex_4k/shows` 0, `plex_4k/movies` 25, `other` 18. All 108 were searched in
