@@ -27,7 +27,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 
 | Phase | Status | Note |
 | --- | --- | --- |
-| 0 — reconcile the missing content | `[ ]` | not started; **gate for Phase 3** |
+| 0 — reconcile the missing content | `[~]` | list + classification done (108 entries); **placements not started — gate for Phase 3** |
 | 1 — Git: zurg sidecar on the four \*arrs | `[x]` | `feat(media): add zurg sidecar to the *arrs` |
 | 2 — switch the download clients | `[ ]` | one app at a time; needs Phase 1 merged |
 | 3 — repoint \*arr root folders | `[ ]` | riskiest; needs Phase 0 done first |
@@ -56,6 +56,16 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   ./kubernetes/flux/cluster` → 255 passed, 0 errors (only the 3 pre-existing
   offline warnings). **Not yet applied** — needs merge + Flux reconcile before
   Phase 2.
+- **2026-10-01** — **Phase 0 started (classification only, no writes).** The
+  missing set is **108** entries, not 91: `plex_hd/shows` 1, `plex_hd/movies` 64,
+  `plex_4k/shows` 0, `plex_4k/movies` 25, `other` 18. All 108 were searched in
+  zurg's library: **49 RECOVER** (title+year at the tree's resolution), **25
+  WRONG-RES** (only the other resolution present), **30 GONE** (no match —
+  including *all 18* `other` sports entries), **4 LOW-CONF**. Full per-entry table
+  in [`zurg-migration-phase0-worklist.md`](./zurg-migration-phase0-worklist.md).
+  Note for the next session: `zurg_library_search` `query` is a literal substring
+  and misses dotted release names — use `regex`. Nothing placed yet, so the
+  worklist is the resume point.
 
 ---
 
@@ -191,9 +201,14 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 
 ## Phase 0 — reconcile the missing content (do first, no config changes)
 
-91 old-tree entries have no counterpart in the `__magic__` trees (1 HD show, 64 HD
-movies, 24 4K movies, 18 other — full lists regenerable with the diff one-liner at the
-bottom). For each missing name, in this order:
+**Status: list generated and classified 2026-10-01; placements not started.** See
+[`zurg-migration-phase0-worklist.md`](./zurg-migration-phase0-worklist.md) for the
+per-entry verdicts and candidate releases.
+
+**108** old-tree entries have no counterpart in the `__magic__` trees (1 HD show,
+64 HD movies, 25 4K movies, 18 other — full lists regenerable with the diff one-liner
+at the bottom). Classification against zurg's library: 49 RECOVER, 25 WRONG-RES, 30
+GONE, 4 LOW-CONF. For each missing name, in this order:
 
 1. **Find the release in zurg** — MCP `zurg_release_search` or look under
    `__magic__/__all__`. If present: place it with a magic move
