@@ -30,7 +30,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 | 0 — reconcile the missing content | `[x]` | **dropped by decision (2026-10-01)** — the missing set will simply re-grab after Phase 3; worklist kept for reference only |
 | 1 — Git: zurg sidecar on the four \*arrs | `[x]` | deployed & verified 2026-10-01 (PR #1329 / main `364cd58b`) |
 | 2 — switch the download clients | `[x]` | deployed & verified 2026-10-01 (all four apps) |
-| 3 — repoint \*arr root folders | `[~]` | leading edge done for 5 items; bulk swap still open |
+| 3 — repoint \*arr root folders | `[x]` | bulk repoint done 2026-10-01; 0 files lost, old roots dropped |
 | 4 — Plex cutover | `[ ]` | Jellyfin already done |
 | 5 — teardown | `[ ]` | only after 1–2 quiet weeks |
 
@@ -97,11 +97,29 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   copy into a 10 GiB PVC**. The root must point into `__magic__` first, so each app's
   grab was preceded by the single-item root repoint from Phase 3. See the Phase 2
   execution notes added below.
-- **2026-10-01** — **Phase 3 leading edge (5 items).** Repointed and re-linked
+- **2026-10-01** — **Phase 3 leading edge (5 items).** Repointed and re-matched
   without moving bytes: radarr movie `Hercules: Zero to Hero`, radarr4k movie
   `Django Unchained`, sonarr4k series `Band of Brothers`, sonarr series `Ted Lasso`
-  (42 files re-linked, none lost) and `Last Week Tonight with John Oliver`. The bulk
+  (42 files re-matched, none lost) and `Last Week Tonight with John Oliver`. The bulk
   swap of the remaining ~1,100 items is still open.
+- **2026-10-01** — **Phase 3 bulk repoint done.** Every item in all four \*arrs now
+  references `/aio/remote/zurg/__magic__/...`, with **no file records lost** and no
+  bytes moved (before → after file counts identical):
+
+  | app | items | files before → after | new root |
+  | --- | ---: | --- | --- |
+  | sonarr | 104 series | 3455 → 3455 | `__magic__/plex_hd/shows` |
+  | radarr | 508 movies | 499 → 499 | `__magic__/plex_hd/movies` |
+  | sonarr4k | 88 series | 1368 → 1368 | `__magic__/plex_4k/shows` |
+  | radarr4k | 471 movies | 424 → 424 | `__magic__/plex_4k/movies` |
+
+  Done with a **bulk editor call per app** (`PUT /movie/editor` /
+  `PUT /series/editor`, `moveFiles:false`), then `DELETE /rootfolder/<old-id>` to drop
+  the `/aio/symlinks/...` roots. After that: **health is clear in all four apps**, every
+  movie/episode file path reads `__magic__`, and the old symlink tree is unchanged
+  (103 / 498 / 67 / 426 entries — nothing copied, nothing deleted). Phase 4 (Plex) is
+  the remaining cutover; the \*arrs will now search for and re-grab genuinely missing
+  content on their own schedule.
 
 ---
 
@@ -328,9 +346,24 @@ editing in place, so rollback is "re-enable AltMount, disable zurg":
   on damaged articles and Sonarr moved on; a fresh 2026 episode of
   `Last Week Tonight` imported in ~40 s.
 - **Root repoint keeps files.** Repointing `Ted Lasso` (42 files) moved its root to
-  `__magic__` and re-linked all 42 — no loss, no copy.
+  `__magic__` and re-matched all 42 — no loss, no copy. (Terminology: there are no
+  symlinks in `__magic__`; the files are real virtual files served by zurg, and a
+  rescan simply re-matches them to the \*arr's records.)
 
 ## Phase 3 — repoint \*arr root folders (no file moves!)
+
+**Status: done 2026-10-01 for all four \*arrs** (see the progress log). The bulk
+repoint used one editor call per app and dropped the old roots; 0 files lost, health
+clear, old symlink tree untouched. Note the ordering constraint recorded under Phase 2:
+the grab test needs the root already in `__magic__`, so a single item was repointed
+before Phase 2's grabs. API shapes that work: `PUT /api/v3/movie/editor` and
+`PUT /api/v3/series/editor` with `{"movieIds"|"seriesIds":[…],"rootFolderPath":…,
+"moveFiles":false}` (a per-item `PUT /movie/{id}` ignores the change), then
+`DELETE /api/v3/rootfolder/<id>` for the old root — which removes the entry only.
+
+Terminology: there are no symlinks in `__magic__`. The files are real virtual files
+served by zurg; a rescan **re-matches** them to the \*arr's records and rewrites the
+stored paths — that is the whole operation, and it moves no bytes.
 
 The DMM-documented sequence is: add `__magic__` roots → Library Import adopts what's
 there → remove old root without deleting. Ours differs deliberately: the `__magic__`
@@ -350,7 +383,7 @@ picks up untracked folders). The equivalent for tracked items is a path swap:
    source filesystem is a copy, and a copy downloads the whole library through Usenet.
    (Inside `__magic__` zurg would refuse the move with a 403; the old symlink tree is
    outside `__magic__`, so the old→new direction is the dangerous one.)
-3. Do **one series first**: swap path → Rescan → confirm episode files re-link (names
+3. Do **one series first**: swap path → Rescan → confirm episode files re-match (names
    already match the \*arr scheme, so parsing should just work) and the file paths in
    the UI read `/aio/remote/zurg/__magic__/...`. Watch `/magic/`'s `data/local` gauge
    throughout — growth means something is copying.
