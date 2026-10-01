@@ -12,6 +12,29 @@ to v12. All facts below were verified against the live cluster on 2026-09-30.
   - PG logical dump: `~/Backups/jellyfin/jellyfin-pre-v12.pgdump` (13.4 MB, `-Fc`, verified with `pg_restore --list`)
   - Config tarball (excl. re-fetchable `metadata/`/`log`/`cache`): `~/Backups/jellyfin/jellyfin-config-pre-v12.tgz` (5.5 MB)
   - Pinned kopiur snapshot: `Snapshot/jellyfin-pre-v12` (ns media, `spec.pin: true`, tag `reason: pre-upgrade`) — **Succeeded** 2026-10-01
+- **Phase 2 upgrade executed 2026-10-01 (with one incident — see below)**: PR #1328 merged (`7a920216`); Flux kustomization was suspended before merge, resumed/reconciled manually; HelmRelease upgrade to `12.1-2` succeeded; new pod rolled.
+- **Incident 1 — `MigrateRatingLevels` (20260910120000) is PostgreSQL-incompatible.** First migration boot: pre-migration PG dump `PgsqlBackups/20261001110849_jellyfin.sql` (74.9 MB) ✅ → `DisableLegacyAuthorization` ✅ → `Jellyfin12.1` EF migration (6s) ✅ → `MigrateLinkedChildren` incl. the path-based cleanup found **5,714 stale items** (the dead `/aio/symlinks/*` rows) and removed them (~17 min) ✅ → then `MigrateRatingLevels` **failed** with `A command is already in progress: SELECT DISTINCT b."OfficialRating"` — the routine iterates a deferred `IQueryable` (open DataReader) and runs `ExecuteUpdate` on the same connection: legal on SQLite, illegal on Npgsql. The fork's guardrail **auto-restored the pre-migration backup** (DB back to exact pre-migration state) and the server retried startup in-process — an unbounded 20-min removal → fail → restore loop.
+  - **Containment**: scaled the deployment to 0. The pod stays "ready" with the v12 startup page while retrying, so probes cannot catch this loop.
+  - **Not fixed upstream**: JPVenson/Jellyfin.Pgsql#47 — the `release-12.z` copy (`20260915120000_MigrateRatingLevels`) has the **same** `Distinct()` loop, so future 12.1.x bumps will hit it again unless the routine is skipped the same way (the pre-inserted history row keys on the migration ID, which changes per copy — re-check on every image bump).
+  - **Workaround**: code migrations are recorded in `__EFMigrationsHistory` (`HistoryRow(BuildCodeMigrationId, version)`), so the row `('20260910120000_MigrateRatingLevels','12.1.0')` was inserted manually — the server skips the broken routine. Skipped work: recalc of `InheritedParentalRatingValue`/`SubValue` from `OfficialRating` — cosmetic, recomputed on item metadata refresh; no other migration depends on it. (There is also an old `20250420220000_MigrateRatingLevels` row from the 10.11 era — the routine has been re-cast repeatedly.)
+- **Incident 2 — `StripEmbeddedLinkedChildren` (20260911120000) uses SQLite `json_valid()`** in raw SQL (`UPDATE "BaseItems" SET "Data" = json_remove(...) WHERE ... json_valid("Data") = 1`) — `function json_valid(text) does not exist` on PG (second restore+retry cycle). Workaround: ran the PG-safe equivalent manually and inserted its history row:
+  ```sql
+  CREATE OR REPLACE FUNCTION pg_temp.try_jsonb(t text) RETURNS jsonb AS $$
+  BEGIN RETURN t::jsonb; EXCEPTION WHEN OTHERS THEN RETURN NULL; END $$ LANGUAGE plpgsql;
+  UPDATE "BaseItems"
+  SET "Data" = (pg_temp.try_jsonb("Data") - 'LinkedChildren' - 'ExtraIds' - 'SupportsExternalTransfer')::text
+  WHERE "Data" IS NOT NULL
+    AND ("Data" LIKE '%"LinkedChildren"%' OR "Data" LIKE '%"ExtraIds"%' OR "Data" LIKE '%"SupportsExternalTransfer"%')
+    AND pg_temp.try_jsonb("Data") IS NOT NULL;
+  INSERT INTO "__EFMigrationsHistory" ("MigrationId","ProductVersion")
+    VALUES ('20260911120000_StripEmbeddedLinkedChildren','12.1.0');
+  ```
+  All OTHER pending code migrations were audited (no raw SQLite SQL; the other `.Distinct()` uses materialize via `ToList` first) — these two are the complete broken set for the 10.11.11→12.1 path on this fork. The fork author explicitly does not support older→latest upgrades (JPVenson/Jellyfin.Pgsql#47).
+- **Gotcha**: `kubectl exec pod -- psql <<EOF` silently does nothing without `-i` (stdin isn't attached) — the first attempt of the strip fix ran zero statements; re-run with `kubectl exec -i`.
+- **Startup-probe budget**: the cleanup pass re-runs on every boot attempt and takes 17–45 min over the zurg mount depending on load; failure→restore cycles lose removal progress but **probe kills keep committed batches** (each pass resumes from fewer stale rows). PR #1333 raised the startup probe to `failureThreshold: 600` (100 min) so one pass fits; final pass completed **`Startup complete 0:11:22`**. Revert to 30 after the post-upgrade scans.
+- **Result (14:51 UTC)**: server up on **12.1.0**, `/web/` 200, public `https://jellyfin.480p.com/` 302 → app; zurg-style `Authorization: MediaBrowser Token=…` auth on `/System/Info` returns **200** (push-scan integration intact); migration history complete (`Jellyfin12.1` EF + all code migrations incl. the two skip rows); stale symlink rows 6,374 → **660** (remainder have real files in the farm — invisible to libraries, purged by the full scan); zero `[ERR]` post-startup.
+- **encoding.xml fix**: 12.1 rejects the old `<EncoderPreset xsi:nil="true" />` ("EncoderPreset is no longer nullable") and falls back to defaults with an XML parse error on every boot; set to `<EncoderPreset>veryfast</EncoderPreset>` (the default) in `/config/config/encoding.xml` on the PVC.
+- **v12 startup behavior worth knowing**: during migration/startup the web UI serves a styled **503** (`server: Kestrel`, `retry-after: 005`) while `/System/Info/Public` already answers 200 — don't mistake it for a gateway outage; probes are TCP so they pass only once the port binds.
 
 ## Current state (verified)
 
