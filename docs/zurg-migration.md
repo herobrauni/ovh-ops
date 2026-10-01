@@ -421,15 +421,24 @@ What was learned doing the switch:
 - **`autoEmptyTrash=0` confirmed** before any removal (plus FSEvents off and
   `GenerateBIFBehavior=never`), so nothing is destroyed and the trash is the rollback.
 
-> **Phase 3 addendum — Radarr *collections* carry a `rootFolderPath` too.** Repointing
+> **Phase 3 addendum — other `*arr` objects carry their own `rootFolderPath`.** Repointing
 > movies/series did NOT move them: the bulk editor call covers `movieIds`/`seriesIds`
-> only, and a Radarr **Collection** has its own `rootFolderPath`. Radarr4k raised
-> `Missing root folder for movie collection: /aio/symlinks/plex_4k/movies` and Radarr
-> stayed quiet but was equally wrong. Fixed 2026-10-01 with a per-collection
-> `PUT /api/v3/collection/<id>` (109 on radarr4k + 116 on radarr; there is **no**
-> `collection/editor` endpoint). After that: health clear in all four \*arrs and zero
-> remaining `/aio/symlinks` references in roots, collections or item paths. **Check
-> collections as part of any future root move.**
+> only. Two more places hold a root path and were missed:
+>
+> 1. **Radarr Collections** — Radarr4k raised
+>    `Missing root folder for movie collection: /aio/symlinks/plex_4k/movies`; Radarr
+>    stayed quiet but was equally wrong. Fixed 2026-10-01 with a per-collection
+>    `PUT /api/v3/collection/<id>` (109 on radarr4k + 116 on radarr; there is **no**
+>    `collection/editor` endpoint).
+> 2. **Import Lists** — each 4K instance had one cross-instance sync list (`Radarr
+>    import` / `Sonarr Import`) still on the old root. Fixed with
+>    `PUT /api/v3/importlist/<id>` (radarr/sonarr have no import lists).
+>
+> After both fixes: health clear in all four \*arrs and **zero `/aio/symlinks`
+> references** across root folders, collections, import lists, remote path mappings
+> and item paths. **Any future root move must sweep collections and import lists too**
+> — `GET /api/v3/collection`, `GET /api/v3/importlist`, `GET /api/v3/remotepathmapping`
+> are the surfaces to check (a `grep -c /aio/symlinks` on each is enough).
 
 Per section (Movies, Movies 4K, Shows, Shows 4K, Other):
 
