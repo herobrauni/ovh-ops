@@ -29,8 +29,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 | --- | --- | --- |
 | 0 — reconcile the missing content | `[x]` | **dropped by decision (2026-10-01)** — the missing set will simply re-grab after Phase 3; worklist kept for reference only |
 | 1 — Git: zurg sidecar on the four \*arrs | `[x]` | deployed & verified 2026-10-01 (PR #1329 / main `364cd58b`) |
-| 2 — switch the download clients | `[ ]` | one app at a time; needs Phase 1 merged |
-| 3 — repoint \*arr root folders | `[ ]` | riskiest; needs Phase 0 done first |
+| 2 — switch the download clients | `[x]` | deployed & verified 2026-10-01 (all four apps) |
+| 3 — repoint \*arr root folders | `[~]` | leading edge done for 5 items; bulk swap still open |
 | 4 — Plex cutover | `[ ]` | Jellyfin already done |
 | 5 — teardown | `[ ]` | only after 1–2 quiet weeks |
 
@@ -76,6 +76,32 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   classification in
   [`zurg-migration-phase0-worklist.md`](./zurg-migration-phase0-worklist.md) is
   kept for reference only. Phase 0 therefore no longer gates Phase 3.
+- **2026-10-01** — **Phase 2 done and verified.** Added a `zurg (Usenet)` SABnzbd
+  client to every \*arr and disabled `AltMount (SABnzbd)`, all via the API
+  (Sonarr/Radarr, port 80 for the Sonarrs and 7878 for the Radarrs; key from
+  `zurg:/config/data/sabnzbd-apikey`). The client test passed in all four
+  (zurg validates host, key, global config **and** category). One real grab per
+  app then imported into `__magic__`, no bytes copied:
+
+  | app | grabbed | landed at |
+  | --- | --- | --- |
+  | radarr | Hercules: Zero to Hero (1999) | `__magic__/plex_hd/movies/…` |
+  | radarr4k | Django Unchained (2012) | `__magic__/plex_4k/movies/…` |
+  | sonarr4k | Band of Brothers S01E01 | `__magic__/plex_4k/shows/…` |
+  | sonarr | Last Week Tonight S13E24 | `__magic__/plex_hd/shows/…` |
+
+  **Ordering correction (important):** the grab test in the Phase 2 text below
+  cannot run while the \*arr root still points at `/aio/symlinks/...`. The import
+  would be a cross-filesystem move (source on the zurg mount, destination on the
+  symlinks PVC) and — with `copyUsingHardlinks=true` — falls back to a **full byte
+  copy into a 10 GiB PVC**. The root must point into `__magic__` first, so each app's
+  grab was preceded by the single-item root repoint from Phase 3. See the Phase 2
+  execution notes added below.
+- **2026-10-01** — **Phase 3 leading edge (5 items).** Repointed and re-linked
+  without moving bytes: radarr movie `Hercules: Zero to Hero`, radarr4k movie
+  `Django Unchained`, sonarr4k series `Band of Brothers`, sonarr series `Ted Lasso`
+  (42 files re-linked, none lost) and `Last Week Tonight with John Oliver`. The bulk
+  swap of the remaining ~1,100 items is still open.
 
 ---
 
@@ -273,6 +299,36 @@ editing in place, so rollback is "re-enable AltMount, disable zurg":
   `__magic__` tree, and zurg pushes the Plex/Jellyfin scan. History shows **Grabbed**
   then **Movie/Series Imported** seconds apart with nothing downloaded. Watch the
   `/magic/` dashboard: placements +1, and `data/local` must NOT grow.
+
+### Phase 2 execution notes (measured 2026-10-01)
+
+- **Do the single-item root repoint before the grab.** With the root still on
+  `/aio/symlinks/...` the import is a cross-device move and `copyUsingHardlinks=true`
+  makes it copy — a full Usenet read into a 10 GiB PVC. Repoint first (Phase 3 step),
+  then grab; the import then stays inside the zurg mount and is a row write.
+- **API shape used.** The `Sabnzbd`/`SabnzbdSettings` schema comes from
+  `GET /api/v3/downloadclient/schema`; POST it back with `host`,
+  `port`=9999, `useSsl`=false, `apiKey`=zurg's key, `tvCategory`/`movieCategory`
+  filled (Sonarr/Radarr use different field names) and the priorities left at
+  their `-100` default. `POST …/downloadclient/test` first (200 = all four checks),
+  then `POST …/downloadclient`, then `PUT …/downloadclient/<id>` with
+  `enable:false` on the AltMount client.
+- **Root-folder repoint is an *editor* call, not a per-item PUT.**
+  `PUT /api/v3/movie/{id}` silently ignores a changed `rootFolderPath` (returns 202,
+  no change). Use `PUT /api/v3/movie/editor` with
+  `{"movieIds":[…],"rootFolderPath":…,"moveFiles":false}` — likewise
+  `PUT /api/v3/series/editor` with `seriesIds`. Add the `__magic__` path as a root
+  folder (`POST /api/v3/rootfolder`) first; it reports a virtual ~1 PiB free space,
+  which is the zurg mount answering rather than a real disk.
+- **Fail-closed works.** Rotted releases are reported by zurg with a reason
+  (`4 of its files report damage … likely aged off the spool`, `no usable PAR2
+  index`, `N article(s) missing`), the job goes Failed, and the \*arr records
+  `downloadFailed` and blocklists — then re-grabs another release unattended. Seen
+  live on 2021-era `Ted Lasso` S02: the release, and then a season pack, both failed
+  on damaged articles and Sonarr moved on; a fresh 2026 episode of
+  `Last Week Tonight` imported in ~40 s.
+- **Root repoint keeps files.** Repointing `Ted Lasso` (42 files) moved its root to
+  `__magic__` and re-linked all 42 — no loss, no copy.
 
 ## Phase 3 — repoint \*arr root folders (no file moves!)
 
