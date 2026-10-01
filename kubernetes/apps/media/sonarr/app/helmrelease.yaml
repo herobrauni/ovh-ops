@@ -196,6 +196,79 @@ spec:
               capabilities:
                 drop:
                   - ALL
+          # zurg (the Usenet backend) mounted where zurg reports it, so the
+          # *arr sees a release at the same path the SABnzbd endpoint hands
+          # over. Writable on purpose: an import MOVEs the released folder
+          # inside __magic__ (a server-side row write, no bytes moved) and
+          # PUTs posters/.nfo sidecars beside it. Only __magic__ subpaths are
+          # ever addressed, never __magic__ or __magic__/__all__ themselves.
+          rclone-zurg:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.75@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-sonarr-zurg 2>/dev/null || true
+                mkdir -p /host-mount/rclone-sonarr-zurg
+                exec rclone mount zurg:/ /host-mount/rclone-sonarr-zurg \
+                  --dir-cache-time=20s \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=24h \
+                  --vfs-cache-max-size=20G \
+                  --vfs-cache-poll-interval=30s \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=512M \
+                  --vfs-fast-fingerprint \
+                  --vfs-handle-caching=0 \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --cache-dir=/cache
+            env:
+              RCLONE_CONFIG_ZURG_TYPE: webdav
+              RCLONE_CONFIG_ZURG_URL: http://zurg.media.svc.cluster.local:9999/dav/
+              RCLONE_CONFIG_ZURG_VENDOR: other
+              # A remote without a config file does not get pacer_min_sleep;
+              # without it one unservable file slows every other read down.
+              RCLONE_CONFIG_ZURG_PACER_MIN_SLEEP: "0"
+            probes:
+              liveness: &rclone-zurg-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -e /host-mount/rclone-sonarr-zurg/version.txt
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness: *rclone-zurg-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -e /host-mount/rclone-sonarr-zurg/version.txt
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
     service:
       app:
         controller: sonarr
@@ -221,11 +294,19 @@ spec:
           sonarr:
             rclone-altmount:
               - path: /dev/fuse
+            rclone-zurg:
+              - path: /dev/fuse
       rclone-cache-altmount:
         type: emptyDir
         advancedMounts:
           sonarr:
             rclone-altmount:
+              - path: /cache
+      rclone-cache-zurg:
+        type: emptyDir
+        advancedMounts:
+          sonarr:
+            rclone-zurg:
               - path: /cache
       host-tmp:
         type: hostPath
@@ -236,6 +317,9 @@ spec:
             rclone-altmount:
               - path: /host-mount
                 mountPropagation: Bidirectional
+            rclone-zurg:
+              - path: /host-mount
+                mountPropagation: Bidirectional
       altmount:
         type: hostPath
         hostPath: /tmp/rclone-sonarr-altmount
@@ -244,4 +328,13 @@ spec:
           sonarr:
             app:
               - path: /aio/remote/altmount
+                mountPropagation: HostToContainer
+      zurg:
+        type: hostPath
+        hostPath: /tmp/rclone-sonarr-zurg
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          sonarr:
+            app:
+              - path: /aio/remote/zurg
                 mountPropagation: HostToContainer
