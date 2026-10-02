@@ -27,6 +27,33 @@ spec:
     groupWait: 1m
 
   inhibitRules:
+    # Node-level IO/CPU saturation on a worker explains elevated etcd peer RTT
+    # (WAN Ceph traffic shares the uplink): one saturation notification instead
+    # of correlated warnings. etcd and node-exporter instance labels carry
+    # different :port suffixes, and neither alert has a node label, so inhibit
+    # whenever ANY node saturation alert is active (equal: [severity] both
+    # warning) — a saturation on one node legitimately justifies quieting the
+    # etcd warning for the duration rather than page-storming all three.
+    - sourceMatch:
+        - name: alertname
+          value: NodeDiskIOSaturation
+          matchType: =
+      targetMatch:
+        - name: alertname
+          value: EtcdMemberCommunicationSlow
+          matchType: =
+      equal:
+        - severity
+    - sourceMatch:
+        - name: alertname
+          value: NodeSystemSaturation
+          matchType: =
+      targetMatch:
+        - name: alertname
+          value: EtcdMemberCommunicationSlow
+          matchType: =
+      equal:
+        - severity
     - equal:
         - alertname
         - namespace
