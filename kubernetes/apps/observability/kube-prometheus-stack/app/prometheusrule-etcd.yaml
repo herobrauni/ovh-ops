@@ -1,0 +1,36 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: etcd-wan-rules
+spec:
+  groups:
+    - name: etcd-wan.rules
+      rules:
+        # Replacement for the kube-prometheus-stack default etcdMemberCommunicationSlow
+        # (disabled in helmrelease.yaml defaultRules). That rule alerts on p99 peer
+        # RTT > 0.15s for 10m, but etcd probes each peer only every ~64s (~40 samples
+        # per 5m window), so its p99 is the single worst probe and any one 200-400ms
+        # WAN bubble trips it. This cluster runs external Ceph over the same uplink
+        # (media IO, zurg scans, kopiur backups), so those bubbles are routine.
+        #
+        # max_over_time raises the bar to sustained slowness: the WORST probe must
+        # exceed 0.5s for 15 of the last 15 minutes before alerting, which filters
+        # microbubbles while still catching real peer communication degradation
+        # (which on this cluster means the shared uplink is in trouble).
+        - alert: EtcdMemberCommunicationSlow
+          expr: |-
+            max_over_time(histogram_quantile(0.99, rate(etcd_network_peer_round_trip_time_seconds_bucket{job=~".*etcd.*"}[5m]))[15m:5m])
+            > 0.5
+          for: 15m
+          annotations:
+            description: >-
+              etcd cluster "{{ $labels.job }}": peer communication with {{ $labels.To }} from {{ $labels.instance }} has been slow for 15+ minutes
+              (worst p99 round trip {{ $value | humanizeDuration }} over the last 15m).
+              On this cluster etcd shares an uplink with WAN-backed external Ceph;
+              check NodeDiskIOSaturation / NodeSystemSaturation and storage traffic first.
+            summary: >-
+              etcd member communication has been slow for 15+ minutes (sustained, not a probe bubble).
+          labels:
+            severity: warning
