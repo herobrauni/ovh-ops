@@ -29,6 +29,15 @@ spec:
       service:
         selector:
           component: kube-apiserver # etcd runs on control plane nodes
+    defaultRules:
+      # etcdMemberCommunicationSlow (p99 peer RTT > 0.15s for 10m) false-positives
+      # on this cluster: etcd probes each peer only every ~64s, so the p99 over a
+      # 5m window is effectively "the single worst probe", and with WAN-backed
+      # external Ceph (media IO over the same uplink) single-probe 200-400ms
+      # bubbles are routine — the alert fired in blocks of several hours per day.
+      # Replaced by a relaxed custom rule in prometheusrule-etcd.yaml.
+      disabled:
+        etcdMemberCommunicationSlow: true
     kubeProxy:
       enabled: false
     prometheus:
