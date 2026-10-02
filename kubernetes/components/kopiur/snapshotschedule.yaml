@@ -11,6 +11,8 @@ spec:
   schedule:
     cron: "${KOPIUR_SCHEDULE:=0 */6 * * *}"
     # Deterministic per-schedule jitter, derived from (scheduleUID, slot): each
-    # app fires within 10m after the top of the slot instead of 28 simultaneous
-    # SFTP logins (hostypanel rejects concurrent subsystem requests).
-    jitter: 10m
+    # app fires within 55m after the top of the slot instead of 28 simultaneous
+    # movers in one 10-minute burst (hostypanel rejects concurrent subsystem
+    # requests, and the pile-up saturated w-ovhsbg3 RBD IO hard enough to show
+    # up as etcdMemberCommunicationSlow every 6h window).
+    jitter: 55m
