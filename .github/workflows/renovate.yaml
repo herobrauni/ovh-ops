@@ -65,6 +65,20 @@ jobs:
           RENOVATE_AUTODISCOVER: true
           RENOVATE_AUTODISCOVER_FILTER: ${{ github.repository }}
           RENOVATE_DRY_RUN: ${{ inputs.dryRun }}
+          # ghcr.io credentials for private packages (e.g. debridmediamanager/zurg).
+          # Same values as the Infisical /zurg/GHCR_* pull-secret. Keep the token
+          # valid: ghcr rejects lookups with a bad token instead of falling back
+          # to anonymous, so a stale one breaks EVERY ghcr dependency, not only
+          # the private ones.
+          RENOVATE_HOST_RULES: |-
+            [
+              {
+                "hostType": "docker",
+                "matchHost": "ghcr.io",
+                "username": "${{ secrets.GHCR_USERNAME }}",
+                "password": "${{ secrets.GHCR_TOKEN }}"
+              }
+            ]
           RENOVATE_INTERNAL_CHECKS_FILTER: strict
           RENOVATE_PLATFORM: github
           RENOVATE_PLATFORM_COMMIT: true
