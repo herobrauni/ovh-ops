@@ -27,6 +27,12 @@ spec:
             envFrom:
               - secretRef:
                   name: idlers-db-secret
+            resources:
+              requests:
+                cpu: 25m
+                memory: 128Mi
+              limits:
+                memory: 512Mi
             probes:
               liveness:
                 enabled: true
@@ -55,37 +61,63 @@ spec:
               - -c
               - |
                 until mariadb-admin ping -h 127.0.0.1 -u"$${DB_USERNAME}" -p"$${DB_PASSWORD}"; do sleep 2; done
+            # Gates on the unprivileged application credentials rather than the
+            # root ones, so this also proves the grant the app actually needs.
             envFrom: &appEnvFrom
               - secretRef:
                   name: idlers-app-secret
         containers:
           app:
             image:
-              repository: ghcr.io/herobrauni/my-idlers
-              tag: latest@sha256:1474d11bd2a615c59c4f8067e6f261ce16ff49a86f4f96778ff1ebca6a0a63ca
+              repository: ghcr.io/alteredparadox/my-idlers
+              tag: 4.1.0-ap.13@sha256:62289fe9dd7242f82224884f9adf76f0fe62da41a11d158c79499a038dab59d6
             env:
               DB_HOST: 127.0.0.1
+              DB_PORT: "3306"
+              APP_URL: https://idlers.brauni.dev
+              # Applies the fork's newer migrations on boot. The image otherwise
+              # refuses to start against a database with pending migrations.
+              AUTO_MIGRATE: "true"
+              # TLS terminates at Envoy; without trusting the proxy the app sees
+              # scheme http and the signed YABS ingest URLs fail validation.
+              TRUSTED_PROXIES: "*"
+              SESSION_SECURE_COOKIE: "true"
             envFrom: *appEnvFrom
             probes:
+              # The entrypoint caches config/routes/views and runs migrations
+              # before supervisord ever starts, so first boot is slow; a startup
+              # probe absorbs that instead of letting liveness kill the pod
+              # mid-migration.
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet: &httpGet
+                    path: /login
+                    port: &port 8000
+                    # TrustHosts rejects any host other than APP_URL's, so a
+                    # bare-IP probe would 400 against a perfectly healthy app.
+                    httpHeaders:
+                      - name: Host
+                        value: idlers.brauni.dev
+                  periodSeconds: 5
+                  timeoutSeconds: 5
+                  failureThreshold: 60
               liveness:
                 enabled: true
                 custom: true
                 spec:
-                  tcpSocket:
-                    port: &port 8000
-                  initialDelaySeconds: 30
+                  httpGet: *httpGet
                   periodSeconds: 10
-                  timeoutSeconds: 1
+                  timeoutSeconds: 5
                   failureThreshold: 3
-              readiness: &probes
+              readiness:
                 enabled: true
                 custom: true
                 spec:
-                  tcpSocket:
-                    port: *port
-                  initialDelaySeconds: 0
+                  httpGet: *httpGet
                   periodSeconds: 10
-                  timeoutSeconds: 1
+                  timeoutSeconds: 5
                   failureThreshold: 3
             securityContext:
               allowPrivilegeEscalation: false
@@ -93,7 +125,20 @@ spec:
               runAsNonRoot: false
               runAsUser: 0
               runAsGroup: 0
-              capabilities: { drop: ["ALL"] }
+              # This image cannot run unprivileged: the entrypoint writes
+              # .env.production into the root-owned /app, so a www-data UID
+              # fails before the app starts. Root plus the narrowest working
+              # cap set is the same trade-off the s6-overlay images here make.
+              #   SETUID/SETGID - nginx and php-fpm drop their workers to the
+              #                   nginx/www-data users.
+              #   DAC_OVERRIDE  - `artisan config:cache`/`view:cache` run as
+              #                   root but write into www-data-owned
+              #                   bootstrap/cache and storage/framework.
+              #   CHOWN         - the entrypoint re-chowns /app/database.
+              # FOWNER was dropped: nothing here chmods a file it does not own.
+              capabilities:
+                drop: ["ALL"]
+                add: ["CHOWN", "SETUID", "SETGID", "DAC_OVERRIDE"]
             resources:
               requests:
                 cpu: 25m
@@ -101,14 +146,15 @@ spec:
               limits:
                 memory: 512Mi
     defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
-        seccompProfile:
-          type: RuntimeDefault
+        seccompProfile: { type: RuntimeDefault }
     service:
       app:
         controller: idlers
