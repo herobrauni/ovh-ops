@@ -1,0 +1,110 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/configmap_v1.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zurg-sync-helper-script
+data:
+  sync.sh: |-
+    #!/bin/sh
+    # Poll zurg's SABnzbd-compatible endpoint for Completed jobs in $CATEGORY
+    # (manual NZBs added with cat=other), move each release from
+    # __magic__/__all__ into __magic__/$CATEGORY, then clear the job.
+    #
+    # The move is a rename on the rclone mount, so zurg answers the WebDAV
+    # MOVE with a placement row: no article is fetched, nothing is copied.
+    # zurg's media-server push integration picks the change up and scans any
+    # Plex/Jellyfin section whose location sits under __magic__/other.
+    set -u
+
+    ZURG_URL="${ZURG_URL:-http://zurg.media.svc.cluster.local:9999}"
+    SAB_KEY="${SAB_API_KEY:?SAB_API_KEY not set}"
+    MAGIC_DIR="${MAGIC_DIR:-/aio/remote/zurg/__magic__}"
+    CATEGORY="${CATEGORY:-other}"
+    POLL_INTERVAL="${POLL_INTERVAL:-60}"
+
+    log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+    # sab_api "<mode-params>" -> body on stdout (zurg answers HTTP 200 even for
+    # API errors, so callers must inspect the body, not wget's exit code)
+    sab_api() {
+        wget -qO- -T 30 "$ZURG_URL/api?apikey=$SAB_KEY&output=json&$1" 2>/dev/null
+    }
+
+    # json_str <field> : first quoted value of <field> from stdin
+    json_str() {
+        grep -o "\"$1\" *: *\"[^\"]*\"" | head -n 1 | sed "s/.*: *\"//;s/\"$//"
+    }
+
+    # Drain one Completed job. Return 0 = did work, drain again;
+    # 1 = nothing (more) to do, or a failure worth waiting a poll for.
+    process_one() {
+        body=$(sab_api "mode=history&category=$CATEGORY&start=0&limit=1")
+        if [ -z "$body" ]; then
+            log "ERROR: no answer from zurg at $ZURG_URL"
+            return 1
+        fi
+        if printf '%s' "$body" | grep -q '"status" *: *false'; then
+            log "ERROR: zurg rejected the API call: $body"
+            return 1
+        fi
+
+        status=$(printf '%s' "$body" | json_str status)
+        [ "$status" = "Completed" ] || return 1
+
+        nzo=$(printf '%s' "$body" | json_str nzo_id)
+        storage=$(printf '%s' "$body" | json_str storage)
+        name=$(basename "${storage:-}")
+        if [ -z "$nzo" ] || [ -z "$name" ]; then
+            log "ERROR: Completed job without nzo_id/storage, cannot place: $body"
+            return 1
+        fi
+
+        src="$MAGIC_DIR/__all__/$name"
+        dest="$MAGIC_DIR/$CATEGORY/$name"
+
+        if [ ! -e "$src" ]; then
+            # A previous pass moved it but failed to clear the job, or zurg
+            # renamed the release folder after the job was recorded (the
+            # storage path is a snapshot, the listing is live). Clear either
+            # way; a genuine rename needs a manual move into $CATEGORY.
+            log "Job $nzo: '$name' not under __all__ (already moved or renamed) — clearing job"
+        else
+            log "Moving '$name' -> __magic__/$CATEGORY/"
+            if ! mv "$src" "$dest"; then
+                log "ERROR: move failed for '$name' (mount healthy? destination taken?) — will retry"
+                return 1
+            fi
+            log "Moved '$name'"
+        fi
+
+        del_resp=$(sab_api "mode=history&name=delete&value=$nzo&del_files=0&archive=1")
+        if printf '%s' "$del_resp" | grep -q '"status" *: *false'; then
+            log "WARN: zurg refused to clear job $nzo: $del_resp — will retry"
+            return 1
+        fi
+        log "Cleared job $nzo"
+        return 0
+    }
+
+    # --- main ---
+    log "zurg-sync-helper starting"
+    log "zurg:     $ZURG_URL"
+    log "magic:    $MAGIC_DIR"
+    log "category: $CATEGORY"
+    log "poll:     ${POLL_INTERVAL}s"
+
+    # Bootstrap the placement folder if it does not exist yet (mkdir -p on an
+    # existing __magic__ directory is a no-op). zurg persists the layout, so
+    # this only ever runs once.
+    mkdir -p "$MAGIC_DIR/$CATEGORY" || log "WARN: could not ensure __magic__/$CATEGORY exists"
+
+    while :; do
+        touch /tmp/heartbeat
+        if [ -d "$MAGIC_DIR/__all__" ]; then
+            while process_one; do :; done
+        else
+            log "WARN: $MAGIC_DIR/__all__ not visible — is the rclone mount up?"
+        fi
+        sleep "$POLL_INTERVAL"
+    done

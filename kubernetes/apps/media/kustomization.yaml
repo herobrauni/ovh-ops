@@ -22,6 +22,7 @@ resources:
   # - ./decypharr/ks.yaml
   # - ./decypharr-sync-helper/ks.yaml
   - ./altmount-sync-helper/ks.yaml
+  - ./zurg-sync-helper/ks.yaml
   - ./jellyfin/ks.yaml
   # - ./kometa/ks.yaml
   - ./media-debug/ks.yaml

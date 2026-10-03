@@ -1,0 +1,204 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app zurg-sync-helper
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: *app
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: {type: RuntimeDefault}
+    controllers:
+      zurg-sync-helper:
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: zurg-sync-helper-secret
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/busybox
+              tag: 1.38.0@sha256:7e2c04dd50ede647bf4a7a4c8dbd629dd4971cd139b9b88fb22bfc3c7a6c13df
+            command:
+              - /bin/sh
+              - /scripts/sync.sh
+            env:
+              ZURG_URL: http://zurg.media.svc.cluster.local:9999
+              MAGIC_DIR: /aio/remote/zurg/__magic__
+              CATEGORY: other
+              POLL_INTERVAL: "60"
+              SAB_API_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: zurg-sync-helper-secret
+                    key: SAB_API_KEY
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 256Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test $(($(date +%s) - $(date -r /tmp/heartbeat +%s))) -lt 180
+                  initialDelaySeconds: 60
+                  periodSeconds: 30
+                  failureThreshold: 3
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -d /aio/remote/zurg/__magic__/__all__ && test -d /aio/remote/zurg/__magic__/other
+                  initialDelaySeconds: 5
+                  periodSeconds: 30
+                  failureThreshold: 3
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - test
+                      - -f
+                      - /tmp/heartbeat
+                  initialDelaySeconds: 2
+                  periodSeconds: 2
+                  failureThreshold: 30
+          # Same rclone sidecar pattern as the *arrs and the media servers
+          # (zurg-debug is the canonical consumer): the sidecar mounts
+          # zurg:/ into a hostPath dir with Bidirectional propagation, the
+          # app container sees it via HostToContainer — so a zurg restart
+          # remount lands instead of leaving a dead FUSE connection. Read
+          # flags trimmed for a pure mover: renames fetch no bytes, so there
+          # is nothing to cache.
+          rclone-zurg:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.75@sha256:45401ad7410db1d67ffdb58e19059ad20b0d8e0285a60e38bbec55cc1019c7a5
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-zurg-sync-helper 2>/dev/null || true
+                mkdir -p /host-mount/rclone-zurg-sync-helper
+                exec rclone mount zurg:/ /host-mount/rclone-zurg-sync-helper \
+                  --dir-cache-time=20s \
+                  --vfs-cache-mode=off \
+                  --buffer-size=0M \
+                  --vfs-fast-fingerprint \
+                  --vfs-handle-caching=0 \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other
+            env:
+              RCLONE_CONFIG_ZURG_TYPE: webdav
+              RCLONE_CONFIG_ZURG_URL: http://zurg.media.svc.cluster.local:9999/dav/
+              RCLONE_CONFIG_ZURG_VENDOR: other
+              # A remote without a config file does not get pacer_min_sleep;
+              # without it one unservable file slows every other read down.
+              RCLONE_CONFIG_ZURG_PACER_MIN_SLEEP: "0"
+            probes:
+              liveness: &rclone-zurg-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -e /host-mount/rclone-zurg-sync-helper/version.txt
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness: *rclone-zurg-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -e /host-mount/rclone-zurg-sync-helper/version.txt
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    persistence:
+      scripts:
+        type: configMap
+        name: zurg-sync-helper-script
+        advancedMounts:
+          zurg-sync-helper:
+            app:
+              - path: /scripts
+                readOnly: true
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
+      fuse:
+        type: hostPath
+        hostPath: /dev/fuse
+        hostPathType: CharDevice
+        advancedMounts:
+          zurg-sync-helper:
+            rclone-zurg:
+              - path: /dev/fuse
+      host-tmp:
+        type: hostPath
+        hostPath: /tmp
+        hostPathType: Directory
+        advancedMounts:
+          zurg-sync-helper:
+            rclone-zurg:
+              - path: /host-mount
+                mountPropagation: Bidirectional
+      zurg:
+        type: hostPath
+        hostPath: /tmp/rclone-zurg-sync-helper
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          zurg-sync-helper:
+            app:
+              - path: /aio/remote/zurg
+                mountPropagation: HostToContainer
