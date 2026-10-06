@@ -4,7 +4,7 @@ SOPS_AGE_KEY_FILE = "{{config_root}}/age.key"
 TALOSCONFIG = "{{config_root}}/talos/talosconfig"
 
 [tools]
-"github:postfinance/topf" = "v0.6.0"
+"github:postfinance/topf" = "v0.6.1"
 "github:cilium/cilium-cli" = "0.20.1"
 "aqua:cli/cli" = "2.101.0"
 "aqua:cloudflare/cloudflared" = "2026.9.3"
