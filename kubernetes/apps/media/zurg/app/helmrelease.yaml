@@ -54,7 +54,7 @@ spec:
           app:
             image:
               repository: ghcr.io/debridmediamanager/zurg
-              tag: 2026.10.02.2240-nightly@sha256:e794f5a7fbc5e6d2c83aa3383c225f89809c98aebe815595c2efbda3a7cb2485
+              tag: 2026.10.05.2240-nightly@sha256:26ac7446d77e19e0c4101122074e5eed520bf405593b8d36528e1ca45fd56672
             args:
               - -c
               - /config/config.yml
