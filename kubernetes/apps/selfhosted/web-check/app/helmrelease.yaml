@@ -32,7 +32,7 @@ spec:
           app:
             image:
               repository: ghcr.io/lissy93/web-check
-              tag: latest@sha256:6fb2b5a58e4fa77afb724a7e6e041f876c081e2f9340b7ba6520ac4d4fc2290a
+              tag: latest@sha256:e98c0fe58157beb77ee122f4425da505527970b3961155709fb73029b1ec91e5
             env:
               PORT: &port 3000
               CHROME_PATH: /usr/bin/chromium
