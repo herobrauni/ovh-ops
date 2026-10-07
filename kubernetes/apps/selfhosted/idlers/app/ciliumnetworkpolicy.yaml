@@ -8,12 +8,12 @@
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: idlers2
+  name: idlers
 spec:
   endpointSelector:
     matchLabels:
-      app.kubernetes.io/name: idlers2
-      app.kubernetes.io/instance: idlers2
+      app.kubernetes.io/name: idlers
+      app.kubernetes.io/instance: idlers
   ingress:
     - fromEndpoints:
         - matchLabels:
