@@ -35,8 +35,8 @@ jobs:
       - name: Setup mise
         uses: jdx/mise-action@9149ea85001c7435d5a66bb127d6a1b6227cb0a5 # v5.0.0
         with:
-          version: v2026.9.17
-          sha256: 63049bc35fb9065e8dc35ac8b25fdae53e9bd6f1885a843aedeba398e046a1ee
+          version: v2026.9.18
+          sha256: d24fe0bf7e613824ad99f7b8dac3f2b381a37b9f75f84dd250855217095a8de4
           install_args: aqua:mikefarah/yq
 
       - name: Check security invariants
