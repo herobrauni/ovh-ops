@@ -1,0 +1,37 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: ${APP}-dragonfly
+spec:
+  endpointSelector:
+    matchLabels:
+      app: ${APP}-dragonfly
+      app.kubernetes.io/name: dragonfly
+  ingress:
+    - fromEndpoints:
+        - matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+                - ${APP}
+                - ${APP}-machine-learning
+                - dragonfly
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+  ingressDeny:
+    - fromEndpoints:
+        - matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: NotIn
+              values:
+                - ${APP}
+                - ${APP}-machine-learning
+                - dragonfly
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
