@@ -7,3 +7,4 @@ resources:
   - ./snapshot-pvc.yaml
   - ./podmonitor.yaml
   - ./networkpolicy-metrics.yaml
+  - ./ciliumnetworkpolicy.yaml
