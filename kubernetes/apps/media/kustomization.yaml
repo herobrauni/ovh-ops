@@ -15,6 +15,7 @@ resources:
   # - ./cleanuparr/ks.yaml
   - ./altmount/ks.yaml
   - ./zurg/ks.yaml
+  - ./bazarr/ks.yaml
   # - ./nzbdav/ks.yaml
   # - ./nzbdav-sync-helper/ks.yaml
   - ./clonarr/ks.yaml

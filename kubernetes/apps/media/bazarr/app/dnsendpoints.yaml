@@ -1,0 +1,16 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/externaldns.k8s.io/dnsendpoint_v1alpha1.json
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: bazarr
+  labels:
+    dns.scope: all
+  annotations:
+    dns.scope: all
+spec:
+  endpoints:
+    - dnsName: bazarr.480p.com
+      recordType: CNAME
+      targets:
+        - public.480p.com

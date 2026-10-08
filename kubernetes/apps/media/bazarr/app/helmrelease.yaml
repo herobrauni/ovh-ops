@@ -1,0 +1,180 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app bazarr
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: bazarr
+  interval: 1h
+  driftDetection:
+    mode: enabled
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
+    controllers:
+      bazarr:
+        replicas: 1
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: bazarr-secret
+        initContainers:
+          # Copy the seeded config.yaml into the PVC once. Auth is handled by
+          # Authentik at the gateway (SecurityPolicy on the HTTPRoute, same
+          # as the *arrs), so Bazarr runs with auth disabled — the apikey
+          # stays for API/integration use. If the file already exists (any
+          # restart after first boot) the app's own settings are kept.
+          config-init:
+            image:
+              repository: ghcr.io/home-operations/busybox
+              tag: 1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc
+            command:
+              - /bin/sh
+              - -c
+              - |
+                if [ ! -f /config/config/config.yaml ]; then
+                  mkdir -p /config/config
+                  cp /config-seed/config.yaml /config/config/config.yaml
+                  echo "seeded /config/config/config.yaml"
+                else
+                  echo "config.yaml already exists; keeping it"
+                fi
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+                add:
+                  - CHOWN
+                  - DAC_OVERRIDE
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/bazarr
+              tag: 1.5.2@sha256:dbc87e5ce9e199709188e152e82b3ff5d33e6521a1b3d61e465aa75b4b739e7f
+            env:
+              # BAZARR__* env keys are not read by bazarr (unlike the *arrs);
+              # settings live in /config/config/config.yaml. The API key is
+              # seeded on first boot from the secret via the init container.
+              TZ: Europe/Berlin
+            envFrom:
+              - secretRef:
+                  name: bazarr-secret
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: &port 6767
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *port
+                  failureThreshold: 30
+                  periodSeconds: 10
+            resources:
+              requests:
+                cpu: 25m
+                memory: 256Mi
+              limits:
+                memory: 2Gi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    service:
+      app:
+        controller: bazarr
+        ports:
+          http:
+            port: *port
+    persistence:
+      config:
+        existingClaim: "{{ .Release.Name }}"
+        globalMounts:
+          - path: /config
+      # Seed /config/config/config.yaml from the Infisical-backed Secret so
+      # first boot starts with auth disabled (Authentik guards the route) and
+      # the API key already set. Copied into the PVC by the init container —
+      # only when the file does not exist yet, so the app's own settings
+      # (written to this same file at runtime) always win afterwards.
+      config-seed:
+        type: secret
+        name: bazarr-config-secret
+        advancedMounts:
+          bazarr:
+            config-init:
+              - path: /config-seed
+                readOnly: true
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
+      fuse:
+        type: hostPath
+        hostPath: /dev/fuse
+        hostPathType: CharDevice
+        advancedMounts:
+          bazarr:
+            rclone-zurg:
+              - path: /dev/fuse
+      rclone-cache-zurg:
+        type: emptyDir
+        advancedMounts:
+          bazarr:
+            rclone-zurg:
+              - path: /cache
+      host-tmp:
+        type: hostPath
+        hostPath: /tmp
+        hostPathType: Directory
+        advancedMounts:
+          bazarr:
+            rclone-zurg:
+              - path: /host-mount
+                mountPropagation: Bidirectional
+      # Writable zurg mount: Bazarr PUTs .srt sidecars beside the release
+      # folders under __magic__ — the same path pattern the *arrs use for
+      # posters/.nfo. Only __magic__ subpaths are addressed.
+      zurg:
+        type: hostPath
+        hostPath: /tmp/rclone-bazarr-zurg
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          bazarr:
+            app:
+              - path: /aio/remote/zurg
+                mountPropagation: HostToContainer
