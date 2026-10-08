@@ -42,24 +42,29 @@ spec:
               - /bin/sh
               - -c
               - |
-                if [ ! -f /config/config/config.yaml ]; then
+                target=/config/config/config.yaml
+                # Re-seed when missing, empty, or not writable by the app uid —
+                # Bazarr rewrites this file at startup, so a root-owned seed
+                # from an earlier run would crash-loop it with PermissionError.
+                if [ ! -s "$target" ] || [ ! -w "$target" ]; then
                   mkdir -p /config/config
-                  cp /config-seed/config.yaml /config/config/config.yaml
-                  echo "seeded /config/config/config.yaml"
+                  rm -f "$target"
+                  cp /config-seed/config.yaml "$target"
+                  echo "seeded $target (uid=$(id -u) gid=$(id -g))"
                 else
-                  echo "config.yaml already exists; keeping it"
+                  echo "$target already writable; keeping it"
                 fi
             securityContext:
-              runAsUser: 0
-              runAsGroup: 0
-              runAsNonRoot: false
+              # Same uid the app runs as, so everything this creates on the PVC
+              # is owned by it. /config is group-writable (fsGroup 1000), which
+              # is enough to create the config dir and file.
+              runAsUser: 1000
+              runAsGroup: 1000
+              runAsNonRoot: true
               readOnlyRootFilesystem: true
               capabilities:
                 drop:
                   - ALL
-                add:
-                  - CHOWN
-                  - DAC_OVERRIDE
         containers:
           app:
             image:
