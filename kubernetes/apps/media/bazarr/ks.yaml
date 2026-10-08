@@ -9,15 +9,26 @@ spec:
   commonMetadata:
     labels:
       app.kubernetes.io/name: *app
+  components:
+    - ../../../../components/kopiur
   dependsOn:
     - name: infisical
       namespace: external-secrets
+    - name: kopiur-repository
+      namespace: kopiur-system
     - name: rook-ceph-cluster
       namespace: rook-ceph
     - name: authentik
       namespace: authentik
   interval: 1h
   path: ./kubernetes/apps/media/bazarr/app
+  # Greenfield app: no KOPIUR_ON_MISSING_SNAPSHOT override, so the component's
+  # deploy-or-restore default (`Continue`) applies — there is no prior kopia
+  # history for this claim.
+  postBuild:
+    substitute:
+      APP: *app
+      KOPIUR_CAPACITY: 3Gi
   prune: true
   sourceRef:
     kind: GitRepository
