@@ -31,6 +31,7 @@ declare -A privileged_allowlist=(
 declare -A fuse_allowlist=(
     [kubernetes/apps/media/altmount/app/helmrelease.yaml]=1
     [kubernetes/apps/media/bazarr/app/helmrelease.yaml]=1
+    [kubernetes/apps/media/bazarr4k/app/helmrelease.yaml]=1
     [kubernetes/apps/media/decypharr-sync-helper/app/helmrelease.yaml]=1
     [kubernetes/apps/media/decypharr/app/helmrelease.yaml]=1
     [kubernetes/apps/media/jellyfin/app/helmrelease.yaml]=1
