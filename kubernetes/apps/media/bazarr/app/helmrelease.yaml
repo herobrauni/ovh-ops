@@ -28,6 +28,38 @@ spec:
         annotations:
           reloader.stakater.com/auto: "true"
           secret.reloader.stakater.com/reload: bazarr-secret
+        initContainers:
+          # Copy the seeded config.yaml into the PVC once. Auth is handled by
+          # Authentik at the gateway (SecurityPolicy on the HTTPRoute, same
+          # as the *arrs), so Bazarr runs with auth disabled — the apikey
+          # stays for API/integration use. If the file already exists (any
+          # restart after first boot) the app's own settings are kept.
+          config-init:
+            image:
+              repository: ghcr.io/home-operations/busybox
+              tag: 1.37.0@sha256:026ed7273270ec08f6902b4ae8334c23b473e5394bec3bbbdbfe580c710d50bc
+            command:
+              - /bin/sh
+              - -c
+              - |
+                if [ ! -f /config/config/config.yaml ]; then
+                  mkdir -p /config/config
+                  cp /config-seed/config.yaml /config/config/config.yaml
+                  echo "seeded /config/config/config.yaml"
+                else
+                  echo "config.yaml already exists; keeping it"
+                fi
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+                add:
+                  - CHOWN
+                  - DAC_OVERRIDE
         containers:
           app:
             image:
@@ -94,6 +126,19 @@ spec:
         existingClaim: "{{ .Release.Name }}"
         globalMounts:
           - path: /config
+      # Seed /config/config/config.yaml from the Infisical-backed Secret so
+      # first boot starts with auth disabled (Authentik guards the route) and
+      # the API key already set. Copied into the PVC by the init container —
+      # only when the file does not exist yet, so the app's own settings
+      # (written to this same file at runtime) always win afterwards.
+      config-seed:
+        type: secret
+        name: bazarr-config-secret
+        advancedMounts:
+          bazarr:
+            config-init:
+              - path: /config-seed
+                readOnly: true
       tmp:
         type: emptyDir
         globalMounts:
