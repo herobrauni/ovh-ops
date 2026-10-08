@@ -43,28 +43,39 @@ spec:
               - -c
               - |
                 target=/config/config/config.yaml
-                # Re-seed when missing, empty, or not writable by the app uid —
-                # Bazarr rewrites this file at startup, so a root-owned seed
-                # from an earlier run would crash-loop it with PermissionError.
-                if [ ! -s "$target" ] || [ ! -w "$target" ]; then
+                # Seed on first boot, and repair ownership on every boot: a
+                # seed written by root (or by an older init) is not writable by
+                # the app uid, and Bazarr rewrites this file at startup —
+                # a non-writable config.yaml crash-loops it with
+                # PermissionError.
+                if [ ! -s "$target" ]; then
                   mkdir -p /config/config
-                  rm -f "$target"
                   cp /config-seed/config.yaml "$target"
-                  echo "seeded $target (uid=$(id -u) gid=$(id -g))"
+                  echo "seeded $target"
                 else
-                  echo "$target already writable; keeping it"
+                  echo "$target already exists; keeping it"
                 fi
+                chown -R 1000:1000 /config/config
+                chmod 0755 /config/config
+                chmod 0644 "$target"
+                echo "ownership: $(ls -ln "$target")"
             securityContext:
-              # Same uid the app runs as, so everything this creates on the PVC
-              # is owned by it. /config is group-writable (fsGroup 1000), which
-              # is enough to create the config dir and file.
-              runAsUser: 1000
-              runAsGroup: 1000
-              runAsNonRoot: true
+              # Root only to create/chown the seed on the PVC; the app itself
+              # still runs unprivileged as 1000:1000. Root is required rather
+              # than merely convenient: a root-owned file from an earlier boot
+              # cannot be removed or re-owned by uid 1000, so the repair below
+              # is the only thing that heals it.
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
               readOnlyRootFilesystem: true
               capabilities:
                 drop:
                   - ALL
+                add:
+                  - CHOWN
+                  - FOWNER
+                  - DAC_OVERRIDE
         containers:
           app:
             image:
