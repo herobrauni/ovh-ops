@@ -1,0 +1,37 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app bazarr4k
+spec:
+  targetNamespace: media
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  components:
+    - ../../../../components/kopiur
+  dependsOn:
+    - name: infisical
+      namespace: external-secrets
+    - name: kopiur-repository
+      namespace: kopiur-system
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
+    - name: authentik
+      namespace: authentik
+  interval: 1h
+  path: ./kubernetes/apps/media/bazarr4k/app
+  # Greenfield app: no KOPIUR_ON_MISSING_SNAPSHOT override, so the component's
+  # deploy-or-restore default (`Continue`) applies — there is no prior kopia
+  # history for this claim.
+  postBuild:
+    substitute:
+      APP: *app
+      KOPIUR_CAPACITY: 3Gi
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false
