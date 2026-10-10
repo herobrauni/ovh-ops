@@ -34,6 +34,12 @@ spec:
             app.kubernetes.io/name: jellyfin
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: bazarr
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: bazarr4k
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: zurg-sync-helper
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
