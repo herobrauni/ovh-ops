@@ -34,21 +34,26 @@ spec:
                     - FailedBarePods
                     - PodsWithLocalStorage
                     - SystemCriticalPods
-            - name: LowNodeUtilization
-              args:
-                metricsUtilization:
-                  source: KubernetesMetrics
-                evictableNamespaces:
-                  exclude:
-                    - kube-system
-                thresholds:
-                  cpu: 20
-                  memory: 20
-                  pods: 20
-                targetThresholds:
-                  cpu: 50
-                  memory: 50
-                  pods: 50
+            # Disabled 2026-10-10: nightly LowNodeUtilization evictions were shuffling
+            # single-replica stateful pods (dragonfly caches, CNPG replicas, gatus,
+            # victoria-logs, ...) around the 3 nodes every night with nowhere better
+            # to place them, causing recurring 30-90s outages. Re-enable only with
+            # saner thresholds or pod protections in place.
+            # - name: LowNodeUtilization
+            #   args:
+            #     metricsUtilization:
+            #       source: KubernetesMetrics
+            #     evictableNamespaces:
+            #       exclude:
+            #         - kube-system
+            #     thresholds:
+            #       cpu: 20
+            #       memory: 20
+            #       pods: 20
+            #     targetThresholds:
+            #       cpu: 50
+            #       memory: 50
+            #       pods: 50
             - name: RemoveFailedPods
               args:
                 reasons:
@@ -71,7 +76,7 @@ spec:
           plugins:
             balance:
               enabled:
-                - LowNodeUtilization
+                # - LowNodeUtilization  # disabled 2026-10-10, see pluginConfig above
                 - RemovePodsViolatingTopologySpreadConstraint
             deschedule:
               enabled:
