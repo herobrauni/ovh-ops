@@ -14,6 +14,8 @@ report_failure() {
 
 declare -A privileged_allowlist=(
     [kubernetes/apps/media/altmount/app/helmrelease.yaml]=1
+    [kubernetes/apps/media/bazarr/app/helmrelease.yaml]=1
+    [kubernetes/apps/media/bazarr4k/app/helmrelease.yaml]=1
     [kubernetes/apps/media/-sync-helper/app/helmrelease.yaml]=1
     [kubernetes/apps/media//app/helmrelease.yaml]=1
     [kubernetes/apps/media/jellyfin/app/helmrelease.yaml]=1
