@@ -197,6 +197,54 @@ entries:
       group: !KeyOf group-media
       order: 0
 
+  - id: provider-bazarr
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Bazarr
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://bazarr.480p.com
+      skip_path_regex: ^/health$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-bazarr
+    model: authentik_core.application
+    identifiers:
+      slug: bazarr
+    attrs:
+      name: Bazarr
+      provider: !KeyOf provider-bazarr
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-bazarr
+      group: !KeyOf group-media
+      order: 0
+
+  - id: provider-bazarr4k
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: Bazarr 4K
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://bazarr4k.480p.com
+      skip_path_regex: ^/health$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-bazarr4k
+    model: authentik_core.application
+    identifiers:
+      slug: bazarr4k
+    attrs:
+      name: Bazarr 4K
+      provider: !KeyOf provider-bazarr4k
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-bazarr4k
+      group: !KeyOf group-media
+      order: 0
+
   - id: provider-altmount
     model: authentik_providers_proxy.proxyprovider
     identifiers:
@@ -665,6 +713,8 @@ entries:
         - !KeyOf provider-radarr
         - !KeyOf provider-sonarr4k
         - !KeyOf provider-radarr4k
+        - !KeyOf provider-bazarr
+        - !KeyOf provider-bazarr4k
         - !KeyOf provider-altmount
         - !KeyOf provider-zurg
         - !KeyOf provider-clonarr
