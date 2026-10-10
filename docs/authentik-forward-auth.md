@@ -3,7 +3,8 @@
 Runbook for replacing TinyAuth with Authentik's **embedded outpost** as the Envoy Gateway
 `extAuth` provider. Written when `sonarr.480p.com` / `radarr.480p.com` were migrated
 (2026-09-10); use it as the template for the next app. Migrated so far: the media set
-(`sonarr`, `radarr`, both 4K, `altmount`, `clonarr`, `prowlarr`, `umlautadaptarrex`) and the
+(`sonarr`, `radarr`, both 4K, `bazarr` + `bazarr4k`, `altmount`, `clonarr`, `prowlarr`,
+`umlautadaptarrex`) and the
 platform/observability set (`echo` on all three domains, `flux-operator`, `konflate`,
 `grafana`, `prometheus`, `alertmanager`, `victoria-logs`, `kopia`) plus `vaultwarden`, where only
 `/admin` is protected (step 2). TinyAuth is still deployed but no longer fronts anything: every
@@ -362,6 +363,7 @@ Three things, because the sidecar (`--auto-httproute`) derives endpoints from ro
    | App | Path | Notes |
    | --- | --- | --- |
    | `*arr` apps (sonarr, radarr, prowlarr, incl. 4K) | `/ping` | `[AllowAnonymous]`, returns `{"status":"OK"}` |
+   | bazarr (incl. 4K) | `/health` | |
    | altmount | `/health` | `/healthz` also answers; the app's `/sabnzbd` and `/webdav` routes are separate HTTPRoutes |
    | clonarr | `/api/health` | `/ping`, `/health`, `/healthz` are 404 |
    | umlautadaptarrex | `/api/health` | on the routed port 5007 (`/ping`, `/health` are 404 there) |
@@ -567,6 +569,8 @@ forged `brauni` session on all 18 hostnames that existed then (`200` from the ap
 - Applications `Sonarr` (slug `sonarr`) and `Radarr` (slug `radarr`), one `PolicyBinding` each
   → Group `Media`, allow, order 0.
 - Same again for `Sonarr 4K` (`sonarr4k`) and `Radarr 4K` (`radarr4k`).
+- `Bazarr` (`bazarr`, `skip_path_regex: ^/health$`) and `Bazarr 4K` (`bazarr4k`, `^/health$`):
+  `forward_single`, one application each, one `PolicyBinding` → Group `Media`, embedded outpost.
 - `AltMount` (`altmount`, `skip_path_regex: ^/health$`), `Clonarr` (`clonarr`, `^/api/health$`),
   `Prowlarr` (`prowlarr`, `^/ping$`) and `UmlautAdaptarrEX` (`umlautadaptarrex`, `^/api/health$`):
   `forward_single`, one application each, one `PolicyBinding` → Group `Media`, embedded outpost.
