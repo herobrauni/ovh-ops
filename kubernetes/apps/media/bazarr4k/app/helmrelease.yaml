@@ -80,12 +80,7 @@ spec:
           app:
             image:
               repository: ghcr.io/home-operations/bazarr4k
-              tag: 1.5.2@sha256:dbc87e5ce9e199709188e152e82b3ff5d33e6521a1b3d61e465aa75b4b739e7f
-            env:
-              # BAZARR__* env keys are not read by bazarr4k (unlike the *arrs);
-              # settings live in /config/config/config.yaml. The API key is
-              # seeded on first boot from the secret via the init container.
-              TZ: Europe/Berlin
+              tag: 1.6.2@sha256:17dc1cff22e99694ffbfb06555526cb47a66b362b4d6c982f06b557f7caae2bb
             envFrom:
               - secretRef:
                   name: bazarr4k-secret
@@ -127,6 +122,79 @@ spec:
                 memory: 2Gi
             securityContext:
               allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+          # zurg (the Usenet backend) mounted at the same path sonarr4k/radarr4k
+          # report for their libraries, so subtitle sidecars land beside the
+          # video files. Writable on purpose: Bazarr writes the .srt files it
+          # downloads into __magic__ subpaths, and extracts embedded subs
+          # straight from the video files. Only __magic__ subpaths are ever
+          # addressed, never __magic__ or __magic__/__all__ themselves.
+          rclone-zurg:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.75@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-bazarr4k-zurg 2>/dev/null || true
+                mkdir -p /host-mount/rclone-bazarr4k-zurg
+                exec rclone mount zurg:/ /host-mount/rclone-bazarr4k-zurg \
+                  --dir-cache-time=20s \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=24h \
+                  --vfs-cache-max-size=20G \
+                  --vfs-cache-poll-interval=30s \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=512M \
+                  --vfs-fast-fingerprint \
+                  --vfs-handle-caching=0 \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --cache-dir=/cache
+            env:
+              RCLONE_CONFIG_ZURG_TYPE: webdav
+              RCLONE_CONFIG_ZURG_URL: http://zurg.media.svc.cluster.local:9999/dav/
+              RCLONE_CONFIG_ZURG_VENDOR: other
+              # A remote without a config file does not get pacer_min_sleep;
+              # without it one unservable file slows every other read down.
+              RCLONE_CONFIG_ZURG_PACER_MIN_SLEEP: "0"
+            probes:
+              liveness: &rclone-zurg-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -e /host-mount/rclone-bazarr4k-zurg/version.txt
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 6
+              readiness: *rclone-zurg-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -e /host-mount/rclone-bazarr4k-zurg/version.txt
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
               readOnlyRootFilesystem: true
               capabilities:
                 drop:
