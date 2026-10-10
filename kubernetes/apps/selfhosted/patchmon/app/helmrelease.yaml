@@ -102,6 +102,12 @@ spec:
                   timeoutSeconds: 5
                   failureThreshold: 30
                   periodSeconds: 10
+                  httpGet:
+                    path: /health
+                    port: 3000
+                    httpHeaders:
+                      - name: Host
+                        value: patchmon.riki.boo
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
