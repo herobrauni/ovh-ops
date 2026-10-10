@@ -67,10 +67,17 @@ spec:
               - secretRef:
                   name: patchmon-secret
             probes:
+              # /health blocks while redis (patchmon-dragonfly) is unreachable, and
+              # app-template's 1s default timeout + threshold 3 liveness-killed the
+              # app on every dragonfly blip (STS recreation, evictions). Give
+              # liveness enough headroom (~60s) to ride out a redis outage.
               liveness:
                 enabled: true
                 custom: true
                 spec:
+                  timeoutSeconds: 5
+                  periodSeconds: 10
+                  failureThreshold: 6
                   httpGet:
                     path: /health
                     port: 3000
@@ -81,6 +88,7 @@ spec:
                 enabled: true
                 custom: true
                 spec:
+                  timeoutSeconds: 5
                   httpGet:
                     path: /health
                     port: 3000
@@ -91,14 +99,9 @@ spec:
                 enabled: true
                 custom: true
                 spec:
+                  timeoutSeconds: 5
                   failureThreshold: 30
                   periodSeconds: 10
-                  httpGet:
-                    path: /health
-                    port: 3000
-                    httpHeaders:
-                      - name: Host
-                        value: patchmon.riki.boo
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
