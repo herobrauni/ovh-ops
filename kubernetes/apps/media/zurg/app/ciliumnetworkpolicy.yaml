@@ -34,6 +34,9 @@ spec:
             app.kubernetes.io/name: jellyfin
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: prowlarr
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: bazarr
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
