@@ -10,6 +10,6 @@ spec:
     mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
     operation: copy
   ref:
-    tag: 3.60.0
-    digest: sha256:88de3f85cc751ffa6eaa43afbb927893fbd521c17c0f710ce21b596d7ecdfe0a
+    tag: 3.61.0
+    digest: sha256:b4992a4716ef9565ceb2b33af37252e49b2da2db6d0a3b9030c83c6cbf8bb29b
   url: oci://ghcr.io/databasus/charts/databasus
