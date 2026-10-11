@@ -12,5 +12,6 @@ resources:
   - ./httproute-outpost.yaml
   - ./ocirepository.yaml
   - ./prometheusrule-etcd.yaml
+  - ./prometheusrule-node.yaml
   - ./securitypolicy.yaml
   # - ./scrapeconfig.yaml

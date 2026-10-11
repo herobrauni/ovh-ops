@@ -1,0 +1,37 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: node-load-rules
+spec:
+  groups:
+    - name: node-load.rules
+      rules:
+        # Replacement for the kube-prometheus-stack default NodeSystemSaturation
+        # (disabled in helmrelease.yaml defaultRules). The default (load per core
+        # > 2, for 15m) flaps constantly on w-ovhsbg2: 7d of 5m samples show
+        # ~23h above 2 (zurg + Jellyfin media bursts plus external-Ceph/rclone
+        # IO on the same node), vs ~4h above 3 and ~1h above 4 (peak 5.33).
+        # No other node ever exceeded ~1.2 in the same window.
+        #
+        # Threshold 3 with for: 30m keeps the alert meaningful (sustained
+        # saturation, real unresponsiveness risk) while filtering out the
+        # routine media/IO bursts that made the default fire every few minutes.
+        - alert: NodeSystemSaturation
+          expr: |-
+            node_load1{job="node-exporter"}
+            / count without (cpu, mode) (node_cpu_seconds_total{job="node-exporter", mode="idle"})
+            > 3
+          for: 30m
+          annotations:
+            description: >-
+              System load per core on {{ $labels.instance }} has been above 3 for 30+ minutes
+              (currently {{ $value | humanize }}). Sustained saturation can make this instance
+              unresponsive. On w-ovhsbg2 this usually means zurg/Jellyfin media bursts are
+              stacking with external-Ceph storage traffic — check the top pods on that node
+              and NodeDiskIOSaturation before suspecting platform trouble.
+            summary: >-
+              Node {{ $labels.instance }}: load per core above 3 for 30+ minutes (sustained saturation).
+          labels:
+            severity: warning
