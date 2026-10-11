@@ -38,6 +38,11 @@ spec:
       # Replaced by a relaxed custom rule in prometheusrule-etcd.yaml.
       disabled:
         etcdMemberCommunicationSlow: true
+        # Default fires at load per core > 2 for 15m. w-ovhsbg2 (zurg + Jellyfin
+        # + external-Ceph traffic) legitimately spends ~23h/7d above 2, so this
+        # flapped every few minutes. Replaced by a relaxed rule (> 3 for 30m)
+        # in prometheusrule-node.yaml — 7d data: ~4h above 3, ~1h above 4.
+        NodeSystemSaturation: true
     kubeProxy:
       enabled: false
     prometheus:
