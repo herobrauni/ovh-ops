@@ -1,30 +1,143 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: [
-    "config:recommended",
-    "docker:enableMajor",
-    "helpers:pinGitHubActionDigests",
-    "github>herobrauni/ovh-ops//.renovate/autoMerge.json5",
-    "github>herobrauni/ovh-ops//.renovate/changelogs.json5",
-    "github>herobrauni/ovh-ops//.renovate/customManagers.json5",
-    "github>herobrauni/ovh-ops//.renovate/grafanaDashboards.json5",
-    "github>herobrauni/ovh-ops//.renovate/groups.json5",
-    "github>herobrauni/ovh-ops//.renovate/labels.json5",
-    "github>herobrauni/ovh-ops//.renovate/overrides.json5",
-    "github>herobrauni/ovh-ops//.renovate/semanticCommits.json5",
-    "github>herobrauni/ovh-ops//.renovate/vendoredOperators.json5",
-    ":automergeBranch",
-    ":disableRateLimiting",
-    ":dependencyDashboard",
-    ":semanticCommits",
+    "github>home-operations/renovate-presets#8.1.0",
+    "github>home-operations/renovate-presets//apps/cnpg.json5#8.1.0",
+    "github>home-operations/renovate-presets//apps/grafanaDashboards.json5#8.1.0",
+    "github>home-operations/renovate-presets//apps/talosFactory.json5#8.1.0",
     ":timezone(Europe/Berlin)",
   ],
-  dependencyDashboardTitle: "Renovate Dashboard 🤖",
-  suppressNotifications: [
-    "prEditedNotification",
-    "prIgnoreNotification",
+  customManagers: [
+    {
+      description: "Process digest-pinned operator image values",
+      customType: "regex",
+      fileMatch: ["(^|/)operator/images\\.ya?ml$"],
+      matchStrings: [
+        "value: (?<depName>\\S+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})",
+      ],
+      datasourceTemplate: "docker",
+    },
   ],
   packageRules: [
+    // Auto-merge rules
+    {
+      description: "Auto-merge trusted OCI digests",
+      matchDatasources: ["docker"],
+      matchUpdateTypes: ["digest"],
+      matchPackageNames: ["/home-operations/"],
+      automerge: true,
+      automergeType: "pr",
+      ignoreTests: false,
+    },
+    {
+      description: "Auto-merge high-cadence OCI packages weekly",
+      matchDatasources: ["docker"],
+      matchUpdateTypes: ["minor", "patch"],
+      matchPackageNames: ["/kube-prometheus-stack/"],
+      automerge: true,
+      automergeType: "pr",
+      ignoreTests: false,
+      schedule: ["before 6am on Monday"],
+    },
+    {
+      description: "Auto-merge GitHub Actions",
+      matchManagers: ["github-actions"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      automerge: true,
+      automergeType: "branch",
+      minimumReleaseAge: "7 days",
+      ignoreTests: true,
+    },
+    {
+      description: "Auto-merge trusted GitHub Actions",
+      matchManagers: ["github-actions"],
+      matchPackageNames: ["/^actions\\//", "/^renovatebot\\//"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      automerge: true,
+      automergeType: "branch",
+      ignoreTests: true,
+    },
+    // Grouping rules
+    {
+      description: "Actions Runner Controller Group",
+      groupName: "actions-runner-controller",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["/gha-runner-scale-set-controller/", "/gha-runner-scale-set/"],
+      group: {
+        commitMessageTopic: "{{{groupName}}} group",
+      },
+    },
+    {
+      description: "Flux Operator Group",
+      groupName: "flux-operator",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["/flux-operator/", "/flux-instance/", "/flux-operator-manifests/"],
+      group: {
+        commitMessageTopic: "{{{groupName}}} group",
+      },
+    },
+    {
+      description: "Kubernetes Group",
+      groupName: "kubernetes",
+      matchDatasources: ["docker"],
+      matchPackageNames: [
+        "/kube-apiserver/",
+        "/kube-controller-manager/",
+        "/kube-proxy/",
+        "/kube-scheduler/",
+        "/kubelet/",
+      ],
+      group: {
+        commitMessageTopic: "{{{groupName}}} group",
+      },
+    },
+    {
+      description: "Mise Tools Group",
+      matchManagers: ["mise"],
+      matchDepNames: ["!node", "!oxfmt"],
+      groupName: "mise tools",
+      groupSlug: "mise-tools",
+    },
+    {
+      description: "Rook-Ceph Group",
+      groupName: "rook-ceph",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["/rook-ceph/", "/rook-ceph-cluster/"],
+      group: {
+        commitMessageTopic: "{{{groupName}}} group",
+      },
+    },
+    {
+      description: "Talos Group",
+      groupName: "talos",
+      matchPackageNames: ["siderolabs/talos"],
+      group: {
+        commitMessageTopic: "{{{groupName}}} group",
+      },
+    },
+    {
+      description: "Keep CloudNativePG on Postgres 18 until the extension images move with it",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/cloudnative-pg/postgresql"],
+      allowedVersions: "/^18\\./",
+    },
+    {
+      description: "Only allow stable Ceph GA releases, skip dev/RC tags",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["quay.io/ceph/ceph"],
+      allowedVersions: "/^v?\\d+\\.2\\.\\d+$/",
+    },
+    {
+      description: "Vendored operator images (KubeVirt/CDI) need manual re-vendoring",
+      groupName: "vendored-kubevirt-operators",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["quay.io/kubevirt/*"],
+      matchManagers: ["custom.regex"],
+      automerge: false,
+      prBodyNotes: [
+        "> [!WARNING]\n> This repo vendors the upstream operator manifests (RBAC/CRD) in `operator/operator.yaml`. If this PR bumps to a new **minor** release, re-vendor the manifest from the matching upstream release in the same change (drop the leading Namespace doc, keep the vendored-from header, format with `oxfmt`), otherwise the API server's RBAC escalation guard can reject the operator's own RBAC update (`DeploymentFailed`). CI gate: `bash util/check_vendored_operator_sync.sh`.",
+      ],
+    },
     {
       description: "Keep Flux OCI artifact digests pinned",
       matchManagers: ["flux"],
@@ -36,23 +149,49 @@
       matchUpdateTypes: ["digest"],
       automerge: false,
     },
+    // Scheduling rules
+    {
+      description: "High-cadence mise tools monthly",
+      matchManagers: ["mise"],
+      matchDepNames: ["node", "oxfmt"],
+      schedule: ["before 3am on the first day of the month"],
+    },
+    // Labeling rules
+    {
+      matchUpdateTypes: ["major"],
+      addLabels: ["type/major"],
+    },
+    {
+      matchUpdateTypes: ["minor"],
+      addLabels: ["type/minor"],
+    },
+    {
+      matchUpdateTypes: ["patch"],
+      addLabels: ["type/patch"],
+    },
+    {
+      matchUpdateTypes: ["digest"],
+      addLabels: ["type/digest"],
+    },
+    {
+      matchDatasources: ["docker"],
+      addLabels: ["renovate/container"],
+    },
+    {
+      matchDatasources: ["helm"],
+      addLabels: ["renovate/helm"],
+    },
+    {
+      matchManagers: ["github-actions"],
+      addLabels: ["renovate/github-action"],
+    },
+    {
+      matchDatasources: ["github-releases"],
+      addLabels: ["renovate/github-release"],
+    },
+    {
+      matchManagers: ["mise"],
+      addLabels: ["renovate/mise"],
+    },
   ],
-  ignorePaths: [
-    "**/resources/**",
-  ],
-  flux: {
-    managerFilePatterns: [
-      "/\\.yaml(?:\\.j2)?$/"
-    ],
-  },
-  "helm-values": {
-    managerFilePatterns: [
-      "/\\.yaml(?:\\.j2)?$/"
-    ],
-  },
-  kubernetes: {
-    managerFilePatterns: [
-      "/\\.yaml(?:\\.j2)?$/"
-    ],
-  },
 }

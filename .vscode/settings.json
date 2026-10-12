@@ -24,7 +24,6 @@
     // top level
     ".github/workflows": "ci",
     ".private": "archive",
-    ".renovate": "robot",
     "bootstrap": "seeders",
     "bootstrap/helmfile.d": "helm",
     "flux": "pipe",
