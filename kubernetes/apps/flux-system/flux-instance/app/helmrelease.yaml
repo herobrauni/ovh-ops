@@ -12,6 +12,8 @@ spec:
   driftDetection:
     mode: enabled
   values:
+    commonAnnotations:
+      fluxcd.controlplane.io/reconcileArtifactEvery: 1h
     instance:
       # The Flux Operator owns flux-system and marks its Namespace as ignored
       # by kustomize-controller, so namespace labels must be set here.
@@ -24,8 +26,6 @@ spec:
           pod-security.kubernetes.io/audit-version: v1.35
           pod-security.kubernetes.io/warn: restricted
           pod-security.kubernetes.io/warn-version: v1.35
-      distribution:
-        artifact: oci://ghcr.io/controlplaneio-fluxcd/flux-operator-manifests:v0.45.0@sha256:83545a6a06fbc915bb5277ff9447cc6ab33a10d8ee9e77babc07c095237e30c4
       cluster:
         networkPolicy: false
       components:
@@ -119,11 +119,11 @@ spec:
             target:
               kind: Deployment
               name: helm-controller
-          - # Disable chart digest tracking
+          - # Default to retry on failure and disable chart digest tracking
             patch: |-
               - op: add
                 path: /spec/template/spec/containers/0/args/-
-                value: --feature-gates=DisableChartDigestTracking=true
+                value: --feature-gates=DefaultToRetryOnFailure=true,DisableChartDigestTracking=true
             target:
               kind: Deployment
               name: helm-controller
