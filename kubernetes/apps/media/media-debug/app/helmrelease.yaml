@@ -37,7 +37,7 @@ spec:
               capabilities:
                 drop:
                   - ALL
-          rclone-altmount:
+          rclone-zurg:
             image:
               repository: docker.io/rclone/rclone
               tag: 1.75@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
@@ -45,9 +45,9 @@ spec:
               - /bin/sh
               - -c
               - |
-                umount -l /host-mount/rclone-media-debug-altmount 2>/dev/null || true
-                mkdir -p /host-mount/rclone-media-debug-altmount
-                exec rclone mount altmount:/ /host-mount/rclone-media-debug-altmount \
+                umount -l /host-mount/rclone-media-debug-zurg 2>/dev/null || true
+                mkdir -p /host-mount/rclone-media-debug-zurg
+                exec rclone mount zurg:/ /host-mount/rclone-media-debug-zurg \
                   --dir-cache-time=20s \
                   --vfs-cache-mode=full \
                   --vfs-cache-max-age=24h \
@@ -56,21 +56,19 @@ spec:
                   --buffer-size=0M \
                   --vfs-read-ahead=512M \
                   --vfs-fast-fingerprint \
-                  --links \
+                  --vfs-handle-caching=0 \
                   --use-cookies \
                   --no-modtime \
                   --no-checksum \
                   --allow-other \
                   --cache-dir=/cache
             env:
-              RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
-              RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav/
-              RCLONE_CONFIG_ALTMOUNT_VENDOR: other
-            envFrom:
-              - secretRef:
-                  name: rclone-altmount-secret
+              RCLONE_CONFIG_ZURG_TYPE: webdav
+              RCLONE_CONFIG_ZURG_URL: http://zurg.media.svc.cluster.local:9999/dav/
+              RCLONE_CONFIG_ZURG_VENDOR: other
+              RCLONE_CONFIG_ZURG_PACER_MIN_SLEEP: "0"
             probes:
-              liveness: &rclone-altmount-probes
+              liveness: &rclone-probes
                 enabled: true
                 custom: true
                 spec:
@@ -78,12 +76,12 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -d /host-mount/rclone-media-debug-altmount/complete
+                      - test -e /host-mount/rclone-media-debug-zurg/version.txt
                   initialDelaySeconds: 10
                   periodSeconds: 30
                   timeoutSeconds: 5
                   failureThreshold: 6
-              readiness: *rclone-altmount-probes
+              readiness: *rclone-probes
               startup:
                 enabled: true
                 custom: true
@@ -92,7 +90,7 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - test -d /host-mount/rclone-media-debug-altmount/complete
+                      - test -e /host-mount/rclone-media-debug-zurg/version.txt
                   failureThreshold: 30
                   periodSeconds: 5
             securityContext:
@@ -111,17 +109,17 @@ spec:
         hostPathType: CharDevice
         advancedMounts:
           media-debug:
-            rclone-altmount:
+            rclone-zurg:
               - path: /dev/fuse
       symlinks:
         existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
-      rclone-cache-altmount:
+      rclone-cache-zurg:
         type: emptyDir
         advancedMounts:
           media-debug:
-            rclone-altmount:
+            rclone-zurg:
               - path: /cache
       host-tmp:
         type: hostPath
@@ -129,15 +127,15 @@ spec:
         hostPathType: Directory
         advancedMounts:
           media-debug:
-            rclone-altmount:
+            rclone-zurg:
               - path: /host-mount
                 mountPropagation: Bidirectional
-      altmount:
+      zurg:
         type: hostPath
-        hostPath: /tmp/rclone-media-debug-altmount
+        hostPath: /tmp/rclone-media-debug-zurg
         hostPathType: DirectoryOrCreate
         advancedMounts:
           media-debug:
             app:
-              - path: /aio/remote/altmount
+              - path: /aio/remote/zurg
                 mountPropagation: HostToContainer

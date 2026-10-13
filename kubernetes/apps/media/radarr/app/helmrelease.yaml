@@ -126,73 +126,6 @@ spec:
                   - CHOWN
                   - DAC_OVERRIDE
                   - FOWNER
-          rclone-altmount:
-            image:
-              repository: docker.io/rclone/rclone
-              tag: 1.75@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
-            command:
-              - /bin/sh
-              - -c
-              - |
-                umount -l /host-mount/rclone-radarr-altmount 2>/dev/null || true
-                mkdir -p /host-mount/rclone-radarr-altmount
-                exec rclone mount altmount:/ /host-mount/rclone-radarr-altmount \
-                  --dir-cache-time=20s \
-                  --vfs-cache-mode=minimal \
-                  --vfs-cache-max-age=24h \
-                  --vfs-cache-max-size=20G \
-                  --vfs-cache-poll-interval=30s \
-                  --buffer-size=0M \
-                  --vfs-read-ahead=512M \
-                  --vfs-fast-fingerprint \
-                  --links \
-                  --use-cookies \
-                  --no-modtime \
-                  --no-checksum \
-                  --allow-other \
-                  --cache-dir=/cache
-            env:
-              RCLONE_CONFIG_ALTMOUNT_TYPE: webdav
-              RCLONE_CONFIG_ALTMOUNT_URL: http://altmount.media.svc.cluster.local:8080/webdav/
-              RCLONE_CONFIG_ALTMOUNT_VENDOR: other
-            envFrom:
-              - secretRef:
-                  name: rclone-altmount-secret
-            probes:
-              liveness: &rclone-altmount-probes
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - test -d /host-mount/rclone-radarr-altmount/complete
-                  initialDelaySeconds: 10
-                  periodSeconds: 30
-                  timeoutSeconds: 5
-                  failureThreshold: 6
-              readiness: *rclone-altmount-probes
-              startup:
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - test -d /host-mount/rclone-radarr-altmount/complete
-                  failureThreshold: 30
-                  periodSeconds: 5
-            securityContext:
-              runAsUser: 0
-              runAsGroup: 0
-              runAsNonRoot: false
-              privileged: true
-              readOnlyRootFilesystem: true
-              capabilities:
-                drop:
-                  - ALL
           # zurg (the Usenet backend) mounted where zurg reports it, so the
           # *arr sees a release at the same path the SABnzbd endpoint hands
           # over. Writable on purpose: an import MOVEs the released folder
@@ -290,16 +223,8 @@ spec:
         hostPathType: CharDevice
         advancedMounts:
           radarr:
-            rclone-altmount:
-              - path: /dev/fuse
             rclone-zurg:
               - path: /dev/fuse
-      rclone-cache-altmount:
-        type: emptyDir
-        advancedMounts:
-          radarr:
-            rclone-altmount:
-              - path: /cache
       rclone-cache-zurg:
         type: emptyDir
         advancedMounts:
@@ -312,21 +237,9 @@ spec:
         hostPathType: Directory
         advancedMounts:
           radarr:
-            rclone-altmount:
-              - path: /host-mount
-                mountPropagation: Bidirectional
             rclone-zurg:
               - path: /host-mount
                 mountPropagation: Bidirectional
-      altmount:
-        type: hostPath
-        hostPath: /tmp/rclone-radarr-altmount
-        hostPathType: DirectoryOrCreate
-        advancedMounts:
-          radarr:
-            app:
-              - path: /aio/remote/altmount
-                mountPropagation: HostToContainer
       zurg:
         type: hostPath
         hostPath: /tmp/rclone-radarr-zurg
