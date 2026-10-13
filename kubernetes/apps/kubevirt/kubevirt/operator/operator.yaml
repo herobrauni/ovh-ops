@@ -1,6 +1,6 @@
 ---
-# Vendored from the KubeVirt v1.9.0 release; its Namespace is managed separately.
-# Source: https://github.com/kubevirt/kubevirt/releases/download/v1.9.0/kubevirt-operator.yaml
+# Vendored from the KubeVirt v1.9.1 release; its Namespace is managed separately.
+# Source: https://github.com/kubevirt/kubevirt/releases/download/v1.9.1/kubevirt-operator.yaml
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -167,7 +167,7 @@ spec:
                         defaultArchitecture:
                           type: string
                         ppc64le:
-                          description: 'Deprecated: ppc64le architecture is no longer supported.'
+                          description: "Deprecated: ppc64le architecture is no longer supported."
                           properties:
                             emulatedMachines:
                               items:
@@ -3492,7 +3492,7 @@ spec:
                         defaultArchitecture:
                           type: string
                         ppc64le:
-                          description: 'Deprecated: ppc64le architecture is no longer supported.'
+                          description: "Deprecated: ppc64le architecture is no longer supported."
                           properties:
                             emulatedMachines:
                               items:
@@ -7453,9 +7453,9 @@ rules:
   - apiGroups:
       - kubevirt.io
     resources:
-      - '*'
+      - "*"
     verbs:
-      - '*'
+      - "*"
   - apiGroups:
       - kubevirt.io
     resources:
@@ -7482,9 +7482,9 @@ rules:
   - apiGroups:
       - cdi.kubevirt.io
     resources:
-      - '*'
+      - "*"
     verbs:
-      - '*'
+      - "*"
   - apiGroups:
       - apiextensions.k8s.io
     resources:
@@ -8328,14 +8328,14 @@ spec:
             - virt-operator
           env:
             - name: VIRT_OPERATOR_IMAGE
-              value: quay.io/kubevirt/virt-operator:v1.9.0
+              value: quay.io/kubevirt/virt-operator:v1.9.1
             - name: WATCH_NAMESPACE
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.annotations['olm.targetNamespaces']
             - name: KUBEVIRT_VERSION
-              value: v1.9.0
-          image: quay.io/kubevirt/virt-operator:v1.9.0@sha256:d08b5b5ad1c0d694fad13279e44b44b6fad961aa7508acd53b87ce6ef468cbae
+              value: v1.9.1
+          image: quay.io/kubevirt/virt-operator:v1.9.1@sha256:a8adf7b772e9ce0bf7e2ce889910fc41ebadf552c9dbe843e9b86641e34f5df9
           imagePullPolicy: IfNotPresent
           livenessProbe:
             httpGet:
