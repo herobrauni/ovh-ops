@@ -46,7 +46,7 @@ spec:
                   httpGet:
                     path: /health
                     port: *port
-                  failureThreshold: 30
+                  failureThreshold: 60
                   periodSeconds: 10
               liveness:
                 enabled: true
