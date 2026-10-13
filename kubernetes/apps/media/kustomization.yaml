@@ -13,7 +13,7 @@ resources:
   # - .//ks.yaml
   - ./booklore/ks.yaml
   # - ./cleanuparr/ks.yaml
-  - ./altmount/ks.yaml
+  # - ./altmount/ks.yaml
   - ./zurg/ks.yaml
   - ./bazarr/ks.yaml
   - ./bazarr4k/ks.yaml
@@ -23,7 +23,7 @@ resources:
   # - ./comet/ks.yaml
   # - .//ks.yaml
   # - ./-sync-helper/ks.yaml
-  - ./altmount-sync-helper/ks.yaml
+  # - ./altmount-sync-helper/ks.yaml
   - ./zurg-sync-helper/ks.yaml
   - ./jellyfin/ks.yaml
   # - ./kometa/ks.yaml
