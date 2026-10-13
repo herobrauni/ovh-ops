@@ -47,6 +47,9 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: zurg-debug
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: media-debug
       toPorts:
         - ports:
             - port: "9999"
