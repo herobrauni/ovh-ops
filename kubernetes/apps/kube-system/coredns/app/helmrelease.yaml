@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: coredns
   interval: 5m
-  driftDetection:
-    mode: enabled
   values:
     fullnameOverride: coredns
     image:

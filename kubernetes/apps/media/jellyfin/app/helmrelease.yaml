@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: jellyfin
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       securityContext:
@@ -355,4 +353,3 @@ spec:
             app:
               - path: /aio/remote/zurg
                 mountPropagation: HostToContainer
-

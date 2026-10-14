@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: k8tz
   interval: 30m
-  driftDetection:
-    mode: enabled
   values:
     namespace: null
     createNamespace: false

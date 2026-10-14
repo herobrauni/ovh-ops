@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: fluent-bit
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     config:
       service: |-
