@@ -7,7 +7,7 @@ metadata:
 spec:
   chartRef:
     kind: OCIRepository
-    name: media-debug
+    name: app-template
   interval: 1h
   driftDetection:
     mode: enabled

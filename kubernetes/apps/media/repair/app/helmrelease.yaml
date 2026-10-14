@@ -7,7 +7,7 @@ metadata:
 spec:
   chartRef:
     kind: OCIRepository
-    name: repair
+    name: app-template
   interval: 1h
   driftDetection:
     mode: enabled
@@ -73,4 +73,3 @@ spec:
         globalMounts:
           - path: /aio/symlinks
             readOnly: true
-
