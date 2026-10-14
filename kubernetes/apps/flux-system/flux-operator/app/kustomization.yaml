@@ -6,6 +6,5 @@ resources:
   - ./dnsendpoints.yaml
   - ./helmrelease.yaml
   - ./httproute.yaml
-  - ./httproute-outpost.yaml
   - ./ocirepository.yaml
   - ./securitypolicy.yaml
