@@ -34,3 +34,6 @@ plans
 
 # Added by ggshield
 .cache_ggshield
+
+# Local-only sops legacy config (superseded by .mise.toml SOPS_AGE_KEY_FILE)
+.sopsrc
