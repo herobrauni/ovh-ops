@@ -3,14 +3,14 @@
 apiVersion: externaldns.k8s.io/v1alpha1
 kind: DNSEndpoint
 metadata:
-  name: shelfmark
+  name: ${APP}
   labels:
-    dns.scope: all
+    dns.scope: ${DNS_SCOPE:=all}
   annotations:
-    dns.scope: all
+    dns.scope: ${DNS_SCOPE:=all}
 spec:
   endpoints:
-    - dnsName: shelfmark.brauni.dev
+    - dnsName: ${APP}.${DOMAIN}
       recordType: CNAME
       targets:
-        - public.brauni.dev
+        - public.${DOMAIN}

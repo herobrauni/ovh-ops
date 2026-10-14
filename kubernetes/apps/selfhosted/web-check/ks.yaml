@@ -9,11 +9,14 @@ spec:
   commonMetadata:
     labels:
       app.kubernetes.io/name: *app
+  components:
+    - ../../../../components/dnsendpoint
   interval: 1h
   path: ./kubernetes/apps/selfhosted/web-check/app
   postBuild:
     substitute:
       APP: *app
+      DOMAIN: brauni.dev
   prune: true
   sourceRef:
     kind: GitRepository

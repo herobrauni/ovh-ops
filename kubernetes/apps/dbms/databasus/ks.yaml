@@ -9,11 +9,17 @@ spec:
   commonMetadata:
     labels:
       app.kubernetes.io/name: *app
+  components:
+    - ../../../../components/dnsendpoint
   dependsOn:
     - name: rook-ceph-cluster
       namespace: rook-ceph
   interval: 1h
   path: ./kubernetes/apps/dbms/databasus/app
+  postBuild:
+    substitute:
+      APP: *app
+      DOMAIN: riki.boo
   prune: true
   sourceRef:
     kind: GitRepository
