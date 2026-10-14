@@ -9,7 +9,7 @@ resources:
   - ./helmrelease.yaml
   - ./dnsendpoints.yaml
   - ./referencegrant.yaml
-  - ./wildcard-outpost-routes.yaml
+  - ./outpost-routes.yaml
 configMapGenerator:
   - name: authentik-blueprints
     files:

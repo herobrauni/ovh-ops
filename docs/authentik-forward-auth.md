@@ -303,9 +303,12 @@ spec:
 ```
 
 > [!NOTE]
-> **Outpost callback routing**: The OIDC callback (`/outpost.goauthentik.io`) is handled globally via
-> wildcard HTTPRoutes attached to each public Envoy Gateway (`kubernetes/apps/authentik/authentik/app/wildcard-outpost-routes.yaml`).
-> Individual apps do **not** need dedicated `httproute-outpost.yaml` files or kustomization additions.
+> **Outpost callback routing**: The OIDC callback (`/outpost.goauthentik.io`) is handled in
+> `kubernetes/apps/authentik/authentik/app/outpost-routes.yaml` (one HTTPRoute per domain listing the
+> protected hostnames with `gatus.home-operations.com/enabled: "false"`).
+> Under Gateway API precedence rules, exact-hostname routes tie with app routes on hostname specificity,
+> allowing the longer `/outpost.goauthentik.io` prefix to win over the app's root route.
+> Individual apps do **not** need dedicated `httproute-outpost.yaml` files.
 
 **`ks.yaml`** — depend on the Authentik Kustomization instead of TinyAuth:
 

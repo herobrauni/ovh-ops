@@ -4,13 +4,26 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: authentik-outpost-480p-com
+  annotations:
+    gatus.home-operations.com/enabled: "false"
 spec:
   parentRefs:
     - name: envoy-480p-com-public
       namespace: network
       sectionName: https
   hostnames:
-    - "*.480p.com"
+    - altmount.480p.com
+    - bazarr.480p.com
+    - bazarr4k.480p.com
+    - clonarr.480p.com
+    - echo.480p.com
+    - prowlarr.480p.com
+    - radarr.480p.com
+    - radarr4k.480p.com
+    - sonarr.480p.com
+    - sonarr4k.480p.com
+    - umlautadaptarrex.480p.com
+    - zurg.480p.com
   rules:
     - matches:
         - path:
@@ -24,13 +37,17 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: authentik-outpost-brauni-dev
+  annotations:
+    gatus.home-operations.com/enabled: "false"
 spec:
   parentRefs:
     - name: envoy-brauni-dev-public
       namespace: network
       sectionName: https
   hostnames:
-    - "*.brauni.dev"
+    - echo.brauni.dev
+    - konflate.brauni.dev
+    - vaultwarden.brauni.dev
   rules:
     - matches:
         - path:
@@ -44,13 +61,21 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: authentik-outpost-riki-boo
+  annotations:
+    gatus.home-operations.com/enabled: "false"
 spec:
   parentRefs:
     - name: envoy-riki-boo-public
       namespace: network
       sectionName: https
   hostnames:
-    - "*.riki.boo"
+    - alertmanager.riki.boo
+    - echo.riki.boo
+    - flux-operator.riki.boo
+    - grafana.riki.boo
+    - kopia.riki.boo
+    - prometheus.riki.boo
+    - victoria-logs.riki.boo
   rules:
     - matches:
         - path:
