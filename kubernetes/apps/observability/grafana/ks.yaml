@@ -21,6 +21,9 @@ kind: Kustomization
 metadata:
   name: grafana-instance
 spec:
+  targetNamespace: observability
+  components:
+    - ../../../../components/dnsendpoint
   dependsOn:
     - name: grafana
       namespace: observability
@@ -30,10 +33,13 @@ spec:
       namespace: authentik
   interval: 1h
   path: ./kubernetes/apps/observability/grafana/instance
+  postBuild:
+    substitute:
+      APP: grafana
+      DOMAIN: riki.boo
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  targetNamespace: observability
   wait: false

@@ -5,6 +5,9 @@ kind: Kustomization
 metadata:
   name: kopia
 spec:
+  targetNamespace: volsync-system
+  components:
+    - ../../../../components/dnsendpoint
   dependsOn:
     - name: volsync
       namespace: volsync-system
@@ -19,10 +22,10 @@ spec:
   postBuild:
     substitute:
       APP: kopia
+      DOMAIN: riki.boo
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  targetNamespace: volsync-system
   wait: false

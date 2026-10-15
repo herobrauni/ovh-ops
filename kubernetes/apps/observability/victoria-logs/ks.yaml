@@ -5,6 +5,9 @@ kind: Kustomization
 metadata:
   name: victoria-logs
 spec:
+  targetNamespace: observability
+  components:
+    - ../../../../components/dnsendpoint
   dependsOn:
     - name: authentik
       namespace: authentik
@@ -12,10 +15,13 @@ spec:
       namespace: rook-ceph
   interval: 1h
   path: ./kubernetes/apps/observability/victoria-logs/app
+  postBuild:
+    substitute:
+      APP: victoria-logs
+      DOMAIN: riki.boo
   prune: true
   sourceRef:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  targetNamespace: observability
   wait: false

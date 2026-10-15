@@ -10,6 +10,7 @@ spec:
     labels:
       app.kubernetes.io/name: *app
   components:
+    - ../../../../components/dnsendpoint
     - ../../../../components/authentik
     - ../../../../components/kopiur
   dependsOn:
@@ -26,6 +27,7 @@ spec:
   postBuild:
     substitute:
       APP: *app
+      DOMAIN: 480p.com
       KOPIUR_CAPACITY: 10Gi
       KOPIUR_ON_MISSING_SNAPSHOT: Fail
   prune: true
