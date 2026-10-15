@@ -11,6 +11,7 @@ spec:
       app.kubernetes.io/name: *app
   components:
     - ../../../../components/cnpg
+    - ../../../../components/dnsendpoint
     - ../../../../components/dragonfly
     - ../../../../components/volsync
   dependsOn:
@@ -32,6 +33,7 @@ spec:
     substitute:
       APP: *app
       CNPG_NAME: postgres18
+      DOMAIN: 480p.com
       VOLSYNC_CAPACITY: 10Gi
   prune: true
   sourceRef:

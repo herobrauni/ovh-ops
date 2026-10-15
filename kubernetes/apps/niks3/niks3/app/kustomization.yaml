@@ -7,4 +7,3 @@ resources:
   - ./objectbucketclaim.yaml
   - ./externalsecret.yaml
   - ./helmrelease.yaml
-  - ./dnsendpoints.yaml

@@ -11,6 +11,7 @@ spec:
       app.kubernetes.io/name: *app
   components:
     - ../../../../components/cnpg
+    - ../../../../components/dnsendpoint
     - ../../../../components/dragonfly
     - ../../../../components/kopiur
   dependsOn:
@@ -29,6 +30,7 @@ spec:
   postBuild:
     substitute:
       APP: *app
+      DOMAIN: brauni.dev
       KOPIUR_CAPACITY: 8Gi
       KOPIUR_ON_MISSING_SNAPSHOT: Fail
   prune: true

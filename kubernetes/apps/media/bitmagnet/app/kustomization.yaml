@@ -10,7 +10,6 @@ resources:
   - ./grafanadashboard.yaml
   - ./httproute.yaml
   - ./securitypolicy.yaml
-  - ./dnsendpoints.yaml
 configMapGenerator:
   - name: -dashboard
     files:

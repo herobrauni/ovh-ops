@@ -10,6 +10,7 @@ spec:
     labels:
       app.kubernetes.io/name: *app
   components:
+    - ../../../../components/dnsendpoint
     - ../../../../components/volsync
   dependsOn:
     - name: rook-ceph-cluster
@@ -25,6 +26,7 @@ spec:
   postBuild:
     substitute:
       APP: *app
+      DOMAIN: 480p.com
       VOLSYNC_CAPACITY: 5Gi
   prune: true
   sourceRef:
