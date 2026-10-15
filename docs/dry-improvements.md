@@ -372,8 +372,8 @@ spec:
 Create `kubernetes/components/authentik/`:
 
 - Defines `SecurityPolicy/${APP}-auth` targeting HTTPRoute `${APP}-${DOMAIN_SLUG:=480p-com}`.
-- Converts **10 of 21** protected apps (the active media set: `sonarr`, `radarr`, `sonarr4k`, `radarr4k`, `bazarr`, `bazarr4k`, `clonarr`, `prowlarr`, `umlautadaptarrex`, `zurg`).
-- **11 apps preserved**: Non-standard configurations (`echo` ×3, `grafana`, `prometheus`, `alertmanager`, `victoria-logs`, `vaultwarden-admin`, `kopia`, and disabled `altmount`) keep their hand-written SecurityPolicies.
+- Converts **10 of 21** protected apps (the active media set: `sonarr`, `radarr`, `sonarr4k`, `radarr4k`, `bazarr`, `bazarr4k`, `clonarr`, `prowlarr`, `umlautadaptarrex`, `zurg`), plus converts the disabled `altmount` (11 `ks.yaml` entries total).
+- **11 apps preserved**: Non-standard configurations (`echo` ×3, `flux-operator`, `konflate`, `grafana`, `prometheus`, `alertmanager`, `victoria-logs`, `vaultwarden-admin`, `kopia`) keep their hand-written SecurityPolicies.
 
 ---
 
