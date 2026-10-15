@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: tinyauth-480p-com
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     controllers:
       tinyauth-480p-com:
@@ -48,7 +46,7 @@ spec:
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
-              capabilities: {drop: ["ALL"]}
+              capabilities: { drop: ["ALL"] }
             resources:
               requests:
                 cpu: 10m

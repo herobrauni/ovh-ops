@@ -7,4 +7,3 @@ resources:
   - ./helmrelease.yaml
   - ./httproute.yaml
   - ./httproute-outpost.yaml
-  - ./securitypolicy.yaml

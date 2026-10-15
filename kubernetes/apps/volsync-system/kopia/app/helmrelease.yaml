@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: kopia
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     controllers:
       kopia:
@@ -57,7 +55,7 @@ spec:
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: false
-              capabilities: {drop: ["ALL"]}
+              capabilities: { drop: ["ALL"] }
         containers:
           app:
             image:
@@ -85,7 +83,7 @@ spec:
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
-              capabilities: {drop: ["ALL"]}
+              capabilities: { drop: ["ALL"] }
             resources:
               requests:
                 cpu: 10m

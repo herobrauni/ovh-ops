@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: networking-toolbox
   interval: 30m
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       automountServiceAccountToken: false
