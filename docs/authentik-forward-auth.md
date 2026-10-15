@@ -13,10 +13,11 @@ its namespace `kustomization.yaml`.
 
 Two halves, and both live in Git:
 
-| Half | Where it lives |
-| --- | --- |
-| Envoy `SecurityPolicy`, outpost `HTTPRoute`, Gatus annotations, `ks.yaml` | Git (`kubernetes/apps/<ns>/<app>/`) |
+| Half                                                                 | Where it lives                                                                                                                                                   |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Envoy `SecurityPolicy`, Gatus annotations, `ks.yaml`                 | Git (`kubernetes/apps/<ns>/<app>/`)                                                                                                                              |
 | Group, ProxyProvider, Application, PolicyBinding, outpost assignment | Git — blueprint `kubernetes/apps/authentik/authentik/app/blueprints/forward-auth.yaml` (see [step 1](#step-1--authentik-objects-git-the-forward-auth-blueprint)) |
+| Shared outpost `HTTPRoute`s for `/outpost.goauthentik.io`            | Git — `kubernetes/apps/authentik/authentik/app/outpost-routes.yaml` (explicit hostname lists, not a wildcard)                                                    |
 
 Until 2026-09-11 those Authentik objects were created by hand through the API/UI; they are now
 declared in that blueprint and re-applied from Git.
@@ -38,8 +39,10 @@ Key consequences:
 - The outpost is **in-process inside `authentik-server`** — there is no `ak-outpost-*` Service.
   `backendRefs` always point at Service `authentik-server`, ns `authentik`, port **80** (container 9000).
 - The 2026.8 outpost is **OIDC-based**: the old `/outpost.goauthentik.io/start` flow is gone, and
-  the OIDC callback is served **on the app hostname**. Step ② only works if a separate HTTPRoute
-  routes `/outpost.goauthentik.io` on the app host to `authentik-server`.
+  the OIDC callback is served **on the app hostname**. Step ② is handled by the shared outpost HTTPRoutes
+  (one per public Gateway, each listing its protected hostnames in `spec.hostnames`) matching `PathPrefix /outpost.goauthentik.io`
+  (`kubernetes/apps/authentik/authentik/app/outpost-routes.yaml`), routing directly to `authentik-server`.
+  Individual apps no longer need dedicated per-app outpost callback routes.
 - Provider matching is by `Host`, so the original `:authority` must reach the ext-auth request
   (Envoy Gateway does this by default).
 
@@ -98,26 +101,26 @@ Copy an existing block, change the identifiers, and add the provider to the outp
 of the file:
 
 ```yaml
-  - id: provider-prowlarr
-    model: authentik_providers_proxy.proxyprovider
-    identifiers:
+- id: provider-prowlarr
+  model: authentik_providers_proxy.proxyprovider
+  identifiers:
       name: Prowlarr
-    attrs:
+  attrs:
       mode: forward_single
       cookie_domain: ""
       external_host: https://prowlarr.480p.com
       skip_path_regex: ^/ping$ # Gatus liveness path, see step 4
       authorization_flow: !KeyOf flow-authorization-implicit-consent
       invalidation_flow: !KeyOf flow-invalidation
-  - id: app-prowlarr
-    model: authentik_core.application
-    identifiers:
+- id: app-prowlarr
+  model: authentik_core.application
+  identifiers:
       slug: prowlarr
-    attrs:
+  attrs:
       name: Prowlarr
       provider: !KeyOf provider-prowlarr
-  - model: authentik_policies.policybinding
-    identifiers:
+- model: authentik_policies.policybinding
+  identifiers:
       target: !KeyOf app-prowlarr
       group: !KeyOf group-media
       order: 0
@@ -154,7 +157,7 @@ sha512sum kubernetes/apps/authentik/authentik/app/blueprints/forward-auth.yaml  
 ```
 
 To force an apply (after a failed run, or to convince yourself nothing is pending), use the very
-same entry point as the UI's *Apply* button and the API action — an in-worker task:
+same entry point as the UI's _Apply_ button and the API action — an in-worker task:
 
 ```bash
 kubectl -n authentik exec deploy/authentik-server -c server -- ak shell -c "
@@ -166,7 +169,7 @@ print('MARKQUEUED', b.pk)"
 ```
 
 Equivalent: `POST /api/v3/blueprints/instances/<pk>/apply/` with an API token (the `pk` of that row),
-or *System → Blueprints → Apply* in the UI. Applying an already-applied file is a no-op.
+or _System → Blueprints → Apply_ in the UI. Applying an already-applied file is a no-op.
 
 Three gotchas:
 
@@ -177,7 +180,7 @@ Three gotchas:
   expected diff is missing but the hash matches, just re-apply (recipe above) — and do **not**
   `kubectl rollout restart deploy/authentik-worker` while a first apply is in flight.
 - **A racing apply can fail with a Postgres deadlock, not a blueprint error.** The 2026-09-15 apply
-  (the `vaultwarden` provider) landed while the worker was being replaced and died in the *proxy*
+  (the `vaultwarden` provider) landed while the worker was being replaced and died in the _proxy_
   connect signal: `{"name": "proxy_set_defaults", "event": "Failed to run reconcile", "exc":
   "OperationalError('deadlock detected … while deleting tuple (0,170) in relation
   \"guardian_roleobjectpermission\"')"}`, leaving the instance in `status: error` with the **old**
@@ -188,7 +191,7 @@ Three gotchas:
   up; it is `enabled: false` and unrelated to `custom/forward-auth.yaml`. Do not chase it while
   debugging (`clear_failed_blueprints` runs hourly at `:27` and keeps retrying it upstream).
 
-### 1d. What is deliberately *not* in the blueprint
+### 1d. What is deliberately _not_ in the blueprint
 
 - **Passwords** — users created without one get an unusable password, so after a fresh install they
   have to be set once (`ak changepassword <username>`, interactive, or the UI). There is no
@@ -264,59 +267,61 @@ Per app, in `kubernetes/apps/<namespace>/<app>/app/`:
 
 ```yaml
 spec:
-  targetRefs:
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      name: <app>-480p-com
-  extAuth:
-    failOpen: false
-    headersToExtAuth: [X-Forwarded-For, X-Forwarded-Host, X-Forwarded-Proto, X-Forwarded-Uri, accept, authorization, cookie, user-agent]
-    http:
-      backendRefs:
-        - name: authentik-server
-          namespace: authentik
-          port: 80
-      path: /outpost.goauthentik.io/auth/envoy
-      headersToBackend: [Location, Set-Cookie, X-authentik-email, X-authentik-groups, X-authentik-name, X-authentik-uid, X-authentik-username]
+    targetRefs:
+        - group: gateway.networking.k8s.io
+          kind: HTTPRoute
+          name: <app>-480p-com
+    extAuth:
+        failOpen: false
+        headersToExtAuth:
+            [
+                X-Forwarded-For,
+                X-Forwarded-Host,
+                X-Forwarded-Proto,
+                X-Forwarded-Uri,
+                accept,
+                authorization,
+                cookie,
+                user-agent,
+            ]
+        http:
+            backendRefs:
+                - name: authentik-server
+                  namespace: authentik
+                  port: 80
+            path: /outpost.goauthentik.io/auth/envoy
+            headersToBackend:
+                [
+                    Location,
+                    Set-Cookie,
+                    X-authentik-email,
+                    X-authentik-groups,
+                    X-authentik-name,
+                    X-authentik-uid,
+                    X-authentik-username,
+                ]
 ```
 
-**`httproute-outpost.yaml`** (new) — the OIDC callback must be served on the app host **without**
-ext-auth, so it gets its own HTTPRoute. Reusing the app's HTTPRoute would make Envoy ext-auth the
-callback and loop:
+> [!NOTE]
+> **Outpost callback routing**: The OIDC callback (`/outpost.goauthentik.io`) is handled in
+> `kubernetes/apps/authentik/authentik/app/outpost-routes.yaml` (one HTTPRoute per domain listing the
+> protected hostnames with `gatus.home-operations.com/enabled: "false"`).
+> Under Gateway API precedence rules, exact-hostname routes tie with app routes on hostname specificity,
+> allowing the longer `/outpost.goauthentik.io` prefix to win over the app's root route.
+> Individual apps do **not** need dedicated `httproute-outpost.yaml` files.
 
-```yaml
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: <app>-480p-com-outpost
-  annotations:
-    gatus.home-operations.com/enabled: "false" # else the sidecar probes /outpost.goauthentik.io
-spec:
-  hostnames: ["<app>.480p.com"]
-  parentRefs:
-    - name: envoy-480p-com-public
-      namespace: network
-      sectionName: https
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /outpost.goauthentik.io
-      backendRefs:
-        - name: authentik-server
-          namespace: authentik
-          port: 80
-```
-
-**`kustomization.yaml`** — add `./httproute-outpost.yaml`.
+> **`kubernetes/apps/authentik/authentik/app/outpost-routes.yaml` (ns `authentik`)** — add the new
+> hostname to the `spec.hostnames` list of the HTTPRoute for the matching domain (`480p.com`,
+> `brauni.dev`, `riki.boo`). Without it, `/outpost.goauthentik.io` is not routed for that host and the
+> login flow dies as a `404` (see _Gotchas_) — the provider and `SecurityPolicy` alone are not enough.
 
 **`ks.yaml`** — depend on the Authentik Kustomization instead of TinyAuth:
 
 ```yaml
 spec:
-  dependsOn:
-    - name: authentik
-      namespace: authentik
+    dependsOn:
+        - name: authentik
+          namespace: authentik
 ```
 
 **`httproute.yaml`** — keep the existing route (Homepage annotations stay), add the Gatus override
@@ -326,14 +331,14 @@ spec:
 prefix is not — Vaultwarden's `/admin` panel, while the Bitwarden clients need `/api/*` and
 `/identity/*` unauthenticated on the same host — leave the app's own public HTTPRoute untouched and
 give the protected prefix a **separate** HTTPRoute (here `vaultwarden-admin`, `PathPrefix /admin`)
-that the `SecurityPolicy` targets. That hostname still needs exactly one
-`/outpost.goauthentik.io` HTTPRoute (shared by both routes) and its own Gatus treatment (step 4);
+that the `SecurityPolicy` targets. The `/outpost.goauthentik.io` callback is handled transparently
+by the shared outpost routes and needs no per-app route; Gatus treatment still applies to the protected route (step 4);
 the proxy provider needs **no** `skip_path_regex`, because the public paths never reach ext-auth.
 TinyAuth's Kustomization, ReferenceGrant and secret stay deployed for the apps that have not
 migrated; mix-and-match per route is fine.
 
 **Ordering**: the blueprint's provider must exist **before** the app's `SecurityPolicy` flips. When
-one Kustomization ships both halves — as `vaultwarden` did — the outpost answers `404`, *not* a
+one Kustomization ships both halves — as `vaultwarden` did — the outpost answers `404`, _not_ a
 redirect loop, on the protected path for as long as the provider is missing: Gatus recorded 7 failed
 probes (`404 != 302`) in the ~3 min window between `vaultwarden` reconciling and the blueprint's
 apply landing. Force the apply right after the ConfigMap rolls (see
@@ -344,11 +349,12 @@ chain (`authentik` → `volsync-system/volsync` → `dbms/cloudnative-pg-cluster
 
 ## Step 3 — ReferenceGrant (once per consumer namespace)
 
-Cross-namespace `backendRef` from `SecurityPolicy`/`HTTPRoute` in `<ns>` to Service
+Cross-namespace `backendRef` from `SecurityPolicy` in `<ns>` to Service
 `authentik-server` in `authentik` needs a grant in the **target** namespace
-(`kubernetes/apps/authentik/authentik/app/referencegrant.yaml`). One `from` entry **per kind and
-namespace pair** — a missing `HTTPRoute` entry accepts the SecurityPolicy but leaves the outpost
-route unresolved, which surfaces as an ext-auth loop rather than a clear error. Scoped today to
+(`kubernetes/apps/authentik/authentik/app/referencegrant.yaml`). One `from` entry **per consumer
+namespace for kind `SecurityPolicy`** (for the extAuth backendRef). (Shared outpost `HTTPRoute`s live
+directly in the `authentik` namespace and reference `authentik-server` locally, so `HTTPRoute` cross-namespace grants
+are no longer needed). Scoped today to
 `flux-system`, `media`, `network`, `observability`, `selfhosted`, `volsync-system`.
 
 ## Step 4 — Gatus
@@ -360,47 +366,48 @@ Three things, because the sidecar (`--auto-httproute`) derives endpoints from ro
    `Authorization: Basic …` header from the Gateway annotation is harmless (verified with and
    without it). Anonymous liveness paths found so far:
 
-   | App | Path | Notes |
-   | --- | --- | --- |
-   | `*arr` apps (sonarr, radarr, prowlarr, incl. 4K) | `/ping` | `[AllowAnonymous]`, returns `{"status":"OK"}` |
-   | bazarr (incl. 4K) | `/health` | |
-   | altmount | `/health` | `/healthz` also answers; the app's `/sabnzbd` and `/webdav` routes are separate HTTPRoutes |
-   | clonarr | `/api/health` | `/ping`, `/health`, `/healthz` are 404 |
-   | umlautadaptarrex | `/api/health` | on the routed port 5007 (`/ping`, `/health` are 404 there) |
-   | echo (all 3 domains) | `/healthz` | returns 200 on any path |
-   | flux-operator, konflate | `/healthz` | konflate's `/health` is 404 |
-   | grafana | `/api/health` | |
-   | prometheus, alertmanager | `/-/healthy` | |
-   | victoria-logs | `/health` | its route has an `Exact /` rule that 302s to `/select/vmui/` |
-   | kopia | `/healthz` | **no anonymous path** — skipped from ext-auth and the endpoint asserts `[STATUS] == 404` (see below) |
-   | vaultwarden | none | only `/admin` is behind ext-auth and there is no anonymous path to assert, so its endpoint asserts the outpost's 302 (see below) |
+    | App                                              | Path          | Notes                                                                                                                            |
+    | ------------------------------------------------ | ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+    | `*arr` apps (sonarr, radarr, prowlarr, incl. 4K) | `/ping`       | `[AllowAnonymous]`, returns `{"status":"OK"}`                                                                                    |
+    | bazarr (incl. 4K)                                | `/health`     |                                                                                                                                  |
+    | altmount                                         | `/health`     | `/healthz` also answers; the app's `/sabnzbd` and `/webdav` routes are separate HTTPRoutes                                       |
+    | clonarr                                          | `/api/health` | `/ping`, `/health`, `/healthz` are 404                                                                                           |
+    | umlautadaptarrex                                 | `/api/health` | on the routed port 5007 (`/ping`, `/health` are 404 there)                                                                       |
+    | echo (all 3 domains)                             | `/healthz`    | returns 200 on any path                                                                                                          |
+    | flux-operator, konflate                          | `/healthz`    | konflate's `/health` is 404                                                                                                      |
+    | grafana                                          | `/api/health` |                                                                                                                                  |
+    | prometheus, alertmanager                         | `/-/healthy`  |                                                                                                                                  |
+    | victoria-logs                                    | `/health`     | its route has an `Exact /` rule that 302s to `/select/vmui/`                                                                     |
+    | kopia                                            | `/healthz`    | **no anonymous path** — skipped from ext-auth and the endpoint asserts `[STATUS] == 404` (see below)                             |
+    | vaultwarden                                      | none          | only `/admin` is behind ext-auth and there is no anonymous path to assert, so its endpoint asserts the outpost's 302 (see below) |
 
-   To find one for a new app, probe the Service from a throwaway pod first:
+    To find one for a new app, probe the Service from a throwaway pod first:
 
-   ```bash
-   kubectl run probe -n observability --image=curlimages/curl:8.11.1 --restart=Never --rm -i \
-     --command -- sh -c 'for p in / /health /healthz /api/health /ping; do
-       printf "%-16s " "$p"; curl -s -o /dev/null -w "%{http_code}\n" -m 5 \
-         "http://<app>.media.svc.cluster.local:<port>$p"; done'
-   ```
+    ```bash
+    kubectl run probe -n observability --image=curlimages/curl:8.11.1 --restart=Never --rm -i \
+      --command -- sh -c 'for p in / /health /healthz /api/health /ping; do
+        printf "%-16s " "$p"; curl -s -o /dev/null -w "%{http_code}\n" -m 5 \
+          "http://<app>.media.svc.cluster.local:<port>$p"; done'
+    ```
 
-   An in-cluster 200 is a **candidate, not proof**: the app may exempt local addresses, and the
-   outpost may skip a path while the app still answers 401/302. Prove it through the gateway
-   without credentials after the migration. If the app has no anonymous path, assert its own auth
-   challenge instead of 200
-   (`gatus.home-operations.com/endpoint: |- conditions: ["[STATUS] == 401"]`, as altmount's
-   `/webdav` route does) or disable the endpoint entirely. **Never** leave a probe on `/` behind
-   Authentik: an unauthenticated request gets a 302 and the endpoint reports failed.
+    An in-cluster 200 is a **candidate, not proof**: the app may exempt local addresses, and the
+    outpost may skip a path while the app still answers 401/302. Prove it through the gateway
+    without credentials after the migration. If the app has no anonymous path, assert its own auth
+    challenge instead of 200
+    (`gatus.home-operations.com/endpoint: |- conditions: ["[STATUS] == 401"]`, as altmount's
+    `/webdav` route does) or disable the endpoint entirely. **Never** leave a probe on `/` behind
+    Authentik: an unauthenticated request gets a 302 and the endpoint reports failed.
 
-   A third option, used for **kopia**: when no path is anonymously healthy *and* the app's own
-   rejection is a 404, skip that path (`^/healthz$`) and assert `[STATUS] == 404` — the 404 is
-   served by the app, so a dead pod behind a live route (or a broken ext-auth chain returning 5xx)
-   still goes red, while a probe on `/` would only prove that Authentik answered. Kopia's UI shell
-   answers 200 on `/` and its API is what authenticates, which is why the shell is not probed.
+    A third option, used for **kopia**: when no path is anonymously healthy _and_ the app's own
+    rejection is a 404, skip that path (`^/healthz$`) and assert `[STATUS] == 404` — the 404 is
+    served by the app, so a dead pod behind a live route (or a broken ext-auth chain returning 5xx)
+    still goes red, while a probe on `/` would only prove that Authentik answered. Kopia's UI shell
+    answers 200 on `/` and its API is what authenticates, which is why the shell is not probed.
 
-   Watch for **extra routes on the same hostname** (altmount: `/sabnzbd`, `/webdav`): each is a
-   separate HTTPRoute, may deliberately bypass ext-auth, and gets its own sidecar-generated
-   endpoint that otherwise inherits an `== 200` condition that does not fit.
+    Watch for **extra routes on the same hostname** (altmount: `/sabnzbd`, `/webdav`): each is a
+    separate HTTPRoute, may deliberately bypass ext-auth, and gets its own sidecar-generated
+    endpoint that otherwise inherits an `== 200` condition that does not fit.
+
 2. On the app's HTTPRoute, override the probed URL:
    `gatus.home-operations.com/endpoint: |- url: https://<app>.480p.com/<liveness-path>`
    (conditions/group/interval/headers are inherited from the `envoy-480p-com-public` Gateway).
@@ -409,14 +416,16 @@ Three things, because the sidecar (`--auto-httproute`) derives endpoints from ro
    would mean ext-auth had been bypassed). Gatus **follows redirects by default**, so the client must
    opt out:
 
-   ```yaml
-   gatus.home-operations.com/endpoint: |-
-     client:
-       ignore-redirect: true # default is false → gatus would follow the 302 to sso.brauni.dev
-     conditions: ["[STATUS] == 302"]
-   ```
-3. On the outpost HTTPRoute, `gatus.home-operations.com/enabled: "false"`, otherwise the sidecar
-   emits a second endpoint for `https://<app>.480p.com/outpost.goauthentik.io` that fails.
+    ```yaml
+    gatus.home-operations.com/endpoint: |-
+        client:
+          ignore-redirect: true # default is false → gatus would follow the 302 to sso.brauni.dev
+        conditions: ["[STATUS] == 302"]
+    ```
+
+3. Outpost callback routing is handled by the shared outpost HTTPRoutes on the Envoy Gateways
+   (`kubernetes/apps/authentik/authentik/app/outpost-routes.yaml`), so apps no longer define per-app outpost routes and do not need
+   `gatus.home-operations.com/enabled: "false"` outpost annotations.
 
 ## Step 5 — Verification
 
@@ -439,7 +448,7 @@ key is rejected — the cookie value is `SessionMiddleware.encode_session()`):
 
 > Go through `django.contrib.auth.login()`: in 2026.8 authentication lives in an
 > `AuthenticatedSession` **row** that points at the session, plus a `login_event` key in the session
-> data (`SessionStore.create_model_instance()` deliberately *drops* Django's
+> data (`SessionStore.create_model_instance()` deliberately _drops_ Django's
 > `_auth_user_id`/`_auth_user_backend`/`_auth_user_hash`). A hand-rolled `SessionStore()` whose row
 > was inserted directly looks authenticated to nothing: the authorize view logs
 > `request with no login event`, redirects to the login form, and the test then “passes” with a 200
@@ -503,7 +512,7 @@ list, so a provider deleted from the file is detached from the outpost on the ne
 
 ## Gotchas
 
-- **`set_oauth_defaults()`**: a raw ORM `create()`/`save()` does *not* populate `grant_types`,
+- **`set_oauth_defaults()`**: a raw ORM `create()`/`save()` does _not_ populate `grant_types`,
   callback `redirect_uris` and the "Proxy outpost" scope mapping — the API/UI serializer does.
   Without it the provider is incomplete and login fails. Same for later edits: assign the field,
   then `set_oauth_defaults()` + `save()` if you touched anything OAuth-related. Only relevant for
@@ -526,16 +535,19 @@ list, so a provider deleted from the file is detached from the outpost on the ne
 - **Consent**: use `default-provider-authorization-implicit-consent` for forward auth; explicit
   consent adds a click-through page users cannot skip.
 - **Access control is separate from authentication**: `core_default_app_access=True` keeps an
-  application open *only while it has zero bindings*. Adding a binding (here: Group `Media`) locks
+  application open _only while it has zero bindings_. Adding a binding (here: Group `Media`) locks
   out every other authenticated user, and `PolicyAccessView.user_has_access()` has **no superuser
   bypass** — `akadmin` is denied too until it joins the group.
 - **Protocol-relative post-login redirect** (`//<app>.480p.com/`, goauthentik/authentik#19653,
   closed as not planned). Desktop browsers and curl resolve it correctly; mobile Chrome/Brave have
   been reported to mishandle it. Nothing to fix in this repo.
-- **Keep the outpost HTTPRoute separate** and its Gatus annotation disabled (see steps 2 and 4).
+- **Shared outpost routes**: Outpost callback routing (`/outpost.goauthentik.io`) is handled
+  by the shared outpost HTTPRoutes on the Envoy Gateways (one per domain in
+  `kubernetes/apps/authentik/authentik/app/outpost-routes.yaml`), eliminating per-app outpost routes
+  and Gatus exclusions.
 - **Partial-host protection**: a `SecurityPolicy` targets an HTTPRoute, never a hostname/path, so
   protecting `/admin` alone means giving that prefix its own HTTPRoute and pointing the policy at it
-  (see step 2) — with the outpost route still needed once per hostname.
+  (see step 2) — with the outpost callback handled transparently by the shared outpost routes.
 - **`BlueprintInstance` is a DB model, not a CRD**: check/force applies through `ak shell` (see
   1c). An apply can report `successful` with the correct hash and still miss a change; re-applying
   converges. Forging a session for end-to-end tests must go through `login()` (step 5), otherwise
