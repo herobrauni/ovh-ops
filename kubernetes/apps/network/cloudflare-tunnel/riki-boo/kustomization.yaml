@@ -7,4 +7,3 @@ resources:
   - ./dnsendpoints.yaml
   - ./grafanadashboard.yaml
   - ./helmrelease.yaml
-  - ./ocirepository.yaml

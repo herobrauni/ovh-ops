@@ -6,4 +6,3 @@ resources:
   - ./externalsecret.yaml
   - ./dnsendpoints.yaml
   - ./helmrelease.yaml
-  - ./ocirepository.yaml
