@@ -17,7 +17,7 @@ Two halves, and both live in Git:
 | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Envoy `SecurityPolicy`, Gatus annotations, `ks.yaml`                 | Git (`kubernetes/apps/<ns>/<app>/`)                                                                                                                              |
 | Group, ProxyProvider, Application, PolicyBinding, outpost assignment | Git — blueprint `kubernetes/apps/authentik/authentik/app/blueprints/forward-auth.yaml` (see [step 1](#step-1--authentik-objects-git-the-forward-auth-blueprint)) |
-| Wildcard outpost `HTTPRoute`s for `/outpost.goauthentik.io`          | Git — `kubernetes/apps/authentik/authentik/app/wildcard-outpost-routes.yaml`                                                                                     |
+| Shared outpost `HTTPRoute`s for `/outpost.goauthentik.io`            | Git — `kubernetes/apps/authentik/authentik/app/outpost-routes.yaml` (explicit hostname lists, not a wildcard)                                                    |
 
 Until 2026-09-11 those Authentik objects were created by hand through the API/UI; they are now
 declared in that blueprint and re-applied from Git.
@@ -39,9 +39,9 @@ Key consequences:
 - The outpost is **in-process inside `authentik-server`** — there is no `ak-outpost-*` Service.
   `backendRefs` always point at Service `authentik-server`, ns `authentik`, port **80** (container 9000).
 - The 2026.8 outpost is **OIDC-based**: the old `/outpost.goauthentik.io/start` flow is gone, and
-  the OIDC callback is served **on the app hostname**. Step ② is handled globally via wildcard HTTPRoutes
-  (`*.480p.com`, `*.brauni.dev`, `*.riki.boo`) matching `/outpost.goauthentik.io` attached to each public Envoy Gateway
-  (`kubernetes/apps/authentik/authentik/app/wildcard-outpost-routes.yaml`), routing directly to `authentik-server`.
+  the OIDC callback is served **on the app hostname**. Step ② is handled by the shared outpost HTTPRoutes
+  (one per public Gateway, each listing its protected hostnames in `spec.hostnames`) matching `PathPrefix /outpost.goauthentik.io`
+  (`kubernetes/apps/authentik/authentik/app/outpost-routes.yaml`), routing directly to `authentik-server`.
   Individual apps no longer need dedicated per-app outpost callback routes.
 - Provider matching is by `Host`, so the original `:authority` must reach the ext-auth request
   (Envoy Gateway does this by default).
@@ -310,6 +310,11 @@ spec:
 > allowing the longer `/outpost.goauthentik.io` prefix to win over the app's root route.
 > Individual apps do **not** need dedicated `httproute-outpost.yaml` files.
 
+> **`kubernetes/apps/authentik/authentik/app/outpost-routes.yaml` (ns `authentik`)** — add the new
+> hostname to the `spec.hostnames` list of the HTTPRoute for the matching domain (`480p.com`,
+> `brauni.dev`, `riki.boo`). Without it, `/outpost.goauthentik.io` is not routed for that host and the
+> login flow dies as a `404` (see _Gotchas_) — the provider and `SecurityPolicy` alone are not enough.
+
 **`ks.yaml`** — depend on the Authentik Kustomization instead of TinyAuth:
 
 ```yaml
@@ -327,7 +332,7 @@ prefix is not — Vaultwarden's `/admin` panel, while the Bitwarden clients need
 `/identity/*` unauthenticated on the same host — leave the app's own public HTTPRoute untouched and
 give the protected prefix a **separate** HTTPRoute (here `vaultwarden-admin`, `PathPrefix /admin`)
 that the `SecurityPolicy` targets. The `/outpost.goauthentik.io` callback is handled transparently
-by the wildcard Gateway routes and needs no per-app route; Gatus treatment still applies to the protected route (step 4);
+by the shared outpost routes and needs no per-app route; Gatus treatment still applies to the protected route (step 4);
 the proxy provider needs **no** `skip_path_regex`, because the public paths never reach ext-auth.
 TinyAuth's Kustomization, ReferenceGrant and secret stay deployed for the apps that have not
 migrated; mix-and-match per route is fine.
@@ -346,10 +351,10 @@ chain (`authentik` → `volsync-system/volsync` → `dbms/cloudnative-pg-cluster
 
 Cross-namespace `backendRef` from `SecurityPolicy` in `<ns>` to Service
 `authentik-server` in `authentik` needs a grant in the **target** namespace
-(`kubernetes/apps/authentik/authentik/app/referencegrant.yaml`). One `from` entry **per kind and
-namespace pair** (`SecurityPolicy` for the extAuth backendRef). (Wildcard outpost `HTTPRoute`s live
+(`kubernetes/apps/authentik/authentik/app/referencegrant.yaml`). One `from` entry **per consumer
+namespace for kind `SecurityPolicy`** (for the extAuth backendRef). (Shared outpost `HTTPRoute`s live
 directly in the `authentik` namespace and reference `authentik-server` locally, so `HTTPRoute` cross-namespace grants
-are no longer required for new consumer namespaces). Scoped today to
+are no longer needed). Scoped today to
 `flux-system`, `media`, `network`, `observability`, `selfhosted`, `volsync-system`.
 
 ## Step 4 — Gatus
@@ -418,8 +423,8 @@ Three things, because the sidecar (`--auto-httproute`) derives endpoints from ro
         conditions: ["[STATUS] == 302"]
     ```
 
-3. Outpost callback routing is handled globally by wildcard HTTPRoutes on the Envoy Gateways
-   (`wildcard-outpost-routes.yaml`), so apps no longer define per-app outpost routes and do not need
+3. Outpost callback routing is handled by the shared outpost HTTPRoutes on the Envoy Gateways
+   (`kubernetes/apps/authentik/authentik/app/outpost-routes.yaml`), so apps no longer define per-app outpost routes and do not need
    `gatus.home-operations.com/enabled: "false"` outpost annotations.
 
 ## Step 5 — Verification
@@ -536,13 +541,13 @@ list, so a provider deleted from the file is detached from the outpost on the ne
 - **Protocol-relative post-login redirect** (`//<app>.480p.com/`, goauthentik/authentik#19653,
   closed as not planned). Desktop browsers and curl resolve it correctly; mobile Chrome/Brave have
   been reported to mishandle it. Nothing to fix in this repo.
-- **Global wildcard outpost routes**: Outpost callback routing (`/outpost.goauthentik.io`) is handled
-  globally by wildcard HTTPRoutes on the Envoy Gateways (`*.480p.com`, `*.brauni.dev`, `*.riki.boo` in
-  `kubernetes/apps/authentik/authentik/app/wildcard-outpost-routes.yaml`), eliminating per-app outpost routes
+- **Shared outpost routes**: Outpost callback routing (`/outpost.goauthentik.io`) is handled
+  by the shared outpost HTTPRoutes on the Envoy Gateways (one per domain in
+  `kubernetes/apps/authentik/authentik/app/outpost-routes.yaml`), eliminating per-app outpost routes
   and Gatus exclusions.
 - **Partial-host protection**: a `SecurityPolicy` targets an HTTPRoute, never a hostname/path, so
   protecting `/admin` alone means giving that prefix its own HTTPRoute and pointing the policy at it
-  (see step 2) — with the outpost callback handled transparently by the wildcard Gateway routes.
+  (see step 2) — with the outpost callback handled transparently by the shared outpost routes.
 - **`BlueprintInstance` is a DB model, not a CRD**: check/force applies through `ak shell` (see
   1c). An apply can report `successful` with the correct hash and still miss a change; re-applying
   converges. Forging a session for end-to-end tests must go through `login()` (step 5), otherwise
