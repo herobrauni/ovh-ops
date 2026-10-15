@@ -6,44 +6,27 @@ metadata:
   name: authentik-outpost-backendrefs
 spec:
   from:
-    # SecurityPolicy.extAuth.http.backendRefs / HTTPRoute rule backendRefs pointing at
-    # Service authentik-server. One entry per (kind, namespace) pair — widened as apps
-    # migrate off TinyAuth.
+    # SecurityPolicy.extAuth.http.backendRefs pointing at Service authentik-server.
+    # One entry per consumer namespace — widened as apps migrate off TinyAuth.
+    # Outpost HTTPRoutes live in ns authentik and reference the Service locally,
+    # so HTTPRoute backendRefs do not require ReferenceGrants.
     - group: gateway.envoyproxy.io
       kind: SecurityPolicy
-      namespace: flux-system
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
       namespace: flux-system
     - group: gateway.envoyproxy.io
       kind: SecurityPolicy
       namespace: media
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      namespace: media
     - group: gateway.envoyproxy.io
       kind: SecurityPolicy
-      namespace: network
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
       namespace: network
     - group: gateway.envoyproxy.io
       kind: SecurityPolicy
       namespace: observability
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      namespace: observability
     - group: gateway.envoyproxy.io
       kind: SecurityPolicy
       namespace: selfhosted
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      namespace: selfhosted
     - group: gateway.envoyproxy.io
       kind: SecurityPolicy
-      namespace: volsync-system
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
       namespace: volsync-system
   to:
     - group: ""

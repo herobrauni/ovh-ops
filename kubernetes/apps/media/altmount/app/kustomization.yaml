@@ -8,6 +8,5 @@ resources:
   - ./helmrelease.yaml
   - ./externalsecret.yaml
   - ./httproute.yaml
-  - ./httproute-outpost.yaml
   - ./httproute-webdav.yaml
   - ./httproute-sabnzbd.yaml
