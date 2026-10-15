@@ -6,7 +6,6 @@ resources:
   - ./dnsendpoints.yaml
   - ./externalsecret.yaml
   - ./helmrelease.yaml
-  - ./ocirepository.yaml
   - ./prometheusrule.yaml
 configMapGenerator:
   - name: gatus-configmap

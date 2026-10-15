@@ -7,7 +7,7 @@ metadata:
 spec:
   chartRef:
     kind: OCIRepository
-    name: shelfmark
+    name: app-template
   interval: 30m
   values:
     controllers:

@@ -7,7 +7,7 @@ metadata:
 spec:
   chartRef:
     kind: OCIRepository
-    name: decypharr-sync-helper
+    name: app-template
   interval: 1h
   values:
     defaultPodOptions:
