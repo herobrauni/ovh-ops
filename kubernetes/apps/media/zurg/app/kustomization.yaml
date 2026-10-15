@@ -10,5 +10,4 @@ resources:
   - ./httproute.yaml
   - ./httproute-outpost.yaml
   - ./httproute-sabnzbd.yaml
-  - ./securitypolicy.yaml
   - ./dnsendpoints.yaml
