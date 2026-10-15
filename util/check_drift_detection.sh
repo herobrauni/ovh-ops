@@ -27,39 +27,40 @@ echo ""
 files=$(find kubernetes/apps -name "helmrelease.yaml" | sort)
 total=0
 inherited=0
-overridden_disabled=0
 redundant=0
+custom=0
 
 for file in $files; do
     total=$((total + 1))
-    if grep -q "driftDetection:" "$file"; then
-        if grep -A 1 "driftDetection:" "$file" | grep -q "mode: disabled"; then
-            echo "⚠️  $file explicitly disables drift detection"
-            overridden_disabled=$((overridden_disabled + 1))
-        elif grep -A 1 "driftDetection:" "$file" | grep -q "mode: enabled"; then
-            echo "ℹ️  $file has redundant explicit drift detection"
-            redundant=$((redundant + 1))
-        else
-            echo "❓ $file has custom drift detection configuration"
-        fi
-    else
+    if ! grep -q "driftDetection:" "$file"; then
         inherited=$((inherited + 1))
+        continue
+    fi
+    echo "ℹ️  $file declares driftDetection explicitly"
+    if grep -A 1 "driftDetection:" "$file" | grep -q "mode: enabled"; then
+        redundant=$((redundant + 1))
+    elif grep -A 1 "driftDetection:" "$file" | grep -q "mode: disabled"; then
+        # NOTE: does NOT override the cluster-apps patch — Kustomization patches are applied to the
+        # build output, so the global default wins. An app cannot opt out this way.
+        echo "⚠️  $file sets mode: disabled, which the global patch overrides"
+        custom=$((custom + 1))
+    else
+        custom=$((custom + 1))
     fi
 done
 
 echo ""
 echo "Summary:"
 echo "-------"
-echo "Global drift detection: Enabled ($ks_file)"
+echo "Global drift detection: enabled ($ks_file)"
 echo "Total HelmRelease files: $total"
 echo "Files inheriting global drift detection: $inherited"
-if [ "$overridden_disabled" -gt 0 ]; then
-    echo "Files with drift detection disabled: $overridden_disabled"
-fi
-if [ "$redundant" -gt 0 ]; then
-    echo "Files with redundant explicit drift detection: $redundant"
-fi
+echo "Files carrying redundant explicit driftDetection: $redundant"
 
 if [ "$inherited" -eq "$total" ]; then
     echo "✅ 100% of HelmReleases are covered by global drift detection"
+else
+    echo "❌ $((total - inherited)) file(s) still declare driftDetection explicitly — remove the blocks"
+    exit 1
 fi
+
