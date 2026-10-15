@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: cleanuparr
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       automountServiceAccountToken: false

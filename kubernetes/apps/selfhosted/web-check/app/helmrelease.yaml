@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: web-check
   interval: 30m
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       automountServiceAccountToken: false

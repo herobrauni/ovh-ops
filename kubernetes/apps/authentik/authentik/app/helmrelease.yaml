@@ -13,8 +13,6 @@ spec:
         name: authentik
       version: 2026.8.3
   interval: 30m
-  driftDetection:
-    mode: enabled
   values:
     postgresql:
       enabled: false

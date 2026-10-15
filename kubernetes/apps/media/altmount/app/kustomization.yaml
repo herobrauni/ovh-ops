@@ -10,5 +10,3 @@ resources:
   - ./httproute.yaml
   - ./httproute-webdav.yaml
   - ./httproute-sabnzbd.yaml
-  - ./securitypolicy.yaml
-  - ./dnsendpoints.yaml

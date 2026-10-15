@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: radarr4k
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       automountServiceAccountToken: false
@@ -24,7 +22,7 @@ spec:
         replicas: 1
         annotations:
           reloader.stakater.com/auto: "true"
-          secret.reloader.stakater.com/reload: radarr4k-secret,radarr4k-pguser-secret
+          secret.reloader.stakater.com/reload: servarr-secret,radarr4k-pguser-secret
         initContainers:
           01-init-db:
             image:
@@ -44,6 +42,11 @@ spec:
               IGNORE_MATCH_BY_ID_WARNING: true
               RADARR__AUTH__METHOD: External
               RADARR__AUTH__REQUIRED: DisabledForLocalAddresses
+              RADARR__AUTH__APIKEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: servarr-secret
+                    key: API_KEY
               RADARR__INSTANCENAME: Radarr4K
               RADARR__PORT: &port 7878
               RADARR__LOG__LEVEL: info
@@ -74,9 +77,6 @@ spec:
                   secretKeyRef:
                     name: *pguser
                     key: user
-            envFrom:
-              - secretRef:
-                  name: radarr4k-secret
             probes:
               liveness: &probes
                 enabled: true

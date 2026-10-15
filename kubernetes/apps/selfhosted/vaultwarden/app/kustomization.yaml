@@ -8,5 +8,4 @@ resources:
   - ./helmrelease.yaml
   - ./httproute.yaml
   - ./securitypolicy.yaml
-  - ./dnsendpoints.yaml
   - ./ciliumnetworkpolicy.yaml

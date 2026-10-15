@@ -6,8 +6,6 @@ metadata:
   name: rook-ceph-cluster
 spec:
   interval: 30m
-  driftDetection:
-    mode: enabled
   timeout: 15m
   chartRef:
     kind: OCIRepository
@@ -22,8 +20,8 @@ spec:
     remediation:
       retries: 3
   dependsOn:
-  - name: snapshot-controller
-    namespace: kube-system
+    - name: snapshot-controller
+      namespace: kube-system
   uninstall:
     keepHistory: false
   values:

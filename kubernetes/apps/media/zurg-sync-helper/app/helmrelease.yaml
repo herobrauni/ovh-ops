@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: *app
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       automountServiceAccountToken: false
@@ -21,7 +19,7 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
-        seccompProfile: {type: RuntimeDefault}
+        seccompProfile: { type: RuntimeDefault }
     controllers:
       zurg-sync-helper:
         annotations:

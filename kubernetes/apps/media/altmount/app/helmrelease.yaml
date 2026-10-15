@@ -10,8 +10,6 @@ spec:
     name: altmount
   interval: 1h
   timeout: 15m
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       securityContext:

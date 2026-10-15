@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: kopiur
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     # Grants the operator secrets create/patch/delete so it can project
     # kopiur-repository into mover namespaces (opt-in chart flag; without it

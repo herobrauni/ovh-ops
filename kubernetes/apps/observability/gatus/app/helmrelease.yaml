@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: gatus
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     controllers:
       gatus:
@@ -60,7 +58,7 @@ spec:
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
-              capabilities: {drop: ["ALL"]}
+              capabilities: { drop: ["ALL"] }
             resources:
               requests:
                 cpu: 100m

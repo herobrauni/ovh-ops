@@ -8,4 +8,3 @@ resources:
   - ./externalsecret.yaml
   - ./pvc-machine-learning-cache.yaml
   - ./helmrelease.yaml
-  - ./dnsendpoints.yaml

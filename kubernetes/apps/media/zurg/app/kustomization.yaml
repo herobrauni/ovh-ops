@@ -9,5 +9,3 @@ resources:
   - ./helmrelease.yaml
   - ./httproute.yaml
   - ./httproute-sabnzbd.yaml
-  - ./securitypolicy.yaml
-  - ./dnsendpoints.yaml
