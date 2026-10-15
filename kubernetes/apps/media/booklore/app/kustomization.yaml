@@ -7,4 +7,3 @@ resources:
   - ./pvc-bookdrop.yaml
   - ./helmrelease.yaml
   - ./ciliumnetworkpolicy.yaml
-  - ./dnsendpoints.yaml

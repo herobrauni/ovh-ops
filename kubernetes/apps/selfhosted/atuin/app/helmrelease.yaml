@@ -10,8 +10,6 @@ spec:
     name: app-template
   interval: 30m
   timeout: "15m"
-  driftDetection:
-    mode: enabled
   values:
     controllers:
       atuin:

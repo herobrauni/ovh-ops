@@ -9,7 +9,6 @@ resources:
   - ./filesystem-probe.yaml
   - ./helmrelease.yaml
   - ./httproute.yaml
-  - ./httproute-outpost.yaml
   - ./ocirepository.yaml
   - ./prometheusrule-etcd.yaml
   - ./prometheusrule-node.yaml

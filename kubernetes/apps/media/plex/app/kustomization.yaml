@@ -6,4 +6,3 @@ resources:
   - ./pvc-cache.yaml
   - ./helmrelease.yaml
   - ./backendtrafficpolicy.yaml
-  - ./dnsendpoints.yaml

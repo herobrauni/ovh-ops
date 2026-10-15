@@ -9,11 +9,17 @@ spec:
   commonMetadata:
     labels:
       app.kubernetes.io/name: *app
+  components:
+    - ../../../../components/dnsendpoint
   dependsOn:
     - name: envoy-gateway-riki-boo
       namespace: network
   interval: 1h
   path: ./kubernetes/apps/kguardian/kguardian/app
+  postBuild:
+    substitute:
+      APP: *app
+      DOMAIN: riki.boo
   prune: true
   sourceRef:
     kind: GitRepository

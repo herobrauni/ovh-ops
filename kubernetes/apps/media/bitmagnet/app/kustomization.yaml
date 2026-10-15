@@ -9,7 +9,6 @@ resources:
   - ./grafanadashboard.yaml
   - ./httproute.yaml
   - ./securitypolicy.yaml
-  - ./dnsendpoints.yaml
 configMapGenerator:
   - name: bitmagnet-dashboard
     files:

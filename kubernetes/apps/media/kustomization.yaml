@@ -11,6 +11,7 @@ components:
 
 resources:
   - ./namespace.yaml
+  - ./common/servarr-secret.yaml
   # - ./bitmagnet/ks.yaml
   - ./booklore/ks.yaml
   # - ./cleanuparr/ks.yaml

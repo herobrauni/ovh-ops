@@ -10,8 +10,6 @@ spec:
     name: app-template
   interval: 1h
   timeout: 15m
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       securityContext:
