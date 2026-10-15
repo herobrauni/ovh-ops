@@ -8,8 +8,6 @@ spec:
   chartRef:
     kind: OCIRepository
     name: tailscale-operator
-  driftDetection:
-    mode: enabled
   interval: 30m
   install:
     remediation:

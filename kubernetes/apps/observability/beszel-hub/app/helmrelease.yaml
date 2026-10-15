@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: beszel-hub
   interval: 30m
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       automountServiceAccountToken: false

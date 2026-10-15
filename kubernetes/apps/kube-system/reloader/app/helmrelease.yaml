@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: reloader
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     fullnameOverride: reloader
     reloader:

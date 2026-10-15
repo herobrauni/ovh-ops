@@ -10,8 +10,6 @@ spec:
     name: niks3
   interval: 30m
   timeout: "15m"
-  driftDetection:
-    mode: enabled
   values:
     controllers:
       niks3:

@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: ceph-csi-drivers
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     # OperatorConfig defaults (inherited by all drivers)
     operatorConfig:

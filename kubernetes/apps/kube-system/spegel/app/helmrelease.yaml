@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: spegel
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     grafanaDashboard:
       enabled: true

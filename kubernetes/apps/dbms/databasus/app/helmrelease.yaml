@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: databasus
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     image:
       tag: v3.22.0@sha256:0e79347dda558290601c89cdb5ca788e1b50e8d841bb4c87abb32cb116f811a3

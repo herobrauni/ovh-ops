@@ -10,8 +10,6 @@ spec:
     name: litellm
   interval: 30m
   timeout: 15m
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       automountServiceAccountToken: false

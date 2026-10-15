@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: repair
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       automountServiceAccountToken: false
@@ -73,4 +71,3 @@ spec:
         globalMounts:
           - path: /aio/symlinks
             readOnly: true
-
