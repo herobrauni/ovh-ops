@@ -13,8 +13,6 @@ spec:
         name: authentik
       version: 2026.8.3
   interval: 30m
-  driftDetection:
-    mode: enabled
   values:
     postgresql:
       enabled: false
@@ -67,7 +65,7 @@ spec:
         runAsGroup: 1000
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
-        seccompProfile: {type: RuntimeDefault}
+        seccompProfile: { type: RuntimeDefault }
       volumes:
         - name: media
           persistentVolumeClaim:

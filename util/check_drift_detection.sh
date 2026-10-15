@@ -1,35 +1,66 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Find all helmrelease.yaml files
-echo "Checking all helmrelease.yaml files for drift detection configuration..."
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+cd "$repo_root"
+
+ks_file="kubernetes/flux/cluster/ks.yaml"
+
+echo "Checking HelmRelease drift detection configuration..."
 echo ""
 
-# Store the list of files
-files=$(find kubernetes -name "helmrelease.yaml")
+if [ ! -f "$ks_file" ]; then
+    echo "❌ Cluster Kustomization file not found: $ks_file"
+    exit 1
+fi
 
-# Initialize counters
+if grep -A 2 "driftDetection:" "$ks_file" | grep -q "mode: enabled"; then
+    echo "✅ Global drift detection is enabled in $ks_file (cluster-apps patch)"
+else
+    echo "❌ Global drift detection is NOT enabled in $ks_file"
+    exit 1
+fi
+
+echo ""
+
+files=$(find kubernetes/apps -name "helmrelease.yaml" | sort)
 total=0
-with_drift=0
-without_drift=0
+inherited=0
+redundant=0
+custom=0
 
-# Check each file
 for file in $files; do
-  total=$((total + 1))
-
-  # Check if the file contains the drift detection configuration
-  if grep -A 1 "driftDetection:" "$file" | grep -q "mode: enabled"; then
-    echo "✅ $file has drift detection enabled"
-    with_drift=$((with_drift + 1))
-  else
-    echo "❌ $file does NOT have drift detection enabled"
-    without_drift=$((without_drift + 1))
-  fi
+    total=$((total + 1))
+    if ! grep -q "driftDetection:" "$file"; then
+        inherited=$((inherited + 1))
+        continue
+    fi
+    echo "ℹ️  $file declares driftDetection explicitly"
+    if grep -A 1 "driftDetection:" "$file" | grep -q "mode: enabled"; then
+        redundant=$((redundant + 1))
+    elif grep -A 1 "driftDetection:" "$file" | grep -q "mode: disabled"; then
+        # NOTE: does NOT override the cluster-apps patch — Kustomization patches are applied to the
+        # build output, so the global default wins. An app cannot opt out this way.
+        echo "⚠️  $file sets mode: disabled, which the global patch overrides"
+        custom=$((custom + 1))
+    else
+        custom=$((custom + 1))
+    fi
 done
 
-# Print summary
 echo ""
 echo "Summary:"
 echo "-------"
-echo "Total helmrelease.yaml files: $total"
-echo "Files with drift detection enabled: $with_drift"
-echo "Files without drift detection enabled: $without_drift"
+echo "Global drift detection: enabled ($ks_file)"
+echo "Total HelmRelease files: $total"
+echo "Files inheriting global drift detection: $inherited"
+echo "Files carrying redundant explicit driftDetection: $redundant"
+
+if [ "$inherited" -eq "$total" ]; then
+    echo "✅ 100% of HelmReleases are covered by global drift detection"
+else
+    echo "❌ $((total - inherited)) file(s) still declare driftDetection explicitly — remove the blocks"
+    exit 1
+fi
+

@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: gha-runner-scale-set
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     githubConfigUrl: https://github.com/herobrauni/nix
     githubConfigSecret: nix-runner-secret

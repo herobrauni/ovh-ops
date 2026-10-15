@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: profilarr
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       automountServiceAccountToken: false

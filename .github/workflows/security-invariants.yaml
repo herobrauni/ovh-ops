@@ -8,6 +8,7 @@ on:
       - .github/workflows/security-invariants.yaml
       - .mise.toml
       - kubernetes/**
+      - util/check_drift_detection.sh
       - util/check_security_invariants.sh
   push:
     branches:
@@ -16,6 +17,7 @@ on:
       - .github/workflows/security-invariants.yaml
       - .mise.toml
       - kubernetes/**
+      - util/check_drift_detection.sh
       - util/check_security_invariants.sh
   workflow_dispatch:
 
@@ -41,6 +43,9 @@ jobs:
 
       - name: Check security invariants
         run: bash util/check_security_invariants.sh
+
+      - name: Check drift detection coverage
+        run: bash util/check_drift_detection.sh
 
       - name: Check vendored operator sync
         run: bash util/check_vendored_operator_sync.sh

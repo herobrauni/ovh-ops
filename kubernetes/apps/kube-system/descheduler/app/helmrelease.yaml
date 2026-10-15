@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: descheduler
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     kind: Deployment
     resources:

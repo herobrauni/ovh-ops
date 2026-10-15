@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: karakeep
   interval: 30m
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       securityContext:

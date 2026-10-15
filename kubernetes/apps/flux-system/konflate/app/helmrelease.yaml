@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: konflate
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     config:
       repo: github://herobrauni/ovh-ops

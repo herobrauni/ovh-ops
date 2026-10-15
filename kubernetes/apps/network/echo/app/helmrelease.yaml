@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: echo
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     controllers:
       echo:
@@ -41,7 +39,7 @@ spec:
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
-              capabilities: {drop: ["ALL"]}
+              capabilities: { drop: ["ALL"] }
             resources:
               requests:
                 cpu: 10m

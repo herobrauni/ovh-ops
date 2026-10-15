@@ -9,8 +9,6 @@ spec:
     kind: OCIRepository
     name: proxmox-exporter
   interval: 1h
-  driftDetection:
-    mode: enabled
   values:
     defaultPodOptions:
       securityContext:
