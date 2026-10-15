@@ -5,6 +5,9 @@ kind: DNSEndpoint
 metadata:
   name: ${APP}
   labels:
+    # Split-horizon scoping. The label is load-bearing: external-dns v0.22+ is configured with
+    # --label-filter=dns.scope in (...), NOT --annotation-filter (which silently matches nothing).
+    # The annotation is kept for backwards compatibility/visibility — do not delete either one.
     dns.scope: ${DNS_SCOPE:=all}
   annotations:
     dns.scope: ${DNS_SCOPE:=all}
