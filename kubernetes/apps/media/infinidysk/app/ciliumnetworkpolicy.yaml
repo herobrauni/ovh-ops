@@ -1,0 +1,66 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cilium.io/ciliumnetworkpolicy_v2.json
+# Ingress-only allowlist: every pod that mounts InfiniDysk's WebDAV (8080) or
+# calls its SABnzbd/API surface (3000) must be listed here. A consumer that is
+# missing gets a FUSE mount that serves an empty tree and then blocks every
+# lookup — the rollout stalls until the pod is deleted (the lesson from bazarr),
+# so add new consumers to this file in the same commit that adds their sidecar.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: infinidysk
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: infinidysk
+      app.kubernetes.io/instance: infinidysk
+  ingress:
+    - fromEndpoints:
+        # Public UI + SABnzbd API through Envoy (frontend only).
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: network
+            gateway.networking.k8s.io/gateway-name: envoy-480p-com-public
+        # *arrs: SABnzbd client (3000) + rclone WebDAV mount (8080).
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: sonarr
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: sonarr4k
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: radarr
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: radarr4k
+        # Media servers: read-only WebDAV mounts.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: plex
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: jellyfin
+        # Subtitle grabbers: WebDAV mounts for ffprobe reads.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: bazarr
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: bazarr4k
+        # Indexer UI, kept for parity with zurg (addurl allowlist target).
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: prowlarr
+        # Browsing/verification pods.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: infinidysk-debug
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: media-debug
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+            - port: "8080"
+              protocol: TCP

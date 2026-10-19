@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+# Test client for InfiniDysk: a busybox shell beside an rclone sidecar that
+# mounts its WebDAV, mirroring how the *arr apps will mount it. Nothing is wired
+# to it — it exists so the mount, the symlink targets and (later) the import
+# shape can be browsed with `kubectl exec` before any consumer is cut over.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app infinidysk-debug
+spec:
+  targetNamespace: media
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  dependsOn:
+    - name: infinidysk
+      namespace: media
+  interval: 1h
+  path: ./kubernetes/apps/media/infinidysk-debug/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false

@@ -296,6 +296,35 @@ entries:
       group: !KeyOf group-media
       order: 0
 
+  # InfiniDysk replaces zurg as the Usenet backend. Gatus probes /healthz, the
+  # frontend's health endpoint, which the outpost skips so it answers 200
+  # without a session. Unlike zurg there is no unauthenticated SABnzbd route:
+  # the *arrs reach the SAB API over the in-cluster Service on :3000, and the
+  # WebDAV backend (:8080) is never published through the Gateway.
+  - id: provider-infinidysk
+    model: authentik_providers_proxy.proxyprovider
+    identifiers:
+      name: InfiniDysk
+    attrs:
+      mode: forward_single
+      cookie_domain: ""
+      external_host: https://infinidysk.480p.com
+      skip_path_regex: ^/healthz$
+      authorization_flow: !KeyOf flow-authorization-implicit-consent
+      invalidation_flow: !KeyOf flow-invalidation
+  - id: app-infinidysk
+    model: authentik_core.application
+    identifiers:
+      slug: infinidysk
+    attrs:
+      name: InfiniDysk
+      provider: !KeyOf provider-infinidysk
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-infinidysk
+      group: !KeyOf group-media
+      order: 0
+
   - id: provider-clonarr
     model: authentik_providers_proxy.proxyprovider
     identifiers:
@@ -717,6 +746,7 @@ entries:
         - !KeyOf provider-bazarr4k
         - !KeyOf provider-altmount
         - !KeyOf provider-zurg
+        - !KeyOf provider-infinidysk
         - !KeyOf provider-clonarr
         - !KeyOf provider-prowlarr
         - !KeyOf provider-umlautadaptarrex
