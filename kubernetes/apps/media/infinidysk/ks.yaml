@@ -1,0 +1,41 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app infinidysk
+spec:
+  targetNamespace: media
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  components:
+    - ../../../../components/dnsendpoint
+    - ../../../../components/authentik
+    - ../../../../components/kopiur
+  dependsOn:
+    - name: infisical
+      namespace: external-secrets
+    - name: kopiur-repository
+      namespace: kopiur-system
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
+    - name: authentik
+      namespace: authentik
+  interval: 1h
+  path: ./kubernetes/apps/media/infinidysk/app
+  postBuild:
+    substitute:
+      APP: *app
+      DOMAIN: 480p.com
+      # /config holds the SQLite DB, blobs and the NZB corpus (the only copy of
+      # the library's release identities), so it matches zurg's 30Gi.
+      KOPIUR_CAPACITY: 30Gi
+      # Greenfield app: deploy empty on a missing snapshot instead of failing.
+      KOPIUR_ON_MISSING_SNAPSHOT: Continue
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false

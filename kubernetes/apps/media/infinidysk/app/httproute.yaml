@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/httproute_v1.json
+# The route name is load-bearing: the shared `components/authentik` SecurityPolicy
+# targets "${APP}-${DOMAIN_SLUG}" (infinidysk-480p-com). Only the frontend (3000)
+# is published — the WebDAV backend (8080) stays in-cluster, so there is no
+# unauthenticated bypass route like zurg's SABnzbd endpoint. Manual NZB uploads
+# go through this authenticated UI.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: infinidysk-480p-com
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: Media
+    gethomepage.dev/name: InfiniDysk
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=infinidysk
+    gethomepage.dev/icon: mdi-harddisk-plus
+    # Gatus liveness: /healthz is the frontend's health endpoint and is skipped
+    # by the outpost (skip_path_regex on the provider), so it answers 200
+    # without a session.
+    gatus.home-operations.com/endpoint: |-
+      url: https://infinidysk.480p.com/healthz
+spec:
+  hostnames:
+    - infinidysk.480p.com
+  parentRefs:
+    - name: envoy-480p-com-public
+      namespace: network
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: infinidysk
+          port: 3000
