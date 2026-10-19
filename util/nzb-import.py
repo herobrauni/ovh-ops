@@ -221,13 +221,13 @@ def main():
         if REQUEST_DELAY:
             time.sleep(REQUEST_DELAY)
         if index % BATCH == 0:
-            depth = 0
-            while depth < MAX_QUEUE and index < len(todo):
+            # Only wait when the backend is already saturated. (The original
+            # condition was inverted and parked the importer forever whenever
+            # the queue was below the threshold.)
+            depth = queue_depth()
+            while depth >= MAX_QUEUE:
+                time.sleep(15)
                 depth = queue_depth()
-                if depth < MAX_QUEUE:
-                    time.sleep(10)
-                else:
-                    break
             elapsed = time.time() - started
             rate = index / elapsed if elapsed else 0
             eta = (len(todo) - index) / rate / 3600 if rate else 0
