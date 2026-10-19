@@ -12,7 +12,6 @@ spec:
   components:
     - ../../../../components/dnsendpoint
     - ../../../../components/authentik
-    - ../../../../components/cnpg
     - ../../../../components/kopiur
   dependsOn:
     - name: infisical
