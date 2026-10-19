@@ -133,6 +133,22 @@ Deliberate deviations; keep them in mind when executing Phases 2–6.
   PG database itself still needs a `pg_dump` job — tracked for Phase 6.
 - **No public SABnzbd bypass route.** The \*arrs use the in-cluster Service on
   `:3000`, which Authentik never sees.
+- **rclone sidecar flags follow the Setup Guide except for RC.** Adopted from the
+  wizard: `--links`, `--allow-other`, `--vfs-cache-mode=full`, `--buffer-size=0M`,
+  `--vfs-read-ahead=512M`, plus `--allow-non-empty` (a stale `/tmp/rclone-*`
+  mountpoint otherwise makes the next mount fail — the same class of failure as
+  the bazarr FUSE incident) and `--poll-interval=0` (WebDAV has no change feed).
+  **RC notifications are deliberately not used**: the wizard pairs `--rc` with
+  `--dir-cache-time=1w` because RC pushes invalidations, but a consumer's RC
+  endpoint lives in _another pod_ and a sidecar port has no Service/DNS here, so
+  InfiniDysk cannot reach it. Without RC the dir cache must stay short
+  (`--dir-cache-time=20s`, `--vfs-cache-poll-interval=30s`) or newly imported
+  releases stay invisible to the \*arrs. Cache bounds are 20G/24h rather than the
+  wizard's 50G/1w because the cache is an `emptyDir` on node ephemeral storage —
+  the wizard itself says to size it to available storage. Turn the wizard's
+  "Enable rclone RC notifications" toggle **off**. (The in-pod self-mount _could_
+  use RC on `127.0.0.1:5572`, but its only consumer is InfiniDysk's own health
+  checks, where 20 s of staleness is irrelevant.)
 - **Repair cadence stays UI-owned** until measured. zurg's hourly repair pass
   saturated the NNTP pool and had to be slowed to 4h; do not raise InfiniDysk's
   health-check concurrency without re-reading that incident.
