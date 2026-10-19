@@ -153,11 +153,16 @@ Deliberate deviations; keep them in mind when executing Phases 2–6.
    has the same). InfiniDysk additionally has its own admin login (first-run
    bootstrap, cannot be env-driven) → double login at the dashboard is accepted.
 6. **Database: PostgreSQL (`postgres18`, shared CNPG cluster).** The main operational
-   store uses `DATABASE_PROVIDER=postgres` + `DATABASE_CONNECTION_STRING`, wired through
-   the shared `components/cnpg` component (role/database `infinidysk`, created by the
-   `postgres-init` initContainer). PostgreSQL support is **new-install only** — there is
-   no SQLite→PostgreSQL migration, so an existing `/config/db.sqlite` must be removed
-   (delete it while the app is stopped) rather than converted. Consequences:
+   store uses `DATABASE_PROVIDER=postgres` + one ADO.NET `DATABASE_CONNECTION_STRING`
+   (role/database `infinidysk`, created by a `postgres-init` initContainer). The two DB
+   secrets are defined **locally** in this app's `externalsecret.yaml` instead of via
+   `components/cnpg`: the component publishes discrete host/port/db/user keys, and
+   composing them in the pod is unreliable because app-template renders `env` in sorted
+   key order — `DATABASE_CONNECTION_STRING` resolves before `PGPORT`, so the `$(VAR)`
+   placeholders reach Npgsql literally (`Couldn't set port`). Deriving the string inside
+   the Secret is the only dependable shape. Postgres support is **new-install only** —
+   there is no SQLite→PostgreSQL migration, so an existing `/config/db.sqlite` must be
+   removed (delete it while the app is stopped) rather than converted. Consequences:
    `/config` still holds blobs, the NZB corpus and the auxiliary SQLite stores
    (`metrics.sqlite`, `warden.db`, `usenet-migration.db`), so its kopiur snapshot stays
    necessary, but the main DB now needs **PostgreSQL-native backups** (`pg_dump`) — the
