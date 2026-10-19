@@ -92,7 +92,15 @@ spec:
               # release fails the job and the *arr blocklists it instead of
               # importing a husk (zurg does the same, sampling the first
               # article; `sampled` covers each file's head and tail).
-              NZBDAV_CONFIG__API__ENSURE_ARTICLE_EXISTENCE_CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex"
+              #
+              # TEMPORARY (2026-10-19): disabled while the legacy corpus is
+              # imported — the check costs ~20-30s per release and turned 4.6k
+              # imports into a ~50h job. The corpus was probe-cleaned on
+              # 2026-09-30 and the repair pass still finds dead releases later;
+              # RESTORE the two values below once util/nzb-import finishes:
+              #   NZBDAV_CONFIG__API__ENSURE_ARTICLE_EXISTENCE_CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex"
+              #   NZBDAV_CONFIG__API__ARTICLE_EXISTENCE_CHECK_MODE: sampled
+              NZBDAV_CONFIG__API__ENSURE_ARTICLE_EXISTENCE_CATEGORIES: ""
               NZBDAV_CONFIG__API__ARTICLE_EXISTENCE_CHECK_MODE: sampled
               # The incoming NZBs are the only copy of the library's release
               # identities (they are what a mount is rebuilt from), so keep them
