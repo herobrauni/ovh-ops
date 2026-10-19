@@ -1,0 +1,89 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/batch/job_v1.json
+# One-off corpus import for docs/infinidysk-migration.md (Phase 3): streams
+# zurg's NZBs into InfiniDysk's SAB API without copying them anywhere. Mounts
+# zurg's PVC read-only and is pinned to zurg's node (RWO ceph-block allows a
+# second reader on the same node).
+#
+# The script lives in a ConfigMap so the Job can restart without losing it:
+#   kubectl -n media create configmap nzb-import-script \
+#     --from-file=nzb-import.py=util/nzb-import.py --dry-run=client -o yaml | kubectl apply -f -
+#   kubectl -n media delete job nzb-import --ignore-not-found
+#   kubectl -n media apply -f util/nzb-import-job.yaml
+#   kubectl -n media logs -f job/nzb-import
+#
+# Restart-safe: the script skips names already in queue/history, so a retry
+# (backoffLimit) or a manual re-run resumes where it stopped. Delete the Job
+# when the import is finished (it is not Flux-managed).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: nzb-import
+  namespace: media
+  labels:
+    app.kubernetes.io/name: nzb-import
+spec:
+  # Retries are cheap: the script is resumable and skips completed work.
+  backoffLimit: 100
+  # A crashed/stalled attempt should be replaced rather than wedging the run.
+  activeDeadlineSeconds: 172800
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nzb-import
+    spec:
+      restartPolicy: OnFailure
+      nodeSelector:
+        kubernetes.io/hostname: w-ovhsbg3
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: import
+          image: docker.io/python:3.13-alpine@sha256:2d9aefe2fef018a7eb2c13064c89c71929800fd2e5dccdbf52ea5da5bb8d929a
+          command:
+            - python3
+            - /opt/nzb/nzb-import.py
+          env:
+            - name: INF_URL
+              value: http://infinidysk.media.svc.cluster.local:3000
+            # Backpressure: stop uploading while the InfiniDysk queue is this deep.
+            - name: MAX_QUEUE
+              value: "150"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: SAB_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: infinidysk-secret
+                  key: NZBDAV_CONFIG__API__KEY
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: zurg
+              mountPath: /zurg
+              readOnly: true
+            - name: script
+              mountPath: /opt/nzb
+              readOnly: true
+      volumes:
+        - name: zurg
+          persistentVolumeClaim:
+            claimName: zurg
+            readOnly: true
+        - name: script
+          configMap:
+            name: nzb-import-script

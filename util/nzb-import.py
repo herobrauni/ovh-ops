@@ -26,7 +26,8 @@ Env:
   NZB_DIR        /zurg/nzbs
   DATA_DIR       /zurg/data
   MAX_QUEUE      backpressure threshold (default 150)
-  BATCH          pause between batches (default 50)
+  BATCH          how often to yield to backpressure / log progress (default 50)
+  REQUEST_DELAY  seconds to sleep between uploads (default 0)
   DRY_RUN        1 = classify + report only, upload nothing
 """
 
@@ -47,6 +48,7 @@ NZB_DIR = os.environ.get("NZB_DIR", "/zurg/nzbs")
 DATA_DIR = os.environ.get("DATA_DIR", "/zurg/data")
 MAX_QUEUE = int(os.environ.get("MAX_QUEUE", "150"))
 BATCH = int(os.environ.get("BATCH", "50"))
+REQUEST_DELAY = float(os.environ.get("REQUEST_DELAY", "0"))
 DRY_RUN = os.environ.get("DRY_RUN") == "1"
 
 TREES = {
@@ -216,6 +218,8 @@ def main():
             log(f"REJECT {name}: {resp.get('error')}")
             continue
         added += 1
+        if REQUEST_DELAY:
+            time.sleep(REQUEST_DELAY)
         if index % BATCH == 0:
             depth = 0
             while depth < MAX_QUEUE and index < len(todo):
