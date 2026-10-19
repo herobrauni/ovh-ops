@@ -233,8 +233,10 @@ Deliberate deviations; keep them in mind when executing Phases 2–6.
 Both backends authenticate with the **same provider accounts**, so every account's
 connection allowance has to be divided between them — two apps each dialing the full
 allowance would exceed the plan and get connections refused (and would starve
-playback). The split was applied 2026-10-19: zurg keeps the larger share because it
-still serves Plex/Jellyfin; InfiniDysk gets enough to exercise grabs and streaming.
+playback). The split was first applied 2026-10-19 with zurg holding the larger share,
+then re-weighted the same day to **20/80 in InfiniDysk's favour** once InfiniDysk
+proved it could serve reads: the incoming backend gets most of every allowance and
+zurg keeps a working margin until the cutover.
 
 ### Original ("OG") zurg settings — restore these when zurg is retired
 
@@ -251,17 +253,24 @@ toward streaming throughput. `warm_connections: 4`. Source of truth:
 `kubernetes/apps/media/zurg/app/externalsecret.yaml` (rename it back to the values
 above).
 
-### Current split
+### Current split — 20 / 80 (zurg / InfiniDysk)
 
-| Account                   | Allowance | zurg | InfiniDysk | Total |
-| ------------------------- | --------- | ---- | ---------- | ----- |
-| Eweka primary             | 50        | 35   | 15         | 50    |
-| Frugal EU primary         | 75        | 55   | 20         | 75    |
-| Frugal US primary         | 25        | 20   | 5          | 25    |
-| Frugal bonus (backup)     | 50        | 40   | 10         | 50    |
-| Blocknews (backup, block) | 100       | 85   | 15         | 100   |
+Applied 2026-10-19 after the initial 70/30-style split: InfiniDysk is the incoming
+backend and Plex playback is moving onto it, so it now holds 80% of every allowance
+and zurg keeps 20% — enough to serve the existing library until the cutover, not
+enough to compete with it for plan connections.
 
-Primaries: zurg **110**, InfiniDysk **40**.
+| Account                   | Allowance | zurg (20%) | InfiniDysk (80%) | Total |
+| ------------------------- | --------- | ---------- | ---------------- | ----- |
+| Eweka primary             | 50        | 10         | 40               | 50    |
+| Frugal EU primary         | 75        | 15         | 60               | 75    |
+| Frugal US primary         | 25        | 5          | 20               | 25    |
+| Frugal bonus (backup)     | 50        | 10         | 40               | 50    |
+| Blocknews (backup, block) | 100       | 20         | 80               | 100   |
+
+Primaries: zurg **30**, InfiniDysk **120**. Every allowance divides evenly by 5, so
+the percentages are exact integer connection counts — no rounding, no account over
+its plan total.
 
 Mapping for InfiniDysk (`NZBDAV_CONFIG__USENET__PROVIDERS`): Eweka/Frugal EU/Frugal US
 are `Type: 1` (Pool Connections), Frugal bonus and Blocknews are `Type: 3`
