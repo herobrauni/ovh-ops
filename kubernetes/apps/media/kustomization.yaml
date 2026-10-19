@@ -21,6 +21,8 @@ resources:
   - ./bazarr4k/ks.yaml
   # - ./nzbdav/ks.yaml
   # - ./nzbdav-sync-helper/ks.yaml
+  - ./infinidysk/ks.yaml
+  - ./infinidysk-debug/ks.yaml
   - ./clonarr/ks.yaml
   # - ./comet/ks.yaml
   # - ./decypharr/ks.yaml

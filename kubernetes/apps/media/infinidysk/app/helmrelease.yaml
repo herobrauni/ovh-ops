@@ -1,0 +1,302 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+# InfiniDysk ("The NzbDAV SuperFork") is the successor of nzbdav and the planned
+# replacement for zurg: a WebDAV VFS over NZBs plus a SABnzbd-compatible API.
+# Unlike zurg it has no single config file — everything that must live in Git is
+# supplied as NZBDAV_CONFIG__* environment variables (see externalsecret.yaml);
+# the rest stays owned by the Settings UI.
+#
+# Ports: the frontend (admin UI, SABnzbd API, /api, /ws) listens on 3000, the
+# backend (WebDAV) on 8080. rclone clients must use 8080 directly — proxying
+# WebDAV through the frontend costs throughput and makes the UI warn.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: infinidysk
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  interval: 1h
+  # Database migrations run before the backend serves; an empty /config is fast,
+  # but a corpus-sized one can take minutes and a forced rollback must not churn.
+  timeout: 15m
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    controllers:
+      infinidysk:
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: infinidysk-secret
+        containers:
+          app:
+            image:
+              repository: ghcr.io/infinidysk/infinidysk
+              tag: v1.6.2@sha256:f7799f2bfb629c397142a19e103bcdb119b317a6e3762b5606b82a71d642978d
+            env:
+              PUID: "1000"
+              PGID: "1000"
+              # Envoy terminates TLS and forwards X-Forwarded-*; SECURE_COOKIES
+              # keeps the session cookie HTTPS-only. No TZ: k8tz injects it.
+              TRUST_PROXY: "1"
+              SECURE_COOKIES: "true"
+              NZBDAV_CONFIG__GENERAL__BASE_URL: https://infinidysk.480p.com
+
+              # --- SABnzbd compatibility (what the *arrs talk to) -------------
+              # Keep the category names zurg already used: the *arr download
+              # clients carry over unchanged, and one queue filtered by category
+              # is all the isolation there is (never share a category between
+              # two apps). Manual NZB uploads land in `other`.
+              NZBDAV_CONFIG__API__CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex"
+              NZBDAV_CONFIG__API__MANUAL_CATEGORY: "other"
+              # Symfony-style symlink farm (the altmount-era shape this repo
+              # already runs): completed entries appear under completed-symlinks
+              # and the *arrs import them into /aio/symlinks. STRM was rejected:
+              # one strategy serves both Plex and Jellyfin, and Jellyfin only
+              # reports media info at scan time for real filesystem entries.
+              NZBDAV_CONFIG__API__IMPORT_STRATEGY: symlinks
+              # Pre-check articles before reporting a grab Completed, so a dead
+              # release fails the job and the *arr blocklists it instead of
+              # importing a husk (zurg does the same, sampling the first
+              # article; `sampled` covers each file's head and tail).
+              NZBDAV_CONFIG__API__ENSURE_ARTICLE_EXISTENCE_CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex"
+              NZBDAV_CONFIG__API__ARTICLE_EXISTENCE_CHECK_MODE: sampled
+              # The incoming NZBs are the only copy of the library's release
+              # identities (they are what a mount is rebuilt from), so keep them
+              # forever on the kopiur-backed /config PVC.
+              NZBDAV_CONFIG__API__NZB_BACKUP_ENABLED: "true"
+              NZBDAV_CONFIG__API__NZB_BACKUP_RETENTION_DAYS: "0"
+
+              # --- Paths ------------------------------------------------------
+              # MOUNT_DIR is the path the *arrs and media servers mount WebDAV at.
+              # The symlinks InfiniDysk generates point into <MOUNT_DIR>/.ids, so
+              # every consumer must mount it at exactly this path (hence no
+              # remote path mappings anywhere).
+              NZBDAV_CONFIG__RCLONE__MOUNT_DIR: /aio/remote/infinidysk
+              # Organized media root, used by library health/repair. It must not
+              # be the rclone mount or completed-symlinks, hence the farm PVC.
+              NZBDAV_CONFIG__MEDIA__LIBRARY_DIR: /aio/symlinks
+              # Symlink libraries pair with the rclone VFS read-ahead cache, so
+              # InfiniDysk's own segment cache stays off (restart-only setting).
+              NZBDAV_CONFIG__USENET__SEGMENT_CACHE__ENABLED: "false"
+              # Repair stays on; its cadence and concurrency are UI-owned until
+              # measured — zurg's hourly pass saturated the NNTP pool and had to
+              # be slowed to 4h, so do not raise concurrency here blindly.
+              NZBDAV_CONFIG__REPAIR__ENABLE: "true"
+            envFrom:
+              - secretRef:
+                  name: infinidysk-secret
+            probes:
+              # /healthz is the frontend: it answers while migrations and
+              # long-running maintenance run, so it is the honest liveness
+              # signal. First start on an empty /config still runs migrations
+              # before the backend serves.
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 3000
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 60
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 3000
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 3000
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+            resources:
+              requests:
+                cpu: 100m
+                memory: 1Gi
+              limits:
+                # node + .NET for a ~5.5k-release library. If the heap ever
+                # dominates, cap it with DOTNET_GCHeapHardLimitPercent rather
+                # than lowering the cgroup (GC would thrash instead of reclaim).
+                memory: 8Gi
+            securityContext:
+              # The entrypoint must start as root: it creates the PUID/PGID
+              # user (needs a writable /etc), repairs /config ownership and then
+              # drops to that user via su-exec. readOnlyRootFilesystem is
+              # therefore off — the narrow cap set is the compensating control.
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: false
+              capabilities:
+                drop:
+                  - ALL
+                add:
+                  - SETUID
+                  - SETGID
+                  - CHOWN
+          # InfiniDysk resolves the library symlinks (targets under
+          # <MOUNT_DIR>/.ids) for its health/repair checks, so it needs its own
+          # WebDAV view at the same path the consumers use. Loopback on 8080
+          # keeps the traffic inside the pod's network namespace.
+          rclone-infinidysk:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.75@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-infinidysk-self 2>/dev/null || true
+                mkdir -p /host-mount/rclone-infinidysk-self
+                export RCLONE_CONFIG_INFINIDYSK_PASS="$(rclone obscure "$RCLONE_CONFIG_INFINIDYSK_PASS_RAW")"
+                unset RCLONE_CONFIG_INFINIDYSK_PASS_RAW
+                exec rclone mount infinidysk:/ /host-mount/rclone-infinidysk-self \
+                  --links \
+                  --read-only \
+                  --dir-cache-time=20s \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=24h \
+                  --vfs-cache-max-size=20G \
+                  --vfs-cache-poll-interval=30s \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=512M \
+                  --vfs-fast-fingerprint \
+                  --vfs-handle-caching=0 \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --uid=1000 \
+                  --gid=1000 \
+                  --cache-dir=/cache
+            env:
+              RCLONE_CONFIG_INFINIDYSK_TYPE: webdav
+              # Include the trailing slash: rclone appends paths to the URL.
+              RCLONE_CONFIG_INFINIDYSK_URL: http://127.0.0.1:8080/
+              RCLONE_CONFIG_INFINIDYSK_VENDOR: other
+              RCLONE_CONFIG_INFINIDYSK_USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-secret
+                    key: NZBDAV_CONFIG__WEBDAV__USER
+              RCLONE_CONFIG_INFINIDYSK_PASS_RAW:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-secret
+                    key: NZBDAV_CONFIG__WEBDAV__PASS
+              # A remote without a config file does not get pacer_min_sleep;
+              # without it one unservable file slows every other read down.
+              RCLONE_CONFIG_INFINIDYSK_PACER_MIN_SLEEP: "0"
+            probes:
+              # The mount is either visible or it is not; listing it fails on a
+              # dead FUSE mount, and the tree contents change as imports land.
+              liveness: &rclone-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-infinidysk-self && ls /host-mount/rclone-infinidysk-self >/dev/null
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              readiness: *rclone-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-infinidysk-self && ls /host-mount/rclone-infinidysk-self >/dev/null
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    service:
+      app:
+        controller: infinidysk
+        ports:
+          # Frontend: UI, SABnzbd API, /api, /ws (the Gateway target).
+          http:
+            port: 3000
+          # Backend WebDAV: rclone clients only. Deliberately not exposed through
+          # the Gateway — in-cluster consumers talk to it directly.
+          webdav:
+            port: 8080
+    persistence:
+      config:
+        existingClaim: infinidysk
+        globalMounts:
+          - path: /config
+      # The library itself: the *arr imports land here and InfiniDysk reads it
+      # for health/repair (LIBRARY_DIR above).
+      symlinks:
+        existingClaim: symlinks
+        globalMounts:
+          - path: /aio/symlinks
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
+      fuse:
+        type: hostPath
+        hostPath: /dev/fuse
+        hostPathType: CharDevice
+        advancedMounts:
+          infinidysk:
+            rclone-infinidysk:
+              - path: /dev/fuse
+      rclone-cache:
+        type: emptyDir
+        advancedMounts:
+          infinidysk:
+            rclone-infinidysk:
+              - path: /cache
+      host-tmp:
+        type: hostPath
+        hostPath: /tmp
+        hostPathType: Directory
+        advancedMounts:
+          infinidysk:
+            rclone-infinidysk:
+              - path: /host-mount
+                mountPropagation: Bidirectional
+      rclone-self:
+        type: hostPath
+        hostPath: /tmp/rclone-infinidysk-self
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          infinidysk:
+            app:
+              - path: /aio/remote/infinidysk
+                mountPropagation: HostToContainer
