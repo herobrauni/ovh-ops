@@ -30,6 +30,7 @@ spec:
               LOG_LEVEL: info
               PORT: &apiPort 5005
               WEB_PORT: &webPort 5007
+              TMPDIR: /tmp
             probes:
               liveness: &probes
                 enabled: true
@@ -39,8 +40,8 @@ spec:
                     path: /api/health
                     port: *apiPort
                   initialDelaySeconds: 0
-                  periodSeconds: 10
-                  timeoutSeconds: 10
+                  periodSeconds: 15
+                  timeoutSeconds: 15
                   failureThreshold: 6
               readiness: *probes
               startup:
@@ -54,10 +55,10 @@ spec:
                   periodSeconds: 10
             resources:
               requests:
-                cpu: 10m
+                cpu: 100m
                 memory: 256Mi
               limits:
-                memory: 512Mi
+                memory: 1Gi
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
