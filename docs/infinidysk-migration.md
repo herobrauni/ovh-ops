@@ -228,6 +228,51 @@ Deliberate deviations; keep them in mind when executing Phases 2–6.
 12. **`manual-category` is `other`**, so Queue-page uploads land in the tree the
     manual-NZB pipeline already expects.
 
+## Usenet connection split (temporary, while zurg and InfiniDysk coexist)
+
+Both backends authenticate with the **same provider accounts**, so every account's
+connection allowance has to be divided between them — two apps each dialing the full
+allowance would exceed the plan and get connections refused (and would starve
+playback). The split was applied 2026-10-19: zurg keeps the larger share because it
+still serves Plex/Jellyfin; InfiniDysk gets enough to exercise grabs and streaming.
+
+### Original ("OG") zurg settings — restore these when zurg is retired
+
+| Account      | Host                          | Role                                   | OG connections |
+| ------------ | ----------------------------- | -------------------------------------- | -------------- |
+| Eweka        | ``           | primary (omicron spool)                | **50**         |
+| Frugal EU    | `` | primary, priority 1 (frugal spool)     | **75**         |
+| Frugal US    | ``   | primary, priority 2 (frugal spool)     | **25**         |
+| Frugal bonus | ``  | backup / metered fill                  | **50**         |
+| Blocknews    | ``    | backup / metered block (netnews spool) | **100**        |
+
+Aggregate **primaries = 150** (50 + 75 + 25); backups are fill-only and do not count
+toward streaming throughput. `warm_connections: 4`. Source of truth:
+`kubernetes/apps/media/zurg/app/externalsecret.yaml` (rename it back to the values
+above).
+
+### Current split
+
+| Account                   | Allowance | zurg | InfiniDysk | Total |
+| ------------------------- | --------- | ---- | ---------- | ----- |
+| Eweka primary             | 50        | 35   | 15         | 50    |
+| Frugal EU primary         | 75        | 55   | 20         | 75    |
+| Frugal US primary         | 25        | 20   | 5          | 25    |
+| Frugal bonus (backup)     | 50        | 40   | 10         | 50    |
+| Blocknews (backup, block) | 100       | 85   | 15         | 100   |
+
+Primaries: zurg **110**, InfiniDysk **40**.
+
+Mapping for InfiniDysk (`NZBDAV_CONFIG__USENET__PROVIDERS`): Eweka/Frugal EU/Frugal US
+are `Type: 1` (Pool Connections), Frugal bonus and Blocknews are `Type: 3`
+(BackupOnly); `StorageGroup` carries zurg's `backbone` (`omicron`, `frugal`,
+`netnews`). See `kubernetes/apps/media/infinidysk/app/externalsecret.yaml`.
+
+**When this split ends:** after Phase 6 (zurg removed) put every InfiniDysk provider
+back to its OG number — the allowances are per account, so the whole 150/50/100
+becomes available to InfiniDysk alone. Both manifests carry a comment pointing here,
+so no one has to guess what the numbers were.
+
 ## Known behavioral differences / risks
 
 - **Compressed RAR/7z payloads are rejected.** InfiniDysk streams only direct media
