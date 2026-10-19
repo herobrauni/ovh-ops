@@ -32,7 +32,17 @@ spec:
       infinidysk:
         annotations:
           reloader.stakater.com/auto: "true"
-          secret.reloader.stakater.com/reload: infinidysk-secret
+          secret.reloader.stakater.com/reload: infinidysk-secret,infinidysk-pguser-secret
+        initContainers:
+          # Creates the role and database named after the app on the shared
+          # postgres18 cluster (components/cnpg supplies the credentials).
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.6@sha256:b6d3af974df781c673d37e49bdddfa14a6f5be28b18d2cb7713f0449bea4057b
+            envFrom:
+              - secretRef:
+                  name: infinidysk-initdb-secret
         containers:
           app:
             image:
@@ -41,6 +51,43 @@ spec:
             env:
               PUID: "1000"
               PGID: "1000"
+              # --- Main database -----------------------------------------------
+              # PostgreSQL since 1.2.0, new installations only: pointing an
+              # existing /config/db.sqlite at postgres is refused, there is no
+              # SQLite->PostgreSQL migration yet. Only the *main* operational
+              # store moves; metrics.sqlite/warden.db/blob storage stay on
+              # /config, so PostgreSQL-native backups (pg_dump) must be added
+              # separately and /config/blobs keeps its kopiur snapshot.
+              DATABASE_PROVIDER: postgres
+              # Kubernetes expands $(VAR) in later env entries, so the ADO.NET
+              # connection string is assembled from the pguser Secret instead of
+              # templating a second copy of the credentials into Git.
+              PGHOST:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-pguser-secret
+                    key: host
+              PGPORT:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-pguser-secret
+                    key: port
+              PGDATABASE:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-pguser-secret
+                    key: db
+              PGUSER:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-pguser-secret
+                    key: user
+              PGPASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-pguser-secret
+                    key: password
+              DATABASE_CONNECTION_STRING: "Host=$(PGHOST);Port=$(PGPORT);Database=$(PGDATABASE);Username=$(PGUSER);Password=$(PGPASSWORD)"
               # Envoy terminates TLS and forwards X-Forwarded-*; SECURE_COOKIES
               # keeps the session cookie HTTPS-only. No TZ: k8tz injects it.
               TRUST_PROXY: "1"

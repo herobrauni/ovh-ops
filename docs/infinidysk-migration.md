@@ -102,7 +102,9 @@ Deliberate deviations; keep them in mind when executing Phases 2–6.
   entrypoint.
 - **No built-in DB backup schedule**: kopiur already snapshots `/config`. The NZB
   backups (`api.nzb-backup-enabled`, retention `0`) stay on, because those files
-  are what a mount is rebuilt from.
+  are what a mount is rebuilt from. With PostgreSQL as the main DB this mattered
+  less anyway (the in-app backup only covers the auxiliary SQLite stores), and the
+  PG database itself still needs a `pg_dump` job — tracked for Phase 6.
 - **No public SABnzbd bypass route.** The \*arrs use the in-cluster Service on
   `:3000`, which Authentik never sees.
 - **Repair cadence stays UI-owned** until measured. zurg's hourly repair pass
@@ -150,9 +152,16 @@ Deliberate deviations; keep them in mind when executing Phases 2–6.
 5. **SSO: Authentik forward-auth** via `components/authentik` (repo convention; zurg
    has the same). InfiniDysk additionally has its own admin login (first-run
    bootstrap, cannot be env-driven) → double login at the dashboard is accepted.
-6. **Database: SQLite on `/config`** (ceph-block RWO + kopiur). InfiniDysk supports
-   PostgreSQL as main DB, but the built-in backup schedule only covers the auxiliary
-   SQLite stores in that mode; revisit only if the DB becomes a bottleneck.
+6. **Database: PostgreSQL (`postgres18`, shared CNPG cluster).** The main operational
+   store uses `DATABASE_PROVIDER=postgres` + `DATABASE_CONNECTION_STRING`, wired through
+   the shared `components/cnpg` component (role/database `infinidysk`, created by the
+   `postgres-init` initContainer). PostgreSQL support is **new-install only** — there is
+   no SQLite→PostgreSQL migration, so an existing `/config/db.sqlite` must be removed
+   (delete it while the app is stopped) rather than converted. Consequences:
+   `/config` still holds blobs, the NZB corpus and the auxiliary SQLite stores
+   (`metrics.sqlite`, `warden.db`, `usenet-migration.db`), so its kopiur snapshot stays
+   necessary, but the main DB now needs **PostgreSQL-native backups** (`pg_dump`) — the
+   in-app backup page only covers `warden.db`.
 7. **`/config` is the NZB corpus holder** — enable `api.nzb-backup-enabled` with
    retention `0` (forever), mirroring zurg's "raw NZBs are the only copy of the
    library" doctrine. kopiur backs it up.
