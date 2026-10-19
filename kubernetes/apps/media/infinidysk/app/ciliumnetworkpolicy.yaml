@@ -55,6 +55,12 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: infinidysk-debug
+        # One-off corpus import helper (util/nzb-import-pod.yaml). Without this
+        # entry its uploads to :3000 hang until curl times out rather than
+        # failing fast — the same trap as the bazarr FUSE rollout.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: nzb-import
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: media-debug
