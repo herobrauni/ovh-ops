@@ -80,6 +80,32 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   the media stack down on merge. Add them in their own PR once InfiniDysk is
   verified healthy.
 
+- **2026-10-19** — **Phase 1 verified live** (PRs #1493/#1494/#1495/#1496). Pod
+  `2/2 Running`; WebDAV tree at `/aio/remote/infinidysk` lists `README`,
+  `completed-symlinks`, `content`, `nzbs` (plus `.ids`) from both the debug pod
+  and the app's own self-mount, and is writable from a consumer.
+  `https://infinidysk.480p.com/healthz` → `200` (Gatus), `/` → `302` to SSO,
+  and `/outpost.goauthentik.io/auth/envoy` → `302`. Authentik holds 23 providers
+  including InfiniDysk; **the embedded outpost answered `404` until
+  `deploy/authentik-server` was restarted**, exactly as `AGENTS.md` predicts for
+  a provider added in the same commit as its `SecurityPolicy`.
+- **2026-10-19** — **PostgreSQL cutover verified.** `/config/db-contract.json`
+  reports `provider: postgres` with `metrics`/`usenetMigration` still `sqlite`,
+  the `infinidysk` database on `postgres18` has 25 tables and a populated
+  `__EFMigrationsHistory` (tip `20260921210000_Add-Health-Alert-History-Lookup-Index`),
+  and the `postgres-init` initContainer created the role/database. The stale
+  SQLite main DB was removed before the switch (fresh install, no admin account).
+- **2026-10-19** — **Two deployment traps found and fixed** (both documented in
+  the manifests and `AGENTS.md`): (1) composing `DATABASE_CONNECTION_STRING` from
+  `$(VAR)` env expansion silently fails because app-template renders `env` in
+  sorted key order, so Npgsql received the literal `$(PGPORT)`
+  (`Couldn't set port`) — the string is now derived inside the Secret, and the
+  app carries its own DB secrets instead of `components/cnpg`; (2) the \*arr
+  health poll must target Service port **80**, not the Radarr container port
+  7878, or every poll times out. Expect a harmless
+  `Cannot load library libgssapi_krb5.so.2` line in the app log: Npgsql probing
+  for GSSAPI, irrelevant with password auth.
+
 ### Implementation notes (deviations from the plan text below)
 
 Deliberate deviations; keep them in mind when executing Phases 2–6.
