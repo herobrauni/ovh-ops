@@ -45,16 +45,16 @@ Primary references (read these before executing):
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 
-| Phase                                              | Status | Note                                                                                                        |
-| -------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------- |
-| 0 — pre-flight (Infisical keys, decisions)         | `[x]`  | `/infinidysk/*` created 2026-10-19 (9 keys); `/servarr/API_KEY` reused for the \*arr instances              |
-| 1 — deploy `media/infinidysk` standalone           | `[x]`  | manifests landed in this PR; first rollout happens when it merges                                           |
-| 2 — consumer scaffold (`infinidysk-debug`, \*arrs) | `[~]`  | `infinidysk-debug` shipped; \*arr sidecars deferred to a follow-up PR on purpose (see implementation notes) |
-| 3 — \*arr cutover (client + roots + corpus)        | `[~]`  | corpus imported 2026-10-20 (4,433/4,615); client + roots still to do                                        |
-| 4 — Plex / Jellyfin cutover                        | `[ ]`  | section locations → farm; no dual scanning                                                                  |
-| 5 — Bazarr + manual-NZB (`other`) pipeline         | `[ ]`  |                                                                                                             |
-| 6 — teardown zurg (+ fold altmount teardown)       | `[ ]`  | only after 1–2 quiet weeks                                                                                  |
-| 7 — docs + `AGENTS.md` findings                    | `[~]`  | wiring recorded in `AGENTS.md`; behavior findings still to come from Phase 3                                |
+| Phase                                              | Status | Note                                                                                           |
+| -------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| 0 — pre-flight (Infisical keys, decisions)         | `[x]`  | `/infinidysk/*` created 2026-10-19 (9 keys); `/servarr/API_KEY` reused for the \*arr instances |
+| 1 — deploy `media/infinidysk` standalone           | `[x]`  | manifests landed in this PR; first rollout happens when it merges                              |
+| 2 — consumer scaffold (`infinidysk-debug`, \*arrs) | `[x]`  | `rclone-infinidysk` now runs beside `rclone-zurg` in all 9 consumers (2026-10-20)              |
+| 3 — \*arr cutover (client + roots + corpus)        | `[~]`  | corpus imported 2026-10-20 (4,433/4,615); client + roots still to do                           |
+| 4 — Plex / Jellyfin cutover                        | `[ ]`  | section locations → farm; no dual scanning                                                     |
+| 5 — Bazarr + manual-NZB (`other`) pipeline         | `[ ]`  |                                                                                                |
+| 6 — teardown zurg (+ fold altmount teardown)       | `[ ]`  | only after 1–2 quiet weeks                                                                     |
+| 7 — docs + `AGENTS.md` findings                    | `[~]`  | wiring recorded in `AGENTS.md`; behavior findings still to come from Phase 3                   |
 
 ### Log
 
@@ -138,6 +138,19 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 - **2026-10-19/20** — **Connection split re-weighted to 20/80 toward
   InfiniDysk** (#1508): zurg 10/15/5/10/20, InfiniDysk 40/60/20/40/80. Totals
   per account are unchanged (50/75/25/50/100).
+
+- **2026-10-20** — **Phase 2 done.** `rclone-infinidysk` added _beside_
+  `rclone-zurg` in every app that mounts zurg: the four \*arrs, both Bazzars,
+  Plex, Jellyfin and `media-debug` (writable everywhere except Plex/Jellyfin,
+  which get `--read-only`, matching their zurg sidecars). Same proof set as the
+  debug pod: `--links`, `--allow-non-empty`, `--poll-interval=0`,
+  `--dir-cache-time=20s`, 512M read-ahead, backend URL on **:8080**, each mount
+  at exactly `/aio/remote/infinidysk` so symlink targets resolve.
+  Cache is bounded at **8G** (not 20G) while both backends coexist — two full
+  caches per pod would exceed a worker's ~94Gi ephemeral. Raise to 20G when the
+  zurg sidecars are removed.
+  Nothing is cut over yet: no download client, root folder or Plex library
+  points here; the mounts are inert until Phase 3/4.
 
 ### Implementation notes (deviations from the plan text below)
 
