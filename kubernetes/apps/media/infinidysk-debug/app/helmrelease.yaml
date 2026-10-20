@@ -61,7 +61,7 @@ spec:
                   --allow-non-empty \
                   --vfs-cache-mode=full \
                   --vfs-cache-max-age=24h \
-                  --vfs-cache-max-size=20G \
+                  --vfs-cache-max-size=5G \
                   --vfs-cache-poll-interval=30s \
                   --buffer-size=0M \
                   --vfs-read-ahead=512M \
@@ -137,6 +137,8 @@ spec:
               - path: /dev/fuse
       rclone-cache:
         type: emptyDir
+        # Hard backstop for the rclone cap (5G).
+        sizeLimit: 6Gi
         advancedMounts:
           infinidysk-debug:
             rclone-infinidysk:
