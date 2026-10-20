@@ -45,18 +45,51 @@ Primary references (read these before executing):
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 
-| Phase                                              | Status | Note                                                                                           |
-| -------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
-| 0 — pre-flight (Infisical keys, decisions)         | `[x]`  | `/infinidysk/*` created 2026-10-19 (9 keys); `/servarr/API_KEY` reused for the \*arr instances |
-| 1 — deploy `media/infinidysk` standalone           | `[x]`  | manifests landed in this PR; first rollout happens when it merges                              |
-| 2 — consumer scaffold (`infinidysk-debug`, \*arrs) | `[x]`  | `rclone-infinidysk` now runs beside `rclone-zurg` in all 9 consumers (2026-10-20)              |
-| 3 — \*arr cutover (client + roots + corpus)        | `[~]`  | corpus imported 2026-10-20 (4,433/4,615); client + roots still to do                           |
-| 4 — Plex / Jellyfin cutover                        | `[ ]`  | section locations → farm; no dual scanning                                                     |
-| 5 — Bazarr + manual-NZB (`other`) pipeline         | `[ ]`  |                                                                                                |
-| 6 — teardown zurg (+ fold altmount teardown)       | `[ ]`  | only after 1–2 quiet weeks                                                                     |
-| 7 — docs + `AGENTS.md` findings                    | `[~]`  | wiring recorded in `AGENTS.md`; behavior findings still to come from Phase 3                   |
+| Phase                                              | Status | Note                                                                                                  |
+| -------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------- |
+| 0 — pre-flight (Infisical keys, decisions)         | `[x]`  | `/infinidysk/*` created 2026-10-19 (9 keys); `/servarr/API_KEY` reused for the \*arr instances        |
+| 1 — deploy `media/infinidysk` standalone           | `[x]`  | manifests landed in this PR; first rollout happens when it merges                                     |
+| 2 — consumer scaffold (`infinidysk-debug`, \*arrs) | `[x]`  | `rclone-infinidysk` now runs beside `rclone-zurg` in all 9 consumers (2026-10-20)                     |
+| 3 — \*arr cutover (client + roots + corpus)        | `[~]`  | `sonarr` + `sonarr4k` cut over 2026-10-20 (client, roots, corpus, zurg off); `radarr`/`radarr4k` left |
+| 4 — Plex / Jellyfin cutover                        | `[ ]`  | section locations → farm; no dual scanning                                                            |
+| 5 — Bazarr + manual-NZB (`other`) pipeline         | `[ ]`  |                                                                                                       |
+| 6 — teardown zurg (+ fold altmount teardown)       | `[ ]`  | only after 1–2 quiet weeks                                                                            |
+| 7 — docs + `AGENTS.md` findings                    | `[~]`  | wiring recorded in `AGENTS.md`; behavior findings still to come from Phase 3                          |
 
 ### Log
+
+- **2026-10-20** — **Phase 3: `sonarr` and `sonarr4k` cut over.** Both instances now run only
+  the `InfiniDysk` SAB client (category = instance name, Remove Completed/Failed on), have a
+  single root folder on the farm (`/aio/symlinks/plex_{hd,4k}/shows`), every series path
+  rewritten to it, and the `zurg (Usenet)` client **disabled** (kept as rollback, not deleted).
+  Final counts: `sonarr` 113 series / 3,797 episode files, missing 21 · `sonarr4k` 88 series /
+  1,356 episode files (from 1,379 pre-cutover), missing 2,281. Every `EpisodeFiles` row points
+  under `/aio/symlinks`, the farm holds **0** regular files and ~1.8k symlinks into `.ids`, and
+  the `symlinks` PVC sits at 0% (10 Gi).
+  Four findings worth keeping:
+    1. **Changing the root folder does not move series.** `Series.Path` is copied per series at
+       add time; adding `/aio/symlinks/...` to `/rootfolder` only registers a destination.
+       Without a `PUT /series/{id}` per series, the *arr imports into the retired zurg mount
+       (read-only), and the failure is deceptive: it **deletes the old episode file first** and
+       then dies with `EIO` in `UnixSymbolicLinkInfo.CreateSymbolicLinkTo`, leaving the episode
+       with no file. Rewrite paths first, then let the client history import.
+    2. **Imports from the zurg mount copy bytes.** The corpus import moves symlinks into `.ids`
+       (farm stays flat), but any grab still in flight through the _old_ client is a real file
+       from zurg's VFS — two of those landed as 4.8 GB + 2.4 GB copies and took the 10 Gi
+       `symlinks` PVC to 63%. Drop live zurg-backed queue items (and disable the client) _before_
+       the cutover, and check `find /aio/symlinks -name '*.mkv' ! -type l` afterwards.
+    3. **The retired zurg root folder evicts the pod.** A rescan of
+       `/aio/remote/zurg/__magic__/...` pulls 4K remuxes through `rclone-zurg` until its 4 Gi
+       `emptyDir` backstop trips (`Usage of EmptyDir volume "rclone-cache-zurg" exceeds the limit
+       "4Gi"` → `Evicted`). Delete the zurg root folder from each *arr once its series paths are
+       rewritten; this is now done for both `sonarr` instances.
+    4. **Duplicate corpus releases clog the queue, not the disk.** The import leaves
+       `importPending` rows whose reason is `Destination already exists` (another corpus release
+       already filled the episode). Clear those `removeFromClient=false` — deleting them from the
+       client would drop the history entry that still keeps the blob reachable.
+       Title mismatches on the new instance were 17 (vs 49 on `sonarr`): matched and imported where
+       the library had the series and the episode slot was empty, deleted otherwise (no blocklist,
+       `skipRedownload=true`).
 
 - **2026-10-19** — **Phase 0 done.** Created `/infinidysk/{API_KEY,WEBDAV_USER,
   WEBDAV_PASSWORD,EWEKA_USERNAME,EWEKA_PASSWORD,FRUGAL_USERNAME,FRUGAL_PASSWORD,
