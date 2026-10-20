@@ -144,6 +144,92 @@ spec:
               capabilities:
                 drop:
                   - ALL
+          rclone-infinidysk:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.75@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-plex-infinidysk 2>/dev/null || true
+                mkdir -p /host-mount/rclone-plex-infinidysk
+                export RCLONE_CONFIG_INFINIDYSK_PASS="$(rclone obscure "$RCLONE_CONFIG_INFINIDYSK_PASS_RAW")"
+                unset RCLONE_CONFIG_INFINIDYSK_PASS_RAW
+                exec rclone mount infinidysk:/ /host-mount/rclone-plex-infinidysk \
+                  --links \
+                  --read-only \
+                  --poll-interval=0 \
+                  --dir-cache-time=20s \
+                  --allow-non-empty \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=24h \
+                  --vfs-cache-max-size=8G \
+                  --vfs-cache-poll-interval=30s \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=512M \
+                  --vfs-fast-fingerprint \
+                  --vfs-handle-caching=0 \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --uid=1000 \
+                  --gid=1000 \
+                  --cache-dir=/cache
+            env:
+              RCLONE_CONFIG_INFINIDYSK_TYPE: webdav
+              # Backend (WebDAV) port, never the :3000 frontend proxy.
+              RCLONE_CONFIG_INFINIDYSK_URL: http://infinidysk.media.svc.cluster.local:8080/
+              RCLONE_CONFIG_INFINIDYSK_VENDOR: other
+              RCLONE_CONFIG_INFINIDYSK_USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-secret
+                    key: NZBDAV_CONFIG__WEBDAV__USER
+              # Raw value; rclone's obfuscation is not deterministic, so the
+              # sidecar obscures it at start instead of storing a second copy.
+              RCLONE_CONFIG_INFINIDYSK_PASS_RAW:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-secret
+                    key: NZBDAV_CONFIG__WEBDAV__PASS
+              RCLONE_CONFIG_INFINIDYSK_PACER_MIN_SLEEP: "0"
+            probes:
+              liveness: &rclone-infinidysk-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-plex-infinidysk && ls /host-mount/rclone-plex-infinidysk >/dev/null
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              readiness: *rclone-infinidysk-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-plex-infinidysk && ls /host-mount/rclone-plex-infinidysk >/dev/null
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
     service:
       app:
         controller: plex
@@ -230,11 +316,19 @@ spec:
           plex:
             rclone-zurg:
               - path: /dev/fuse
+            rclone-infinidysk:
+              - path: /dev/fuse
       rclone-cache-zurg:
         type: emptyDir
         advancedMounts:
           plex:
             rclone-zurg:
+              - path: /cache
+      rclone-cache-infinidysk:
+        type: emptyDir
+        advancedMounts:
+          plex:
+            rclone-infinidysk:
               - path: /cache
       host-tmp:
         type: hostPath
@@ -245,6 +339,9 @@ spec:
             rclone-zurg:
               - path: /host-mount
                 mountPropagation: Bidirectional
+            rclone-infinidysk:
+              - path: /host-mount
+                mountPropagation: Bidirectional
       zurg:
         type: hostPath
         hostPath: /tmp/rclone-plex-zurg
@@ -253,4 +350,14 @@ spec:
           plex:
             app:
               - path: /aio/remote/zurg
+                mountPropagation: HostToContainer
+
+      infinidysk:
+        type: hostPath
+        hostPath: /tmp/rclone-plex-infinidysk
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          plex:
+            app:
+              - path: /aio/remote/infinidysk
                 mountPropagation: HostToContainer
