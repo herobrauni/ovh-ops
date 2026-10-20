@@ -12,9 +12,7 @@ components:
 resources:
   - ./namespace.yaml
   - ./common/servarr-secret.yaml
-  # - .//ks.yaml
   - ./booklore/ks.yaml
-  # - ./cleanuparr/ks.yaml
   # - ./altmount/ks.yaml
   - ./zurg/ks.yaml
   - ./bazarr/ks.yaml
@@ -22,21 +20,15 @@ resources:
   - ./infinidysk/ks.yaml
   - ./infinidysk-debug/ks.yaml
   - ./clonarr/ks.yaml
-  # - ./comet/ks.yaml
-  # - .//ks.yaml
-  # - ./-sync-helper/ks.yaml
   # - ./altmount-sync-helper/ks.yaml
   - ./zurg-sync-helper/ks.yaml
   - ./jellyfin/ks.yaml
-  # - ./kometa/ks.yaml
   - ./media-debug/ks.yaml
   - ./zurg-debug/ks.yaml
-  # - ./profilarr/ks.yaml
   - ./prowlarr/ks.yaml
   # - ./repair/ks.yaml
   - ./seerr/ks.yaml
   - ./shelfmark/ks.yaml
-  # - .//ks.yaml
   # - ./swaparr/ks.yaml
 
   - ./plex/ks.yaml

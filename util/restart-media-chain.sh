@@ -13,8 +13,8 @@
 #   3. Restart altmount-sync-helper (talks to the Altmount API and refreshes
 #      Plex libraries) once source and consumers are healthy.
 #
-# Apps whose Flux Kustomization is currently unwired (for example 
-# and its sync-helper) are warn-skipped if not present.
+# Apps whose Flux Kustomization is currently unwired are warn-skipped if not
+# present (the script only acts on the ones it finds).
 #
 # Default wait timeout per rollout: 300s
 
