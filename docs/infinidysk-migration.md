@@ -50,7 +50,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 | 0 — pre-flight (Infisical keys, decisions)         | `[x]`  | `/infinidysk/*` created 2026-10-19 (9 keys); `/servarr/API_KEY` reused for the \*arr instances              |
 | 1 — deploy `media/infinidysk` standalone           | `[x]`  | manifests landed in this PR; first rollout happens when it merges                                           |
 | 2 — consumer scaffold (`infinidysk-debug`, \*arrs) | `[~]`  | `infinidysk-debug` shipped; \*arr sidecars deferred to a follow-up PR on purpose (see implementation notes) |
-| 3 — \*arr cutover (client + roots + corpus)        | `[ ]`  | one app at a time; corpus via bulk NZB re-import                                                            |
+| 3 — \*arr cutover (client + roots + corpus)        | `[~]`  | corpus imported 2026-10-20 (4,433/4,615); client + roots still to do                                        |
 | 4 — Plex / Jellyfin cutover                        | `[ ]`  | section locations → farm; no dual scanning                                                                  |
 | 5 — Bazarr + manual-NZB (`other`) pipeline         | `[ ]`  |                                                                                                             |
 | 6 — teardown zurg (+ fold altmount teardown)       | `[ ]`  | only after 1–2 quiet weeks                                                                                  |
@@ -105,6 +105,39 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   7878, or every poll times out. Expect a harmless
   `Cannot load library libgssapi_krb5.so.2` line in the app log: Npgsql probing
   for GSSAPI, irrelevant with password auth.
+
+- **2026-10-20** — **Corpus imported.** `util/nzb-import-job.yaml` streamed
+  zurg's NZBs straight off its (read-only) PVC into InfiniDysk's SAB `addfile`,
+  categorised by Plex tree. Job ran 22:38 → 05:26 (6.3 h) and **completed**:
+  `added=4109 failed=1` uploads, and history now holds all **4,615** planned
+  releases — **4,433 Completed**, **182 Failed**. The 1,759 never-placed
+  releases were skipped by decision. Per category (completed/total):
+  sonarr 2,444/2,603 · sonarr4k 1,074/1,082 · radarr 469/483 ·
+  radarr4k 412/414 · other 34/34. Throughput with the article pre-check
+  disabled was ~11/min; with it on it had been ~1.5/min (~50 h).
+
+    Failure breakdown (all in InfiniDysk's history, nothing to retry blindly):
+
+    | reason                                            | count | meaning                             |
+    | ------------------------------------------------- | ----- | ----------------------------------- |
+    | compressed RAR/7z archives unsupported            | 84    | the documented streaming limitation |
+    | "Rar signature not found" / bad volume headers    | 50    | damaged or obfuscated RAR sets      |
+    | no importable media files                         | 20    | extras/sample-only releases         |
+    | inconsistent RAR volume size                      | 6     | truncated uploads                   |
+    | missing articles                                  | 5     | expired on the provider             |
+    | unreadable media bytes / CRC32 / duplicate volume | 6     | corrupt payloads                    |
+
+    So **141 of 182 (77%) are the compressed-RAR limitation** predicted in
+    "Known behavioral differences" — those releases must be re-grabbed as
+    stored/direct-media releases, which the \*arrs do automatically once they
+    point at this backend. Nothing was deleted from zurg; its corpus is intact.
+
+    The article pre-check was re-enabled afterwards and the import helper's
+    CiliumNetworkPolicy entry removed (Job + ConfigMap deleted).
+
+- **2026-10-19/20** — **Connection split re-weighted to 20/80 toward
+  InfiniDysk** (#1508): zurg 10/15/5/10/20, InfiniDysk 40/60/20/40/80. Totals
+  per account are unchanged (50/75/25/50/100).
 
 ### Implementation notes (deviations from the plan text below)
 
