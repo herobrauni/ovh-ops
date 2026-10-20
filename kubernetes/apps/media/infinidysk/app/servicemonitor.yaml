@@ -1,0 +1,23 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/monitoring.coreos.com/servicemonitor_v1.json
+# The backend (:8080, service port `webdav`) serves Prometheus metrics at
+# /metrics without auth — METRICS_REQUIRE_API_KEY defaults to false and the port
+# is never published through the Gateway. It exposes the NNTP pool state per
+# provider (`nzbdav_nntp_pool_connections`), which is the signal that tells
+# whether a repair/health pass or queue work is crowding out playback.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: infinidysk
+spec:
+  endpoints:
+    - port: webdav
+      path: /metrics
+      interval: 30s
+      honorLabels: true
+  namespaceSelector:
+    matchNames:
+      - media
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: infinidysk

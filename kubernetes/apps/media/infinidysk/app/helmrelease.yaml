@@ -120,6 +120,17 @@ spec:
               # Repair stays on; its cadence and concurrency are UI-owned until
               # measured — zurg's hourly pass saturated the NNTP pool and had to
               # be slowed to 4h, so do not raise concurrency here blindly.
+              #
+              # --- Queue and provider behaviour -------------------------------
+              # 3 workers let independent *arr grabs make progress while the
+              # oldest item keeps preferred access (docs: it does not add
+              # provider capacity, it only reduces head-of-line blocking).
+              NZBDAV_CONFIG__QUEUE__WORKER_COUNT: "3"
+              # Re-probe a primary after 20s instead of 60s. Our backups are
+              # metered (Frugal bonus cap, Blocknews block pack), so a short
+              # wobble should spend as few backup bytes as possible. Applies on
+              # the next provider-pool rebuild / restart; max stays at 300s.
+              NZBDAV_CONFIG__USENET__CIRCUIT_BREAKER__INITIAL_COOLDOWN_SECONDS: "20"
               NZBDAV_CONFIG__REPAIR__ENABLE: "true"
             envFrom:
               - secretRef:
