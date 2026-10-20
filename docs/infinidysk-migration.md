@@ -767,9 +767,9 @@ stopping zurg briefly or watching its metrics):
    history: these apps have DBs; roll forward only (bazarr alembic lesson).
 3. Fold zurg-migration Phase 5 here: drop the parked `altmount` sidecars/mounts and
    the `altmount` app (its NZB store dies with it), the old disabled \*arr clients
-   (`AltMount (SABnzbd)`, `decypharr-*`, `nzbdav`), and `nzbdav`/`nzbdav-sync-helper`
+   (`AltMount (SABnzbd)`, `decypharr-*`), and `nzbdav`/`nzbdav-sync-helper`
    themselves if decided (they are dormant config — deleting is safe and shrinks the
-   security allowlists).
+   security allowlists). **Done 2026-10-20**: both apps and their allowlist entries are gone.
 4. Authentik blueprint: remove the `zurg` provider/application/binding entries and
    its outpost hostname; keep `infinidysk`'s.
 5. Infisical: delete `/zurg/*` **after** confirming `/infinidysk/*` holds the NNTP

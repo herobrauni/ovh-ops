@@ -35,9 +35,6 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: decypharr-sync-helper
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: media
-            app.kubernetes.io/name: nzbdav-sync-helper
       toPorts:
         - ports:
             - port: "8080"
