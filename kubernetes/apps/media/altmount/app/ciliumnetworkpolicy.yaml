@@ -32,9 +32,6 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: media-debug
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: media
-            app.kubernetes.io/name: decypharr-sync-helper
       toPorts:
         - ports:
             - port: "8080"
