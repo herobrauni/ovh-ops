@@ -146,9 +146,14 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   debug pod: `--links`, `--allow-non-empty`, `--poll-interval=0`,
   `--dir-cache-time=20s`, 512M read-ahead, backend URL on **:8080**, each mount
   at exactly `/aio/remote/infinidysk` so symlink targets resolve.
-  Cache is bounded at **8G** (not 20G) while both backends coexist — two full
-  caches per pod would exceed a worker's ~94Gi ephemeral. Raise to 20G when the
-  zurg sidecars are removed.
+  Cache is bounded at **5G** for InfiniDysk and **3G** for the transitional zurg
+  mount, with `sizeLimit` backstops on the emptyDirs (6Gi / 4Gi). Measured
+  rationale: with `--vfs-cache-mode=full` the cache grows only with bytes
+  actually read, is LRU-evicted at the cap and expires after 24h, so one stream
+  needs ~512 MiB of read-ahead plus slack — 5 GiB covers ~10 concurrent windows.
+  Nine consumers on one worker with the old 20G+8G caps could claim 252 GiB
+  against 83.8 GiB free; the new ceiling is ~45 GiB. Raise InfiniDysk's cap to
+  8G only if seeks into very large files feel slow, and only after zurg is gone.
   Nothing is cut over yet: no download client, root folder or Plex library
   points here; the mounts are inert until Phase 3/4.
 

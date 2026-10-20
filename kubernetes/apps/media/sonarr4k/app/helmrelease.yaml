@@ -142,7 +142,7 @@ spec:
                   --dir-cache-time=20s \
                   --vfs-cache-mode=full \
                   --vfs-cache-max-age=24h \
-                  --vfs-cache-max-size=20G \
+                  --vfs-cache-max-size=3G \
                   --vfs-cache-poll-interval=30s \
                   --buffer-size=0M \
                   --vfs-read-ahead=512M \
@@ -214,7 +214,7 @@ spec:
                   --allow-non-empty \
                   --vfs-cache-mode=full \
                   --vfs-cache-max-age=24h \
-                  --vfs-cache-max-size=8G \
+                  --vfs-cache-max-size=5G \
                   --vfs-cache-poll-interval=30s \
                   --buffer-size=0M \
                   --vfs-read-ahead=512M \
@@ -309,12 +309,16 @@ spec:
               - path: /dev/fuse
       rclone-cache-zurg:
         type: emptyDir
+        # Hard backstop for the rclone cap (3G); emptyDir has no natural limit.
+        sizeLimit: 4Gi
         advancedMounts:
           sonarr4k:
             rclone-zurg:
               - path: /cache
       rclone-cache-infinidysk:
         type: emptyDir
+        # Hard backstop for the rclone cap (5G).
+        sizeLimit: 6Gi
         advancedMounts:
           sonarr4k:
             rclone-infinidysk:
