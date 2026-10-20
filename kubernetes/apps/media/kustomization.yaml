@@ -26,10 +26,8 @@ resources:
   - ./media-debug/ks.yaml
   - ./zurg-debug/ks.yaml
   - ./prowlarr/ks.yaml
-  # - ./repair/ks.yaml
   - ./seerr/ks.yaml
   - ./shelfmark/ks.yaml
-  # - ./swaparr/ks.yaml
 
   - ./plex/ks.yaml
   - ./radarr/ks.yaml
