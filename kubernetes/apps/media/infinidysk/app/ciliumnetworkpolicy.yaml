@@ -51,6 +51,11 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: prowlarr
+        # Prometheus scrapes /metrics on the backend port (ServiceMonitor
+        # infinidysk: port webdav). Without this the scrape is refused.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+            app.kubernetes.io/name: prometheus
         # Browsing/verification pods.
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
