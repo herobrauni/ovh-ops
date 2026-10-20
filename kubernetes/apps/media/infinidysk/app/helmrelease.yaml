@@ -117,6 +117,10 @@ spec:
               # Symlink libraries pair with the rclone VFS read-ahead cache, so
               # InfiniDysk's own segment cache stays off (restart-only setting).
               NZBDAV_CONFIG__USENET__SEGMENT_CACHE__ENABLED: "false"
+              # Arr Health on the Overview dashboard (arr.health-enabled, on by
+              # default — stated so a UI toggle cannot silently drift it).
+              # Per-instance `Name`s come from arr.instances.
+              NZBDAV_CONFIG__ARR__HEALTH_ENABLED: "true"
               # Repair stays on; its cadence and concurrency are UI-owned until
               # measured — zurg's hourly pass saturated the NNTP pool and had to
               # be slowed to 4h, so do not raise concurrency here blindly.
