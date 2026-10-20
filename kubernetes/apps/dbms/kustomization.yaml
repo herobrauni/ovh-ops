@@ -11,5 +11,4 @@ components:
 resources:
   - ./namespace.yaml
   - ./cloudnative-pg/ks.yaml
-  # - ./databasus/ks.yaml
   - ./dragonfly/ks.yaml

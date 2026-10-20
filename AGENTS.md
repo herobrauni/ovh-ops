@@ -88,7 +88,7 @@ Secrets are organized by app folder: `/<app-name>/SECRET_NAME`. Common paths:
 
 - `/authentik/` — Authentik identity provider
 - `/cloudnative-pg/` — Per-app PostgreSQL credentials (for example `/cloudnative-pg/sonarr_postgres_username`)
-- `/servarr/` — Shared API key for Sonarr/Radarr/Prowlarr. Only apps that pass the key straight to an env var consume the shared `media/servarr-secret` (`servarr` ExternalSecret, key `API_KEY`); apps that template config files from it (`bazarr`, `bazarr4k`, `warrden`, `repair`, `swaparr`) keep their own ExternalSecret because ESO templates cannot read another Secret.
+- `/servarr/` — Shared API key for Sonarr/Radarr/Prowlarr. Only apps that pass the key straight to an env var consume the shared `media/servarr-secret` (`servarr` ExternalSecret, key `API_KEY`); apps that template config files from it (`bazarr`, `bazarr4k`, `warrden`) keep their own ExternalSecret because ESO templates cannot read another Secret.
 - `/volsync-template/` — Kopia backup repository credentials
 - `/rclone/` — Rclone remote mount credentials
 - `/<app>/` — App-specific secrets
