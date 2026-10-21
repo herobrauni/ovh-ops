@@ -50,13 +50,87 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 | 0 — pre-flight (Infisical keys, decisions)         | `[x]`  | `/infinidysk/*` created 2026-10-19 (9 keys); `/servarr/API_KEY` reused for the \*arr instances |
 | 1 — deploy `media/infinidysk` standalone           | `[x]`  | manifests landed in this PR; first rollout happens when it merges                              |
 | 2 — consumer scaffold (`infinidysk-debug`, \*arrs) | `[x]`  | `rclone-infinidysk` now runs beside `rclone-zurg` in all 9 consumers (2026-10-20)              |
-| 3 — \*arr cutover (client + roots + corpus)        | `[~]`  | corpus imported 2026-10-20 (4,433/4,615); client + roots still to do                           |
+| 3 — \*arr cutover (client + roots + corpus)        | `[~]`  | TV done+verified 2026-10-21 (sonarr 3,784 / sonarr4k 1,212 files); `radarr`/`radarr4k` left    |
 | 4 — Plex / Jellyfin cutover                        | `[ ]`  | section locations → farm; no dual scanning                                                     |
 | 5 — Bazarr + manual-NZB (`other`) pipeline         | `[ ]`  |                                                                                                |
 | 6 — teardown zurg (+ fold altmount teardown)       | `[ ]`  | only after 1–2 quiet weeks                                                                     |
 | 7 — docs + `AGENTS.md` findings                    | `[~]`  | wiring recorded in `AGENTS.md`; behavior findings still to come from Phase 3                   |
 
 ### Log
+
+- **2026-10-20** — **Phase 3: `sonarr` and `sonarr4k` cut over.** Both instances now run only
+  the `InfiniDysk` SAB client (category = instance name, Remove Completed/Failed on), have a
+  single root folder on the farm (`/aio/symlinks/plex_{hd,4k}/shows`), every series path
+  rewritten to it, and the `zurg (Usenet)` client **disabled** (kept as rollback, not deleted).
+  Final counts: `sonarr` 113 series / 3,797 episode files, missing 21 · `sonarr4k` 88 series /
+  1,356 episode files (from 1,379 pre-cutover), missing 2,281. Every `EpisodeFiles` row points
+  under `/aio/symlinks`, the farm holds **0** regular files and ~1.8k symlinks into `.ids`, and
+  the `symlinks` PVC sits at 0% (10 Gi).
+  Four findings worth keeping:
+    1. **Changing the root folder does not move series.** `Series.Path` is copied per series at
+       add time; adding `/aio/symlinks/...` to `/rootfolder` only registers a destination.
+       Without a `PUT /series/{id}` per series, the *arr imports into the retired zurg mount
+       (read-only), and the failure is deceptive: it **deletes the old episode file first** and
+       then dies with `EIO` in `UnixSymbolicLinkInfo.CreateSymbolicLinkTo`, leaving the episode
+       with no file. Rewrite paths first, then let the client history import.
+    2. **Imports from the zurg mount copy bytes.** The corpus import moves symlinks into `.ids`
+       (farm stays flat), but any grab still in flight through the _old_ client is a real file
+       from zurg's VFS — two of those landed as 4.8 GB + 2.4 GB copies and took the 10 Gi
+       `symlinks` PVC to 63%. Drop live zurg-backed queue items (and disable the client) _before_
+       the cutover, and check `find /aio/symlinks -name '*.mkv' ! -type l` afterwards.
+    3. **The retired zurg root folder evicts the pod.** A rescan of
+       `/aio/remote/zurg/__magic__/...` pulls 4K remuxes through `rclone-zurg` until its 4 Gi
+       `emptyDir` backstop trips (`Usage of EmptyDir volume "rclone-cache-zurg" exceeds the limit
+       "4Gi"` → `Evicted`). Delete the zurg root folder from each *arr once its series paths are
+       rewritten; this is now done for both `sonarr` instances.
+    4. **Duplicate corpus releases clog the queue, not the disk.** The import leaves
+       `importPending` rows whose reason is `Destination already exists` (another corpus release
+       already filled the episode). Clear those `removeFromClient=false` — deleting them from the
+       client would drop the history entry that still keeps the blob reachable.
+       Title mismatches on the new instance were 17 (vs 49 on `sonarr`): matched and imported where
+       the library had the series and the episode slot was empty, deleted otherwise (no blocklist,
+       `skipRedownload=true`).
+
+- **2026-10-21** — **Phase 3 cleanup and verification (independent pass).** Reconciled both TV
+  instances against the disk instead of trusting the `statistics` counters, and closed the
+  leftovers the cutover left behind:
+    - **70 dead symlinks removed from the 4K farm.** `plex_4k/shows` carried 70 links pointing at
+      `/aio/remote/altmount/complete/sonarr4k/...` — pre-cutover altmount litter (the HD farm had
+      the same and was wiped when its tree was rebuilt). They had **no** `EpisodeFiles` rows, so
+      this was filesystem-only cleanup; `plex_hd/shows` had 0 broken links.
+    - **Leftover 4K corpus imported** (30 → 24 dirs, +6 episode files). The remaining 24 are
+      duplicate/alternate releases for episodes another corpus release already filled — correctly
+      skipped by `filterExistingFiles=true`.
+    - **Verified counters against reality** — `statistics.episodeFileCount` is cached and can lag
+      (it read 3,799 while enumerating `EpisodeFiles` returned 3,784). Authoritative check: list
+      `/episodefile?seriesId=…` for every series, then `test -e` each path inside the pod.
+      Result: **sonarr 3,784 rows, 0 missing · sonarr4k 1,212 rows = 1,212 farm symlinks, 0 broken,
+      0 regular files**.
+    - **The "`NNNN-` prefix" class is a non-issue.** An earlier analysis flagged 10 releases such as
+      `7426-Our.Planet.(2019).S01E05…` as unparseable leftovers. They imported fine: Sonarr parses
+      the _file_ inside the release folder, not the folder name, and that leftover list was a
+      biased sample (it was exactly the set that had not been imported yet). A `find -name
+      '[0-9]*-*'` "match" on `1899 (2022) - S01E04…` is a false positive — do not use that pattern.
+    - **Translated titles import under the English library name.** `Tuerkisch.fuer.Anfaenger.*`
+      lands in `Turkish for Beginners (2006)`, `Ein.Planet.vor.unserer.Zeit.*` in
+      `Prehistoric Planet (2022)`. German _audio_ tags are irrelevant to parsing; only a
+      fully-translated _release title_ can block the automatic path, and then only because the
+      import matcher compares against the **library** title (SkyHook knows the alias — `/parse`
+      resolves it correctly — but the library match does not consult it).
+    - **Queue noise was self-inflicted, not a cutover defect.** Cancelling a running
+      `EpisodeSearch` leaves in-flight grabs without a `grabbed` history row, so their later
+      failures cannot be blocklisted (`Unable to mark download as failed, no grabbed history
+      available`) and they pile up as `failed` rows. Cleared 194 such rows plus 186 failed
+      InfiniDysk history entries and 175 stale Bluey entries; both queues now drain to empty.
+      **Do not cancel a search** — disable the download client first and let it finish.
+    - **Bluey's 175 completions were a numbering mismatch, not junk**: releases carry the 2019
+      year while TVDB has `Bluey (2018)`, so `Bluey.2019.…` parses to _no_ series (verified via
+      `/parse`; `Bluey.2018.…` resolves). 59 episodes were re-imported with an explicit
+      `seriesId`/`episodeIds` mapping (49 → 108 files, missing-monitored 105 → 46). Prehistoric
+      Planet's 5 German-titled episodes were imported the same way (10 → 15 files).
+    - **`QueueRules` are now enabled** (#1519) so this class stops accumulating: the four RAR
+      statuses use `RemoveAndBlocklistAndSearch`, and "matched by ID" uses `RemoveAndBlocklist`
+      without an immediate search (no grab/blocklist loop).
 
 - **2026-10-19** — **Phase 0 done.** Created `/infinidysk/{API_KEY,WEBDAV_USER,
   WEBDAV_PASSWORD,EWEKA_USERNAME,EWEKA_PASSWORD,FRUGAL_USERNAME,FRUGAL_PASSWORD,
