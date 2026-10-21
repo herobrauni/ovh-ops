@@ -14,17 +14,23 @@ resources:
   - ./common/servarr-secret.yaml
   - ./booklore/ks.yaml
   # - ./altmount/ks.yaml
-  - ./zurg/ks.yaml
+  # Retired 2026-10-21 (InfiniDysk took over). The zurg PVC and its
+  # kopiur snapshots are kept as the content rollback; uncomment to revive.
+  # - ./zurg/ks.yaml
   - ./bazarr/ks.yaml
   - ./bazarr4k/ks.yaml
   - ./infinidysk/ks.yaml
   - ./infinidysk-debug/ks.yaml
   - ./clonarr/ks.yaml
   # - ./altmount-sync-helper/ks.yaml
-  - ./zurg-sync-helper/ks.yaml
+  # Retired 2026-10-21 (InfiniDysk took over). The zurg PVC and its
+  # kopiur snapshots are kept as the content rollback; uncomment to revive.
+  # - ./zurg-sync-helper/ks.yaml
   - ./jellyfin/ks.yaml
   - ./media-debug/ks.yaml
-  - ./zurg-debug/ks.yaml
+  # Retired 2026-10-21 (InfiniDysk took over). The zurg PVC and its
+  # kopiur snapshots are kept as the content rollback; uncomment to revive.
+  # - ./zurg-debug/ks.yaml
   - ./prowlarr/ks.yaml
   - ./seerr/ks.yaml
   - ./shelfmark/ks.yaml
