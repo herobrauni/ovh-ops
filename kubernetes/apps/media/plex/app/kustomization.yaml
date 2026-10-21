@@ -4,5 +4,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ./pvc-cache.yaml
-  - ./helmrelease.yaml
+  # Plex is stopped while the media servers are migrated to InfiniDysk
+  # (2026-10-21). Commenting the HelmRelease makes Flux prune it, so
+  # helm-controller uninstalls the release and the Deployment/Service go away —
+  # the data is untouched because the main claim comes from components/kopiur
+  # and ./pvc-cache.yaml stays applied. Uncomment to bring it back.
+  # - ./helmrelease.yaml
   - ./backendtrafficpolicy.yaml
