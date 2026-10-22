@@ -1,0 +1,79 @@
+---
+# yayamlls-disable-file (embedded blueprint ConfigMap; the goauthentik.io schema now mismatches the ConfigMap wrapper)
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# OIDC sign-in for `media/silo`.
+#
+# This is a *client* integration, not a forward-auth one: Silo is its own OIDC
+# client (the `silo.auth.oidc` plugin from the Silo catalog) and validates the ID
+# token itself, so there is no proxy provider, no embedded-outpost entry and no
+# `SecurityPolicy` on its HTTPRoutes. The provider here only has to authorise the
+# application and hand back an ID token with the `profile` claims Silo maps.
+#
+# `redirect_uris` matches by regex on the plugin's installation id: the callback is
+# https://silo.480p.com/api/v1/auth/oauth/<installation_id>/callback and that id is
+# only assigned when the plugin is installed *inside* Silo, i.e. after this
+# blueprint applies. The pattern pins scheme, host and path, so no other host can
+# use it, and reinstalling the plugin (new id) does not break sign-in.
+#
+# `client_id` is pinned so the pair survives a provider recreate. `client_secret`
+# is deliberately left to authentik (`generate_client_secret`) and never enters
+# Git: it is read once from the provider and stored in Infisical as
+# /silo/OIDC_CLIENT_SECRET, where the Silo-side setup consumes it.
+#
+# `client_secret_basic` (Silo's default) needs a signing key for RS256 ID tokens,
+# hence the explicit `signing_key`; without one authentik would sign HS256 and
+# Silo would need `allow_hs256`.
+version: 1
+metadata:
+  name: ovh-ops - Silo OIDC
+  labels:
+    blueprints.goauthentik.io/description: OIDC provider and application for the Silo media server.
+entries:
+  - id: provider-silo
+    model: authentik_providers_oauth2.oauth2provider
+    identifiers:
+      name: Silo
+    attrs:
+      client_id: silo
+      client_type: confidential
+      authorization_flow:
+        !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      signing_key:
+        !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      # The default mappings carry what Silo reads: `openid` for the subject,
+      # `email`, and `profile` (preferred_username, name, picture and `groups`).
+      property_mappings:
+        - !Find [
+            authentik_providers_oauth2.scopemapping,
+            [name, "authentik default OAuth Mapping: OpenID 'openid'"],
+          ]
+        - !Find [
+            authentik_providers_oauth2.scopemapping,
+            [name, "authentik default OAuth Mapping: OpenID 'email'"],
+          ]
+        - !Find [
+            authentik_providers_oauth2.scopemapping,
+            [name, "authentik default OAuth Mapping: OpenID 'profile'"],
+          ]
+      redirect_uris:
+        - matching_mode: regex
+          url: 'https://silo\.480p\.com/api/v1/auth/oauth/[0-9]+/callback'
+
+  - id: app-silo
+    model: authentik_core.application
+    identifiers:
+      slug: silo
+    attrs:
+      name: Silo
+      provider: !KeyOf provider-silo
+      meta_launch_url: https://silo.480p.com
+      meta_description: Media server
+
+  # Same access model as the rest of the media set: members of Media may sign in.
+  # Silo applies its own admin-group rule (Platform) inside the plugin config.
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-silo
+      group: !Find [authentik_core.group, [name, Media]]
+      order: 0
