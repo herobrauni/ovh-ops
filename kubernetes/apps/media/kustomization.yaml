@@ -20,7 +20,6 @@ resources:
   - ./bazarr/ks.yaml
   - ./bazarr4k/ks.yaml
   - ./infinidysk/ks.yaml
-  - ./infinidysk-debug/ks.yaml
   - ./clonarr/ks.yaml
   # - ./altmount-sync-helper/ks.yaml
   # Retired 2026-10-21 (InfiniDysk took over). The zurg PVC and its
