@@ -45,16 +45,16 @@ Primary references (read these before executing):
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 
-| Phase                                              | Status | Note                                                                                           |
-| -------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
-| 0 — pre-flight (Infisical keys, decisions)         | `[x]`  | `/infinidysk/*` created 2026-10-19 (9 keys); `/servarr/API_KEY` reused for the \*arr instances |
-| 1 — deploy `media/infinidysk` standalone           | `[x]`  | manifests landed in this PR; first rollout happens when it merges                              |
-| 2 — consumer scaffold (`infinidysk-debug`, \*arrs) | `[x]`  | `rclone-infinidysk` now runs beside `rclone-zurg` in all 9 consumers (2026-10-20)              |
-| 3 — \*arr cutover (client + roots + corpus)        | `[~]`  | TV done+verified 2026-10-21 (sonarr 3,784 / sonarr4k 1,212 files); `radarr`/`radarr4k` left    |
-| 4 — Plex / Jellyfin cutover                        | `[ ]`  | section locations → farm; no dual scanning                                                     |
-| 5 — Bazarr + manual-NZB (`other`) pipeline         | `[ ]`  |                                                                                                |
-| 6 — teardown zurg (+ fold altmount teardown)       | `[ ]`  | only after 1–2 quiet weeks                                                                     |
-| 7 — docs + `AGENTS.md` findings                    | `[~]`  | wiring recorded in `AGENTS.md`; behavior findings still to come from Phase 3                   |
+| Phase                                         | Status | Note                                                                                                                 |
+| --------------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------- |
+| 0 — pre-flight (Infisical keys, decisions)    | `[x]`  | `/infinidysk/*` created 2026-10-19 (9 keys); `/servarr/API_KEY` reused for the \*arr instances                       |
+| 1 — deploy `media/infinidysk` standalone      | `[x]`  | manifests landed in this PR; first rollout happens when it merges                                                    |
+| 2 — consumer scaffold (`media-debug`, \*arrs) | `[x]`  | `rclone-infinidysk` runs beside `rclone-zurg` in all 9 consumers (2026-10-20; `infinidysk-debug` removed 2026-10-22) |
+| 3 — \*arr cutover (client + roots + corpus)   | `[~]`  | TV done+verified 2026-10-21 (sonarr 3,784 / sonarr4k 1,212 files); `radarr`/`radarr4k` left                          |
+| 4 — Plex / Jellyfin cutover                   | `[ ]`  | section locations → farm; no dual scanning                                                                           |
+| 5 — Bazarr + manual-NZB (`other`) pipeline    | `[ ]`  |                                                                                                                      |
+| 6 — teardown zurg (+ fold altmount teardown)  | `[ ]`  | only after 1–2 quiet weeks                                                                                           |
+| 7 — docs + `AGENTS.md` findings               | `[~]`  | wiring recorded in `AGENTS.md`; behavior findings still to come from Phase 3                                         |
 
 ### Log
 
@@ -148,7 +148,9 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   `flate test all` passes (219 resources) and
   `util/check_security_invariants.sh` passes.
 - **2026-10-19** — **Phase 2 partially done.** `media/infinidysk-debug` shipped
-  as the canonical consumer-sidecar playground. The four \*arrs were
+  as the canonical consumer-sidecar playground (removed 2026-10-22: `media-debug`
+  carries the same mount plus the `symlinks` library view, so the split added a
+  second pod without adding information). The four \*arrs were
   deliberately **not** touched: a bad WebDAV mount or a missing CNP entry blocks
   pod readiness, so shipping sidecars before the backend has ever run could take
   the media stack down on merge. Add them in their own PR once InfiniDysk is
@@ -644,7 +646,7 @@ New tree `kubernetes/apps/media/infinidysk/` mirroring `media/zurg/`:
   (`app.kubernetes.io/name: infinidysk` + `instance` selector). Ingress allowlist:
   gateway `envoy-480p-com-public` (→ 3000), and (→ 8080 **and** 3000) `sonarr`,
   `sonarr4k`, `radarr`, `radarr4k`, `plex`, `jellyfin`, `bazarr`, `bazarr4k`,
-  `prowlarr`, `infinidysk-debug`, `media-debug`, plus `infinidysk` itself
+  `prowlarr`, `media-debug`, plus `infinidysk` itself
   (the self-mount). **A consumer missing here gets FUSE mounts that serve an empty
   tree and the rollout stalls** (bazarr lesson) — when adding a consumer later, edit
   this file in the same commit.
@@ -676,7 +678,7 @@ New tree `kubernetes/apps/media/infinidysk/` mirroring `media/zurg/`:
 and revert; zurg is untouched.
 
 **Also in this phase**: add `kubernetes/apps/media/infinidysk/app/helmrelease.yaml`
-(and later `infinidysk-debug`, `infinidysk-sync-helper` files) to **both** allowlists
+(and later the `infinidysk-sync-helper` files) to **both** allowlists
 in `util/check_security_invariants.sh` (`privileged_allowlist`, `fuse_allowlist`) —
 the rclone sidecars are `privileged: true` with `/dev/fuse`, like every other
 consumer in this namespace.
@@ -685,9 +687,11 @@ consumer in this namespace.
 
 ## Phase 2 — consumer scaffold (zurg wiring untouched)
 
-1. `media/infinidysk-debug` — clone `zurg-debug` as the canonical **writable**
-   consumer-sidecar playground; only the remote name/URL/secret changes. The
-   canonical consumer flag set (proven in this repo + upstream guidance):
+1. `media/media-debug` — the canonical **writable** consumer-sidecar playground
+   (`infinidysk-debug`, its former twin, was removed 2026-10-22). It mounts the
+   backend and the `symlinks` PVC, so the flag set below is proven against the
+   same paths the \*arrs use. The canonical consumer flag set (proven in this repo
+   and upstream guidance):
 
     ```sh
     exec rclone mount infinidysk:/ /host-mount/rclone-<app>-infinidysk \
@@ -915,5 +919,5 @@ kubectl -n media run sab-probe --rm -it --image=curlimages/curl -- \
 kubectl -n media exec deploy/sonarr -c app -- ls -la /aio/symlinks/plex_hd/shows/<Show>/
 
 # WebDAV tree through a consumer mount
-kubectl -n media exec deploy/infinidysk-debug -c app -- ls -la /aio/remote/infinidysk/
+kubectl -n media exec deploy/media-debug -c app -- ls -la /aio/remote/infinidysk/
 ```
