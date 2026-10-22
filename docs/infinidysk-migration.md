@@ -56,11 +56,42 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 | 2 — consumer scaffold (`media-debug`, \*arrs) | `[x]`  | `rclone-infinidysk` rolled out to all 9 consumers (2026-10-20); `rclone-zurg` stripped 2026-10-21; `infinidysk-debug` removed 2026-10-22 |
 | 3 — \*arr cutover (client + roots + corpus)   | `[x]`  | all four on the farm with only the `InfiniDysk` client (verified 2026-10-22); TV counts from 2026-10-21 kept below                       |
 | 4 — Plex / Jellyfin cutover                   | `[~]`  | Jellyfin's libraries are on `/aio/symlinks`; Plex parked (HelmRelease commented → released, claims kept)                                 |
-| 5 — Bazarr + manual-NZB (`other`) pipeline    | `[~]`  | sidecars moved; subtitle output unverified (0 `.srt` on the farm, 2026-10-22); no `infinidysk-sync-helper`                               |
+| 5 — Bazarr + manual-NZB (`other`) pipeline    | `[x]`  | subtitle pipeline verified 2026-10-22 (10 `.srt` written); `infinidysk-sync-helper` intentionally not built                              |
 | 6 — teardown zurg (+ fold altmount teardown)  | `[~]`  | zurg/altmount unwired and `rclone-zurg` stripped; Git trees, Authentik/Infisical/Renovate entries remain                                 |
 | 7 — docs + `AGENTS.md` findings               | `[~]`  | this table and Phase 4–6 now match the cluster; the zurg-era `AGENTS.md` narrative is kept as history                                    |
 
 ### Log
+
+- **2026-10-22** — **Phase 5: Bazarr fixed and verified (#1554).** Two independent faults, both
+  reproduced before changing anything:
+    1. **The default language profile was seeded by name.** `serie_default_profile: English` in the
+       seeded `config.yaml`; Bazarr 1.6.x dropped the guard v1.5.6 had, so the value is inserted
+       verbatim. Every _new_ series therefore failed with `sqlite3.IntegrityError: FOREIGN KEY
+       constraint failed` (`cannot insert series …`), and its episodes with it — sonarr's library
+       had 113 series but only 109 rows, and the 4 missing (the Avatar set + _Korra_) had no
+       episodes either. Radarr kept the guard, so new movies were inserted with `profileId=NULL`
+       instead (300 HD / 377 4K) and were never searched. Fix: settings now hold the profile **id**
+       (`1`), the seed is corrected, and every NULL movie got the profile assigned via
+       `POST /api/movies?radarrid=…&profileid=1`. After the fix the sync inserted the 4 shows and
+       their episodes (shows 113, episodes 3 806) with no errors.
+    2. **Neither pod mounted the `symlinks` claim.** Their only mount was the InfiniDysk WebDAV
+       tree, but every DB path is the consumer farm. `series_download_subtitles()` opens with
+       `os.path.exists(path_replace(series.path))` → bare `OSError`, logged as `Exception raised
+       while running function:` with no message, for every series. Fix: `existingClaim: symlinks`
+       at `/aio/symlinks` (read-write — the `.srt` belongs beside the farm symlink) in both
+       HelmReleases, plus `dependsOn: symlinks`.
+    - **Third trap, not a bug:** `missing_subtitles` is only recomputed by a profile assignment or
+      by re-posting the `languages-profiles` JSON; `action=scan-disk` only calls `store_subtitles`
+      per episode. After the repair 2 243 episodes still carried `missing_subtitles=NULL` (no
+      wanted search considers them). Re-posting the identical profile JSON ran the global
+      recompute: 0 NULL left, 2 354 (HD) / 232 (4K) episodes genuinely wanting English.
+    - **Verified end to end:** `PATCH /api/series?seriesid=3&action=search-missing` searched, matched
+      and downloaded 10 English subtitles for _Band of Brothers_ (Gestdown, score 339) and wrote
+      them as `…/Season 01/*.en.srt` / `*.en.hi.srt` owned by 1000:1000 on the farm.
+    - **Follow-up running:** `series_full_scan_subtitles` + `movies_full_scan_subtitles` were
+      triggered on both instances (3 810 episodes / 481 movies, and 1.4k / 411 on 4K) to re-detect
+      embedded tracks after the backend move, so the 6-hourly wanted search only fetches what is
+      actually missing instead of re-downloading subs for files that already embed English.
 
 - **2026-10-22** — **Phase 3 verified complete against the cluster (not the doc).** All four
   \*arrs have exactly one download client (`InfiniDysk`) and one accessible farm root —
@@ -864,12 +895,17 @@ HelmRelease commented out again) until the farm sections are correct; nothing fa
 
 ## Phase 5 — Bazarr + manual-NZB (`other`) pipeline
 
-> **Status 2026-10-22: step 1 done, verification open.** Both Bazarrs mount InfiniDysk only, but
-> the farm holds **0** `.srt` files and neither instance logged a subtitle download in 48 h, while
-> `bazarr` logs `sqlite3.IntegrityError: FOREIGN KEY constraint failed` during episode sync —
-> treat the subtitle pipeline as unproven until a wanted-search pass produces `.en.srt` next to
-> farm entries. Step 2 (`infinidysk-sync-helper`) is **not built**: nothing drains the `other`
-> category any more (`zurg-sync-helper` retired), so manual NZBs need a hand move until it exists.
+> **Status 2026-10-22: pipeline fixed and verified (#1554).** Both Bazarrs now write `.srt` files
+> beside the farm symlinks. Two faults were fixed: the seeded default language profile was the
+> profile _name_ (Bazarr 1.6.x inserts it verbatim → `FOREIGN KEY constraint failed` on every new
+> series, and silent `profileId=NULL` on new movies), and neither pod mounted the `symlinks` claim,
+> so `series_download_subtitles()` died on `os.path.exists()` with a bare `OSError` before any
+> search. Proof: a per-series `search-missing` downloaded 10 English subtitles for _Band of
+> Brothers_ from Gestdown and wrote them to `plex_hd/.../Season 01/*.en.srt` (1000:1000). A full
+> episode/movie re-index (`series_full_scan_subtitles` / `movies_full_scan_subtitles`) is running
+> to refresh embedded-track detection after the backend move; the 6-hourly wanted search works
+> through whatever is genuinely missing afterwards. Step 2 (`infinidysk-sync-helper`) is still
+> **not built** — nothing drains the `other` category, so manual NZBs need a hand move.
 
 1. `bazarr` / `bazarr4k`: keep their rclone sidecars pointed at InfiniDysk
    (subtitle matching reads media through the symlink → mount; ffprobe on first
