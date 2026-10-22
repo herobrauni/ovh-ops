@@ -30,6 +30,14 @@ data:
     # The only work item is therefore "Completed job whose release is not in
     # the farm yet", which makes each pass idempotent and restart-safe without a
     # state file.
+    #
+    # When at least one release was placed, the "Other" Jellyfin library is
+    # refreshed once per pass — the same "section scan after placement" the old
+    # `altmount-sync-helper` did against Plex. Jellyfin's realtime monitor cannot
+    # do it: `EnableRealtimeMonitor` is off for that library (its options.xml),
+    # so it does not watch /aio/symlinks/other and `POST /Library/Media/Updated`
+    # is a no-op there (verified 2026-10-22). A library refresh is requested
+    # instead, which is also what a periodic scan would do — just now.
     set -u
 
     SAB_URL="${SAB_URL:-http://infinidysk.media.svc.cluster.local:3000}"
@@ -42,12 +50,17 @@ data:
     # 0 = place links but leave the SAB history entry alone (manual recovery, or
     # a first run against a backend whose history delete has not been trusted).
     CLEAR_JOBS="${CLEAR_JOBS:-1}"
+    JELLYFIN_URL="${JELLYFIN_URL:-http://jellyfin.media.svc.cluster.local:8096}"
+    JELLYFIN_TOKEN="${JELLYFIN_TOKEN:-}"
+    JELLYFIN_LIBRARY="${JELLYFIN_LIBRARY:-Other}"
 
     SRC_ROOT="$MOUNT_DIR/completed-symlinks/$CATEGORY"
     SLOTS_FILE=/tmp/history-slots
     LINKS_FILE=/tmp/source-links
     PLACED_FILE=/tmp/placed-links
     WARNED_FILE=/tmp/warned
+    LIB_ID=
+    PLACED_ANY=0
 
     log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
@@ -186,7 +199,44 @@ data:
             return 1
         fi
         log "Placed '$release' ($count link(s), all resolving)"
+        PLACED_ANY=1
         return 0
+    }
+
+    # jf_api <url> -> body on stdout. Jellyfin 12 rejects X-Emby-Token/api_key
+    # and only accepts the MediaBrowser authorization header.
+    jf_api() {
+        wget -qO- -T 30 --header="Authorization: MediaBrowser Token=\"$JELLYFIN_TOKEN\"" "$1" 2>/dev/null
+    }
+
+    # Resolve the library id by name once per pod; the id is stable per install
+    # but not something worth hardcoding in Git.
+    resolve_library() {
+        [ -n "$LIB_ID" ] && return 0
+        body=$(jf_api "$JELLYFIN_URL/Library/MediaFolders")
+        [ -n "$body" ] || return 1
+        LIB_ID=$(printf '%s' "$body" | sed 's/},{/}\n{/g' |
+            grep -F "\"Name\":\"$JELLYFIN_LIBRARY\"" | head -n 1 |
+            grep -o '"Id":"[^"]*"' | head -n 1 | sed 's/.*:"//; s/"$//')
+        [ -n "$LIB_ID" ]
+    }
+
+    jellyfin_refresh() {
+        if [ -z "$JELLYFIN_TOKEN" ]; then
+            log "WARN: JELLYFIN_TOKEN not set — skipping the Jellyfin library refresh"
+            return 0
+        fi
+        if ! resolve_library; then
+            log "WARN: Jellyfin library '$JELLYFIN_LIBRARY' not found at $JELLYFIN_URL — refresh skipped"
+            return 0
+        fi
+        if wget -qO- -T 30 --header="Authorization: MediaBrowser Token=\"$JELLYFIN_TOKEN\"" --post-data='' \
+            "$JELLYFIN_URL/Items/$LIB_ID/Refresh?Recursive=true&MetadataRefreshMode=Default&ImageRefreshMode=Default&ReplaceAllMetadata=false&ReplaceAllImages=false" \
+            >/dev/null 2>&1; then
+            log "Jellyfin: refresh queued for library '$JELLYFIN_LIBRARY' ($LIB_ID)"
+        else
+            log "WARN: Jellyfin refresh failed for library '$JELLYFIN_LIBRARY' ($LIB_ID)"
+        fi
     }
 
     process_slot() {
@@ -250,6 +300,7 @@ data:
                 # response is not newline-terminated.
                 printf '%s' "$body" | sed 's/},{/}\n{/g' >"$SLOTS_FILE"
                 echo >>"$SLOTS_FILE"
+                PLACED_ANY=0
                 while IFS= read -r slot; do
                     [ -n "$(json_str "$slot" nzo_id)" ] || continue
                     if process_slot "$slot"; then
@@ -257,6 +308,9 @@ data:
                         touch /tmp/heartbeat
                     fi
                 done <"$SLOTS_FILE"
+                # One refresh per pass, only when something was actually
+                # placed — "already placed" items need no scan.
+                [ "$PLACED_ANY" = "1" ] && jellyfin_refresh
             fi
         fi
 

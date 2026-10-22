@@ -56,7 +56,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 | 2 — consumer scaffold (`media-debug`, \*arrs) | `[x]`  | `rclone-infinidysk` rolled out to all 9 consumers (2026-10-20); `rclone-zurg` stripped 2026-10-21; `infinidysk-debug` removed 2026-10-22 |
 | 3 — \*arr cutover (client + roots + corpus)   | `[x]`  | all four on the farm with only the `InfiniDysk` client (verified 2026-10-22); TV counts from 2026-10-21 kept below                       |
 | 4 — Plex / Jellyfin cutover                   | `[~]`  | Jellyfin's libraries are on `/aio/symlinks`; Plex parked (HelmRelease commented → released, claims kept)                                 |
-| 5 — Bazarr + manual-NZB (`other`) pipeline    | `[x]`  | subtitle pipeline verified 2026-10-22 (10 `.srt` written); `infinidysk-sync-helper` added 2026-10-22 (this PR)                              |
+| 5 — Bazarr + manual-NZB (`other`) pipeline    | `[x]`  | subtitle pipeline verified 2026-10-22 (10 `.srt` written); `infinidysk-sync-helper` added 2026-10-22 (this PR)                           |
 | 6 — teardown zurg (+ fold altmount teardown)  | `[~]`  | zurg/altmount unwired and `rclone-zurg` stripped; Git trees, Authentik/Infisical/Renovate entries remain                                 |
 | 7 — docs + `AGENTS.md` findings               | `[~]`  | this table and Phase 4–6 now match the cluster; the zurg-era `AGENTS.md` narrative is kept as history                                    |
 
@@ -87,6 +87,14 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
     3. **A trailing newline matters.** The slots arrive as one compact `},{`-joined line;
        splitting with `sed` and iterating with `read` silently dropped the last slot until the
        file got a terminating newline (33 slots parsed as 32, newest upload never placed).
+    4. **Jellyfin cannot be told about a single file in this library.** `Other` runs with
+       `EnableRealtimeMonitor: false`, so `/Library/Media/Updated` (the targeted
+       "this path changed" endpoint) is accepted with 204 and does nothing. A library refresh
+       (`POST /Items/<id>/Refresh?Recursive=true`) does work — a test entry in
+       `/aio/symlinks/other` was indexed within 30 s — and is queued once per pass that placed
+       something. `POST /Library/Refresh` also works but rescans every library (~8 min).
+       Auth is the `Authorization: MediaBrowser Token="<key>"` header only; `X-Emby-Token`
+       and `?api_key=` are 401 on v12.
 - **2026-10-22** — **Phase 5: Bazarr fixed and verified (#1554).** Two independent faults, both
   reproduced before changing anything:
     1. **The default language profile was seeded by name.** `serie_default_profile: English` in the
@@ -963,6 +971,22 @@ HelmRelease commented out again) until the farm sections are correct; nothing fa
     - A folder that has no Completed history entry (e.g. cleared by hand before the
       helper existed) is invisible to it and needs a manual `ln -s` tree or a re-upload.
 
+    After a pass that placed at least one release, the helper asks Jellyfin to scan the
+    `Other` library (`POST /Items/<library-id>/Refresh?Recursive=true`, id resolved by
+    name from `/Library/MediaFolders` in the same call). That is the counterpart of the
+    old helper's Plex section refresh. Two Jellyfin facts drove the choice:
+    - `POST /Library/Media/Updated` is a **no-op** for this library: its `options.xml`
+      has `EnableRealtimeMonitor: false`, so `/aio/symlinks/other` is not watched and
+      reported paths are dropped (the Movies/Shows libraries do log "Watching directory"
+      and refresh on their own).
+    - `POST /Items/<id>/Refresh` is quiet but real: a test entry created under
+      `/aio/symlinks/other/ZZHermesScanTest` appeared in the library within 30 s, and the
+      full `POST /Library/Refresh` (8 min, all libraries) is not needed for one upload.
+      Auth is `Authorization: MediaBrowser Token="<key>"` — Jellyfin 12 disables
+      `X-Emby-Token` and `api_key`, and both return 401. The key is the existing
+      `/zurg/JELLYFIN_TOKEN` value (see the Phase 6 note); a failed refresh is a WARN and
+      never blocks placement or job clearing — the periodic scan is the backstop.
+
 **Verification**: wanted-search pass produces `.en.srt` next to farm entries;
 manual NZB lands under `/aio/symlinks/other` and plays.
 **Rollback**: per-item. Commenting `./infinidysk-sync-helper/ks.yaml` out stops automatic placement;
@@ -1002,7 +1026,10 @@ reads in InfiniDysk's absence — confirm by stopping zurg briefly or watching i
    `app-zurg`, its policy binding and the outpost provider list in
    `blueprints/forward-auth.yaml`, plus `zurg.480p.com` in `outpost-routes.yaml`.
 5. Infisical: delete `/zurg/*` **after** confirming `/infinidysk/*` holds the NNTP
-   creds (Phase 0 copied them). If zurg sponsorship ends: remove the
+   creds (Phase 0 copied them) **and** after moving `/zurg/JELLYFIN_TOKEN` to
+   `/jellyfin/API_KEY` — `media/infinidysk-sync-helper` reads the token from the `/zurg`
+   path today (zurg's push-scan was its only other consumer), so deleting the folder
+   without repointing that ExternalSecret breaks the library refresh. If zurg sponsorship ends: remove the
    `RENOVATE_HOST_RULES` ghcr credentials from `.github/workflows/renovate.yaml`
    secrets (same token as `/zurg/GHCR_*`) — **both** places, per AGENTS.md.
    **Open 2026-10-22**: sponsorship ended 2026-10-21, `/infinidysk/*` is self-contained;

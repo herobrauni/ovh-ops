@@ -53,6 +53,16 @@ spec:
                   secretKeyRef:
                     name: infinidysk-sync-helper-secret
                     key: SAB_API_KEY
+              # Library refresh after a placement: the "Other" library sits on
+              # /aio/symlinks/other and has realtime monitoring off, so nothing
+              # else notices a new release until the periodic scan.
+              JELLYFIN_URL: http://jellyfin.media.svc.cluster.local:8096
+              JELLYFIN_LIBRARY: Other
+              JELLYFIN_TOKEN:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-sync-helper-secret
+                    key: JELLYFIN_TOKEN
             resources:
               requests:
                 cpu: 10m
