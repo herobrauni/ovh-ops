@@ -60,6 +60,10 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: media-debug
+        # Manual-NZB helper: SAB history (3000) + read-only WebDAV mount (8080).
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: infinidysk-sync-helper
       toPorts:
         - ports:
             - port: "3000"

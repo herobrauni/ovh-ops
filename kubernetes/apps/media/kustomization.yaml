@@ -20,6 +20,10 @@ resources:
   - ./bazarr/ks.yaml
   - ./bazarr4k/ks.yaml
   - ./infinidysk/ks.yaml
+  # Polls InfiniDysk's SAB history for category `other` and symlinks manual
+  # NZBs into /aio/symlinks/other (the manual-NZB import step an *arr does for
+  # its own categories). Replaces zurg-sync-helper + altmount-sync-helper.
+  - ./infinidysk-sync-helper/ks.yaml
   - ./clonarr/ks.yaml
   # - ./altmount-sync-helper/ks.yaml
   # Retired 2026-10-21 (InfiniDysk took over). The zurg PVC and its

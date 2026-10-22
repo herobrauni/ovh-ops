@@ -1,0 +1,319 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/configmap_v1.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infinidysk-sync-helper-script
+data:
+  sync.sh: |
+    #!/bin/sh
+    # Manually uploaded NZBs (SAB category `other`) never pass through an *arr,
+    # so nothing imports them: InfiniDysk parks the release in
+    # completed-symlinks/other as a directory of symlinks into .ids, no library
+    # path points at it, and Remove Orphaned Files may later take it away.
+    #
+    # This helper is that missing import step. For every Completed history item
+    # in $CATEGORY it recreates the release's symlinks under
+    # /aio/symlinks/$CATEGORY (the farm the media servers read), then clears the
+    # SAB history entry — the same "Remove Completed" handshake an *arr performs
+    # after import, except that the farm link, not an *arr database row, is now
+    # what holds the release.
+    #
+    # Order matters, because clearing the job also takes
+    # completed-symlinks/<release> with it (verified 2026-10-22 with
+    # del_files=0: the folder disappeared, the .ids object and the farm symlink
+    # survived). So the farm copy is created AND every link is verified to
+    # resolve BEFORE the job is cleared: the farm link is what keeps the
+    # content alive for health/repair and out of Remove Orphaned Files, and a
+    # release whose links are broken must keep its job so it is retried.
+    #
+    # The only work item is therefore "Completed job whose release is not in
+    # the farm yet", which makes each pass idempotent and restart-safe without a
+    # state file.
+    #
+    # When at least one release was placed, the "Other" Jellyfin library is
+    # refreshed once per pass — the same "section scan after placement" the old
+    # `altmount-sync-helper` did against Plex. Jellyfin's realtime monitor cannot
+    # do it: `EnableRealtimeMonitor` is off for that library (its options.xml),
+    # so it does not watch /aio/symlinks/other and `POST /Library/Media/Updated`
+    # is a no-op there (verified 2026-10-22). A library refresh is requested
+    # instead, which is also what a periodic scan would do — just now.
+    set -u
+
+    SAB_URL="${SAB_URL:-http://infinidysk.media.svc.cluster.local:3000}"
+    SAB_KEY="${SAB_API_KEY:?SAB_API_KEY not set}"
+    CATEGORY="${CATEGORY:-other}"
+    MOUNT_DIR="${MOUNT_DIR:-/aio/remote/infinidysk}"
+    DEST_ROOT="${DEST_ROOT:-/aio/symlinks/$CATEGORY}"
+    POLL_INTERVAL="${POLL_INTERVAL:-60}"
+    DRY_RUN="${DRY_RUN:-0}"
+    # 0 = place links but leave the SAB history entry alone (manual recovery, or
+    # a first run against a backend whose history delete has not been trusted).
+    CLEAR_JOBS="${CLEAR_JOBS:-1}"
+    JELLYFIN_URL="${JELLYFIN_URL:-http://jellyfin.media.svc.cluster.local:8096}"
+    JELLYFIN_TOKEN="${JELLYFIN_TOKEN:-}"
+    JELLYFIN_LIBRARY="${JELLYFIN_LIBRARY:-Other}"
+
+    SRC_ROOT="$MOUNT_DIR/completed-symlinks/$CATEGORY"
+    SLOTS_FILE=/tmp/history-slots
+    LINKS_FILE=/tmp/source-links
+    PLACED_FILE=/tmp/placed-links
+    WARNED_FILE=/tmp/warned
+    LIB_ID=
+    PLACED_ANY=0
+
+    log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+    # Warn once per pod lifetime: a release that cannot be placed must not
+    # repeat its warning every poll interval.
+    warn_once() {
+        key=$1
+        shift
+        grep -qFx "$key" "$WARNED_FILE" 2>/dev/null && return 0
+        echo "$key" >> "$WARNED_FILE"
+        log "$@"
+    }
+
+    # api "<mode-params>" -> body on stdout. InfiniDysk answers HTTP 200 even
+    # for API errors, so callers inspect the body, never wget's exit code.
+    api() {
+        wget -qO- -T 30 "$SAB_URL/api?apikey=$SAB_KEY&output=json&$1" 2>/dev/null
+    }
+
+    # json_str <slot-json> <field> -> first quoted string value of <field>.
+    # History slots are flat objects (no nested maps), so the first match is the
+    # slot's own field; values are release names/paths, never contain a quote.
+    json_str() {
+        printf '%s' "$1" | grep -o "\"$2\":\"[^\"]*\"" | head -n 1 | sed 's/^[^:]*:"//; s/"$//'
+    }
+
+    # clear_job <nzo_id> — drop the SAB history entry, keep every file.
+    clear_job() {
+        if [ "$CLEAR_JOBS" != "1" ]; then
+            log "Keeping job $1 (CLEAR_JOBS=0)"
+            return 0
+        fi
+        if [ "$DRY_RUN" = "1" ]; then
+            log "DRY_RUN: would clear job $1"
+            return 0
+        fi
+        resp=$(api "mode=history&name=delete&value=$1&del_files=0")
+        if printf '%s' "$resp" | grep -q '"status":true'; then
+            log "Cleared job $1"
+            return 0
+        fi
+        log "WARN: could not clear job $1: ${resp:-no response}"
+        return 1
+    }
+
+    # place_release <release> — mirror completed-symlinks/<release> into the
+    # farm. Every entry there is already a symlink into .ids (rclone --links
+    # presents the .rclonelink files as real symlinks), so the farm copy copies
+    # the *target* and never the bytes: the farm must stay symlink-only.
+    place_release() {
+        release=$1
+        src="$SRC_ROOT/$release"
+        dest="$DEST_ROOT/$release"
+
+        if [ -d "$dest" ] && [ -n "$(ls -A "$dest" 2>/dev/null)" ]; then
+            if [ -d "$src" ]; then
+                src_n=$(find "$src" -type l 2>/dev/null | wc -l | tr -d ' ')
+                dest_n=$(find "$dest" -type l 2>/dev/null | wc -l | tr -d ' ')
+                if [ "$dest_n" -lt "$src_n" ]; then
+                    log "WARN: '$release': farm copy is short ($dest_n/$src_n links) — redoing it"
+                    rm -rf "$dest"
+                else
+                    log "Already placed: $release"
+                    return 0
+                fi
+            else
+                log "Already placed: $release"
+                return 0
+            fi
+        fi
+        if [ ! -d "$src" ]; then
+            warn_once "missing:$release" "WARN: '$release' is Completed but $src is missing — leaving the job for inspection"
+            return 1
+        fi
+
+        log "Placing '$release' -> $DEST_ROOT/"
+        if [ "$DRY_RUN" != "1" ]; then
+            mkdir -p "$dest" || {
+                log "ERROR: cannot create $dest"
+                return 1
+            }
+        fi
+
+        find "$src" -type l >"$LINKS_FILE" 2>/dev/null
+        count=0
+        while IFS= read -r link; do
+            rel=${link#"$src"/}
+            target=$(readlink "$link" 2>/dev/null)
+            if [ -z "$target" ]; then
+                log "WARN: '$release': no link target for $rel — skipped"
+                continue
+            fi
+            # rclone reports absolute targets (<MOUNT_DIR>/.ids/...); resolve a
+            # relative one against the link's own directory just in case.
+            case "$target" in
+            /*) ;;
+            *) target="$(dirname "$link")/$target" ;;
+            esac
+            if [ "$DRY_RUN" = "1" ]; then
+                count=$((count + 1))
+                continue
+            fi
+            mkdir -p "$dest/$(dirname "$rel")" || {
+                log "ERROR: cannot create $(dirname "$dest/$rel")"
+                continue
+            }
+            if ln -sfn "$target" "$dest/$rel"; then
+                count=$((count + 1))
+            else
+                log "ERROR: symlink failed for $rel"
+            fi
+        done <"$LINKS_FILE"
+
+        expected=$(wc -l <"$LINKS_FILE" | tr -d ' ')
+        if [ "$count" -eq 0 ] || [ "$count" -ne "$expected" ]; then
+            log "ERROR: '$release': placed $count of $expected link(s) — job kept and the farm copy removed"
+            [ "$DRY_RUN" = "1" ] || rm -rf "$dest"
+            return 1
+        fi
+        if [ "$DRY_RUN" = "1" ]; then
+            log "DRY_RUN: '$release' would get $count link(s)"
+            return 0
+        fi
+
+        # The links embed <MOUNT_DIR>/.ids/..., i.e. the path every consumer
+        # mounts, so a link that does not resolve here means the mount is not
+        # serving content and the placement would be worthless.
+        find "$dest" -type l >"$PLACED_FILE" 2>/dev/null
+        broken=0
+        while IFS= read -r placed; do
+            [ -e "$placed" ] || broken=$((broken + 1))
+        done <"$PLACED_FILE"
+
+        if [ "$broken" -gt 0 ]; then
+            log "ERROR: '$release': $broken of $count link(s) do not resolve — mount unhealthy, job kept"
+            return 1
+        fi
+        log "Placed '$release' ($count link(s), all resolving)"
+        PLACED_ANY=1
+        return 0
+    }
+
+    # jf_api <url> -> body on stdout. Jellyfin 12 rejects X-Emby-Token/api_key
+    # and only accepts the MediaBrowser authorization header.
+    jf_api() {
+        wget -qO- -T 30 --header="Authorization: MediaBrowser Token=\"$JELLYFIN_TOKEN\"" "$1" 2>/dev/null
+    }
+
+    # Resolve the library id by name once per pod; the id is stable per install
+    # but not something worth hardcoding in Git.
+    resolve_library() {
+        [ -n "$LIB_ID" ] && return 0
+        body=$(jf_api "$JELLYFIN_URL/Library/MediaFolders")
+        [ -n "$body" ] || return 1
+        LIB_ID=$(printf '%s' "$body" | sed 's/},{/}\n{/g' |
+            grep -F "\"Name\":\"$JELLYFIN_LIBRARY\"" | head -n 1 |
+            grep -o '"Id":"[^"]*"' | head -n 1 | sed 's/.*:"//; s/"$//')
+        [ -n "$LIB_ID" ]
+    }
+
+    jellyfin_refresh() {
+        if [ -z "$JELLYFIN_TOKEN" ]; then
+            log "WARN: JELLYFIN_TOKEN not set — skipping the Jellyfin library refresh"
+            return 0
+        fi
+        if ! resolve_library; then
+            log "WARN: Jellyfin library '$JELLYFIN_LIBRARY' not found at $JELLYFIN_URL — refresh skipped"
+            return 0
+        fi
+        if wget -qO- -T 30 --header="Authorization: MediaBrowser Token=\"$JELLYFIN_TOKEN\"" --post-data='' \
+            "$JELLYFIN_URL/Items/$LIB_ID/Refresh?Recursive=true&MetadataRefreshMode=Default&ImageRefreshMode=Default&ReplaceAllMetadata=false&ReplaceAllImages=false" \
+            >/dev/null 2>&1; then
+            log "Jellyfin: refresh queued for library '$JELLYFIN_LIBRARY' ($LIB_ID)"
+        else
+            log "WARN: Jellyfin refresh failed for library '$JELLYFIN_LIBRARY' ($LIB_ID)"
+        fi
+    }
+
+    process_slot() {
+        slot=$1
+        nzo=$(json_str "$slot" nzo_id)
+        status=$(json_str "$slot" status)
+        name=$(json_str "$slot" name)
+        storage=$(json_str "$slot" storage)
+
+        case "$status" in
+        Completed) ;;
+        Failed)
+            warn_once "failed:$nzo" "WARN: '$name' failed: $(json_str "$slot" fail_message)"
+            return 1
+            ;;
+        *)
+            # Queued/Downloading/Paused — never place a partially written release.
+            return 1
+            ;;
+        esac
+
+        release=
+        [ -n "$storage" ] && release=$(basename "$storage")
+        [ -n "$release" ] || release=$name
+        if [ -z "$release" ]; then
+            warn_once "noname:$nzo" "WARN: Completed job $nzo has neither storage nor name — cannot place"
+            return 1
+        fi
+
+        place_release "$release" || return 1
+        clear_job "$nzo"
+    }
+
+    log "infinidysk-sync-helper starting"
+    log "sab:      $SAB_URL"
+    log "category: $CATEGORY"
+    log "source:   $SRC_ROOT"
+    log "farm:     $DEST_ROOT"
+    log "poll:     ${POLL_INTERVAL}s"
+    [ "$DRY_RUN" = "1" ] && log "DRY_RUN: no links are created and no job is cleared"
+
+    mkdir -p "$DEST_ROOT" 2>/dev/null || log "WARN: cannot create $DEST_ROOT — placements will fail"
+
+    while :; do
+        touch /tmp/heartbeat
+        work=0
+
+        if [ ! -d "$SRC_ROOT" ]; then
+            warn_once "mount:$SRC_ROOT" "WARN: $SRC_ROOT not visible — is the rclone mount up?"
+        else
+            body=$(api "mode=history&category=$CATEGORY")
+            if [ -z "$body" ]; then
+                log "ERROR: no answer from $SAB_URL"
+            elif printf '%s' "$body" | grep -q '"status":false'; then
+                log "ERROR: InfiniDysk rejected the API call: $body"
+            else
+                # History slots are single-line flat objects joined by `},{`.
+                # Split them so a field lookup can never read a neighbour, and
+                # terminate the last line: `read` drops a final line without a
+                # newline, which would silently ignore the newest slot when the
+                # response is not newline-terminated.
+                printf '%s' "$body" | sed 's/},{/}\n{/g' >"$SLOTS_FILE"
+                echo >>"$SLOTS_FILE"
+                PLACED_ANY=0
+                while IFS= read -r slot; do
+                    [ -n "$(json_str "$slot" nzo_id)" ] || continue
+                    if process_slot "$slot"; then
+                        work=1
+                        touch /tmp/heartbeat
+                    fi
+                done <"$SLOTS_FILE"
+                # One refresh per pass, only when something was actually
+                # placed — "already placed" items need no scan.
+                [ "$PLACED_ANY" = "1" ] && jellyfin_refresh
+            fi
+        fi
+
+        # Drain quickly after progress, idle at the poll interval otherwise.
+        if [ "$work" = "1" ]; then sleep 5; else sleep "$POLL_INTERVAL"; fi
+    done

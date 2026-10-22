@@ -1,0 +1,266 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+# Re-implementation of `zurg-sync-helper` + `altmount-sync-helper` for
+# InfiniDysk (both retired 2026-10-21/22). Those two did different halves of the
+# manual-NZB pipeline: zurg's helper moved the completed release inside zurg's
+# writable `__magic__` namespace, altmount's helper copied the completed farm
+# entry into /aio/symlinks/other and refreshed Plex. With `import-strategy:
+# symlinks` both halves collapse into one job — recreate the release's symlinks
+# in the farm and clear the SAB history entry — so this is a single poller with
+# a read-only WebDAV mount and the `symlinks` PVC.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app infinidysk-sync-helper
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  interval: 1h
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile: { type: RuntimeDefault }
+    controllers:
+      infinidysk-sync-helper:
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: infinidysk-sync-helper-secret
+        containers:
+          app:
+            image:
+              repository: ghcr.io/home-operations/busybox
+              tag: 1.38.0@sha256:ff88728f0d5fe50a9984f6cc04d7d1185590b628f29ef4e6a3ec8cae7169e0c8
+            command:
+              - /bin/sh
+              - /scripts/sync.sh
+            env:
+              # Frontend port: SABnzbd API. The WebDAV tree is the sidecar's job.
+              SAB_URL: http://infinidysk.media.svc.cluster.local:3000
+              CATEGORY: other
+              MOUNT_DIR: /aio/remote/infinidysk
+              DEST_ROOT: /aio/symlinks/other
+              POLL_INTERVAL: "60"
+              SAB_API_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-sync-helper-secret
+                    key: SAB_API_KEY
+              # Library refresh after a placement: the "Other" library sits on
+              # /aio/symlinks/other and has realtime monitoring off, so nothing
+              # else notices a new release until the periodic scan.
+              JELLYFIN_URL: http://jellyfin.media.svc.cluster.local:8096
+              JELLYFIN_LIBRARY: Other
+              JELLYFIN_TOKEN:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-sync-helper-secret
+                    key: JELLYFIN_TOKEN
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+            probes:
+              # The loop touches /tmp/heartbeat at the top and after every
+              # placement; a stale file means the poller is wedged, not idle.
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -f /tmp/heartbeat && test $(($(date +%s) - $(date -r /tmp/heartbeat +%s))) -lt 180
+                  initialDelaySeconds: 60
+                  periodSeconds: 30
+                  failureThreshold: 3
+              # Only "both ends of the pipeline are visible" is asserted here;
+              # the per-category folder appears on the first manual upload, so
+              # requiring completed-symlinks/<category> would leave a fresh
+              # install permanently unready.
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -d /aio/remote/infinidysk/completed-symlinks && test -d /aio/symlinks/other
+                  initialDelaySeconds: 5
+                  periodSeconds: 30
+                  failureThreshold: 3
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - test
+                      - -f
+                      - /tmp/heartbeat
+                  initialDelaySeconds: 2
+                  periodSeconds: 2
+                  failureThreshold: 30
+          # Same rclone sidecar pattern as every other InfiniDysk consumer
+          # (media-debug is the canonical one): the sidecar mounts the WebDAV
+          # tree into a hostPath with Bidirectional propagation and the app
+          # container sees it via HostToContainer, so a backend restart remount
+          # lands instead of leaving a dead FUSE connection.
+          #
+          # Unlike the *arr sidecars this one is READ-ONLY and runs with the VFS
+          # cache off: it only walks completed-symlinks/ and reads link targets
+          # (no media bytes, no writes), so it has no read-ahead or cache budget
+          # to spend. --links is still required — without it the .rclonelink
+          # entries appear as regular files and there is nothing to readlink.
+          rclone-infinidysk:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.75@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-infinidysk-sync-helper 2>/dev/null || true
+                mkdir -p /host-mount/rclone-infinidysk-sync-helper
+                export RCLONE_CONFIG_INFINIDYSK_PASS="$(rclone obscure "$RCLONE_CONFIG_INFINIDYSK_PASS_RAW")"
+                unset RCLONE_CONFIG_INFINIDYSK_PASS_RAW
+                exec rclone mount infinidysk:/ /host-mount/rclone-infinidysk-sync-helper \
+                  --links \
+                  --read-only \
+                  --poll-interval=0 \
+                  --dir-cache-time=20s \
+                  --allow-non-empty \
+                  --vfs-cache-mode=off \
+                  --buffer-size=0M \
+                  --vfs-fast-fingerprint \
+                  --vfs-handle-caching=0 \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --uid=1000 \
+                  --gid=1000 \
+                  --cache-dir=/cache
+            env:
+              RCLONE_CONFIG_INFINIDYSK_TYPE: webdav
+              # Backend (WebDAV) port, never the :3000 frontend proxy.
+              RCLONE_CONFIG_INFINIDYSK_URL: http://infinidysk.media.svc.cluster.local:8080/
+              RCLONE_CONFIG_INFINIDYSK_VENDOR: other
+              RCLONE_CONFIG_INFINIDYSK_USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-secret
+                    key: NZBDAV_CONFIG__WEBDAV__USER
+              # Raw value; rclone's obfuscation is not deterministic, so the
+              # sidecar obscures it at start instead of storing a second copy.
+              RCLONE_CONFIG_INFINIDYSK_PASS_RAW:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-secret
+                    key: NZBDAV_CONFIG__WEBDAV__PASS
+              RCLONE_CONFIG_INFINIDYSK_PACER_MIN_SLEEP: "0"
+            probes:
+              liveness: &rclone-infinidysk-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-infinidysk-sync-helper && ls /host-mount/rclone-infinidysk-sync-helper >/dev/null
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              readiness: *rclone-infinidysk-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-infinidysk-sync-helper && ls /host-mount/rclone-infinidysk-sync-helper >/dev/null
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    persistence:
+      # The farm: every placement lands here as a symlink into .ids.
+      symlinks:
+        existingClaim: symlinks
+        globalMounts:
+          - path: /aio/symlinks
+      scripts:
+        type: configMap
+        name: infinidysk-sync-helper-script
+        advancedMounts:
+          infinidysk-sync-helper:
+            app:
+              - path: /scripts
+                readOnly: true
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
+      fuse:
+        type: hostPath
+        hostPath: /dev/fuse
+        hostPathType: CharDevice
+        advancedMounts:
+          infinidysk-sync-helper:
+            rclone-infinidysk:
+              - path: /dev/fuse
+      # Cache is off; rclone still wants a writable --cache-dir because the
+      # root filesystem is read-only.
+      rclone-cache:
+        type: emptyDir
+        sizeLimit: 1Gi
+        advancedMounts:
+          infinidysk-sync-helper:
+            rclone-infinidysk:
+              - path: /cache
+      host-tmp:
+        type: hostPath
+        hostPath: /tmp
+        hostPathType: Directory
+        advancedMounts:
+          infinidysk-sync-helper:
+            rclone-infinidysk:
+              - path: /host-mount
+                mountPropagation: Bidirectional
+      infinidysk:
+        type: hostPath
+        hostPath: /tmp/rclone-infinidysk-sync-helper
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          infinidysk-sync-helper:
+            app:
+              - path: /aio/remote/infinidysk
+                mountPropagation: HostToContainer
