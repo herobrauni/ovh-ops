@@ -56,12 +56,45 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 | 2 — consumer scaffold (`media-debug`, \*arrs) | `[x]`  | `rclone-infinidysk` rolled out to all 9 consumers (2026-10-20); `rclone-zurg` stripped 2026-10-21; `infinidysk-debug` removed 2026-10-22 |
 | 3 — \*arr cutover (client + roots + corpus)   | `[x]`  | all four on the farm with only the `InfiniDysk` client (verified 2026-10-22); TV counts from 2026-10-21 kept below                       |
 | 4 — Plex / Jellyfin cutover                   | `[~]`  | Jellyfin's libraries are on `/aio/symlinks`; Plex parked (HelmRelease commented → released, claims kept)                                 |
-| 5 — Bazarr + manual-NZB (`other`) pipeline    | `[x]`  | subtitle pipeline verified 2026-10-22 (10 `.srt` written); `infinidysk-sync-helper` intentionally not built                              |
+| 5 — Bazarr + manual-NZB (`other`) pipeline    | `[x]`  | subtitle pipeline verified 2026-10-22 (10 `.srt` written); `infinidysk-sync-helper` added 2026-10-22 (this PR)                           |
 | 6 — teardown zurg (+ fold altmount teardown)  | `[~]`  | zurg/altmount unwired and `rclone-zurg` stripped; Git trees, Authentik/Infisical/Renovate entries remain                                 |
 | 7 — docs + `AGENTS.md` findings               | `[~]`  | this table and Phase 4–6 now match the cluster; the zurg-era `AGENTS.md` narrative is kept as history                                    |
 
 ### Log
 
+- **2026-10-22** — **Phase 5: `infinidysk-sync-helper` replaces the retired helper pair.**
+  `media/zurg-sync-helper` could only move a completed release _inside_ `__magic__`, which no
+  longer exists; `media/altmount-sync-helper` copied a completed farm entry and refreshed Plex,
+  which is not how a `symlinks` import works and Plex is parked. The new app is one busybox
+  poller with a read-only `rclone-infinidysk` mount and the `symlinks` PVC: SAB history
+  `category=other` → recreate every symlink of a Completed release from
+  `completed-symlinks/other/<release>` under `/aio/symlinks/other/` → verify they resolve →
+  clear the job with `del_files=0`.
+  Verified against the live backend before the PR: all **33** `other` history slots mirrored
+  into a scratch farm (67 symlinks, **0** regular files, **0** broken links), a second pass was
+  a no-op, and a deliberately removed link was detected and repaired. The pre-existing farm
+  entries (hand-placed 2026-10-21) are still valid; one folder,
+  `01.Isle.of.Man.TT.2026x03.RST.Superbike.TT`, no longer has a history entry and stays
+  invisible to the helper. Three findings:
+    1. **Clearing a job sweeps the completed folder.** `mode=history&name=delete&del_files=0`
+       on an already-linked release removed `completed-symlinks/other/<release>` while the
+       `.ids` object and the farm symlink kept resolving. So the farm link must exist _before_
+       the clear — it is what keeps the release library-linked (health/repair, Remove Orphaned
+       Files). The helper enforces link → verify → clear and never sends `del_files=1`.
+    2. **`limit` is ignored on `mode=history`** (`api.ignore-history-limit` is on): the response
+       is the whole history, so every slot must be considered — polling only the newest one
+       stalls behind a Downloading item.
+    3. **A trailing newline matters.** The slots arrive as one compact `},{`-joined line;
+       splitting with `sed` and iterating with `read` silently dropped the last slot until the
+       file got a terminating newline (33 slots parsed as 32, newest upload never placed).
+    4. **Jellyfin cannot be told about a single file in this library.** `Other` runs with
+       `EnableRealtimeMonitor: false`, so `/Library/Media/Updated` (the targeted
+       "this path changed" endpoint) is accepted with 204 and does nothing. A library refresh
+       (`POST /Items/<id>/Refresh?Recursive=true`) does work — a test entry in
+       `/aio/symlinks/other` was indexed within 30 s — and is queued once per pass that placed
+       something. `POST /Library/Refresh` also works but rescans every library (~8 min).
+       Auth is the `Authorization: MediaBrowser Token="<key>"` header only; `X-Emby-Token`
+       and `?api_key=` are 401 on v12.
 - **2026-10-22** — **Phase 5: Bazarr fixed and verified (#1554).** Two independent faults, both
   reproduced before changing anything:
     1. **The default language profile was seeded by name.** `serie_default_profile: English` in the
@@ -363,7 +396,7 @@ Deliberate deviations; keep them in mind when executing Phases 2–6.
 | `repair_every_mins`, `par2_patch_cache_mb`         | Settings → Repairs (PAR2 + health checks, Library-Directory-aware)                                                                        |
 | media-server push scans (plex/jellyfin tokens)     | **no push integration** — periodic library scans in Plex/Jellyfin                                                                         |
 | MCP (unauthenticated tool endpoint)                | none (REST API; leave `ENABLE_API_DOCS` off)                                                                                              |
-| `zurg-sync-helper` (manual NZB placement)          | optional `infinidysk-sync-helper`, or manual import                                                                                       |
+| `zurg-sync-helper` (manual NZB placement)          | `infinidysk-sync-helper`: symlinks `completed-symlinks/other` → `/aio/symlinks/other` (2026-10-22)                                        |
 | `data/local` gauge = copy-detector                 | verify imports are symlinks (`ls -la`), library PVC usage stays flat                                                                      |
 
 ## Decisions (pre-resolved; revisit only with cause)
@@ -904,8 +937,8 @@ HelmRelease commented out again) until the farm sections are correct; nothing fa
 > Brothers_ from Gestdown and wrote them to `plex_hd/.../Season 01/*.en.srt` (1000:1000). A full
 > episode/movie re-index (`series_full_scan_subtitles` / `movies_full_scan_subtitles`) is running
 > to refresh embedded-track detection after the backend move; the 6-hourly wanted search works
-> through whatever is genuinely missing afterwards. Step 2 (`infinidysk-sync-helper`) is still
-> **not built** — nothing drains the `other` category, so manual NZBs need a hand move.
+> through whatever is genuinely missing afterwards. Step 2 is `infinidysk-sync-helper` (this PR): it drains
+> `category=other` into `/aio/symlinks/other` and refreshes the Jellyfin library after each placement.
 
 1. `bazarr` / `bazarr4k`: keep their rclone sidecars pointed at InfiniDysk
    (subtitle matching reads media through the symlink → mount; ffprobe on first
@@ -915,15 +948,50 @@ HelmRelease commented out again) until the farm sections are correct; nothing fa
    CephFS) where zurg budgeted 10Gi for the same metadata — if usage creeps past
    ~70%, grow `KOPIUR_CAPACITY` for `symlinks` (expand-in-place is supported).
 2. Manual NZBs (F1/TT etc.): upload via the InfiniDysk Queue UI with category
-   `other`, then either import by hand or port `zurg-sync-helper` as
-   `media/infinidysk-sync-helper` (busybox poller: SAB history `category=other` →
-   move `completed-symlinks/<release>` → `/aio/symlinks/other` via its own rclone
-   mount → clear the history entry). Build it only if manual NZBs become routine;
-   until then manual import is fine.
+   `other`. `media/infinidysk-sync-helper` (added 2026-10-22) is the import step:
+   a busybox poller reads SAB history for `category=other`, recreates a Completed
+   release's symlinks from `completed-symlinks/other/<release>` under
+   `/aio/symlinks/other/` through its own read-only rclone mount, and then clears
+   the job with `del_files=0`. It replaces both retired helpers — `zurg-sync-helper`
+   (which could only move inside `__magic__`) and `altmount-sync-helper` (copy plus
+   Plex refresh); with `import-strategy: symlinks` placement _is_ the import, so one
+   poller covers it and no media-server push scan exists to trigger.
+
+    Ordering and failure rules that are not obvious:
+    - **Link, verify, then clear.** Clearing a job also removes
+      `completed-symlinks/<release>` (verified with `del_files=0`: folder gone, `.ids`
+      object and farm link intact), so the farm link is what keeps the release
+      library-linked for health/repair and out of Remove Orphaned Files. A release
+      whose farm copy is short or has a single non-resolving link keeps its job and
+      is retried; the farm copy is removed so the retry starts clean.
+    - **Never `del_files=1`.** The helper must not ask the backend to delete
+      content — the `.ids` objects the farm symlinks point at are the release.
+    - **`CLEAR_JOBS=0` / `DRY_RUN=1`** exist for a first run against an untrusted
+      backend: place the links, leave the history alone.
+    - A folder that has no Completed history entry (e.g. cleared by hand before the
+      helper existed) is invisible to it and needs a manual `ln -s` tree or a re-upload.
+
+    After a pass that placed at least one release, the helper asks Jellyfin to scan the
+    `Other` library (`POST /Items/<library-id>/Refresh?Recursive=true`, id resolved by
+    name from `/Library/MediaFolders` in the same call). That is the counterpart of the
+    old helper's Plex section refresh. Two Jellyfin facts drove the choice:
+    - `POST /Library/Media/Updated` is a **no-op** for this library: its `options.xml`
+      has `EnableRealtimeMonitor: false`, so `/aio/symlinks/other` is not watched and
+      reported paths are dropped (the Movies/Shows libraries do log "Watching directory"
+      and refresh on their own).
+    - `POST /Items/<id>/Refresh` is quiet but real: a test entry created under
+      `/aio/symlinks/other/ZZHermesScanTest` appeared in the library within 30 s, and the
+      full `POST /Library/Refresh` (8 min, all libraries) is not needed for one upload.
+      Auth is `Authorization: MediaBrowser Token="<key>"` — Jellyfin 12 disables
+      `X-Emby-Token` and `api_key`, and both return 401. The key is `/jellyfin/API_KEY`
+      (Infisical, admin-scoped: `/System/Info`, `/Library/MediaFolders` and the refresh
+      endpoint answer 200/204); a failed refresh is a WARN and never blocks placement or
+      job clearing — the periodic scan is the backstop.
 
 **Verification**: wanted-search pass produces `.en.srt` next to farm entries;
 manual NZB lands under `/aio/symlinks/other` and plays.
-**Rollback**: per-item; zurg-sync-helper still exists until Phase 6.
+**Rollback**: per-item. Commenting `./infinidysk-sync-helper/ks.yaml` out stops automatic placement;
+the farm symlinks it created are ordinary links into `.ids` and keep working.
 
 ---
 
@@ -959,7 +1027,9 @@ reads in InfiniDysk's absence — confirm by stopping zurg briefly or watching i
    `app-zurg`, its policy binding and the outpost provider list in
    `blueprints/forward-auth.yaml`, plus `zurg.480p.com` in `outpost-routes.yaml`.
 5. Infisical: delete `/zurg/*` **after** confirming `/infinidysk/*` holds the NNTP
-   creds (Phase 0 copied them). If zurg sponsorship ends: remove the
+   creds (Phase 0 copied them). The Jellyfin key is no longer a blocker:
+   `media/infinidysk-sync-helper` reads `/jellyfin/API_KEY` (switched 2026-10-22, before
+   this phase started), so nothing in the tree depends on `/zurg/*` any more. If zurg sponsorship ends: remove the
    `RENOVATE_HOST_RULES` ghcr credentials from `.github/workflows/renovate.yaml`
    secrets (same token as `/zurg/GHCR_*`) — **both** places, per AGENTS.md.
    **Open 2026-10-22**: sponsorship ended 2026-10-21, `/infinidysk/*` is self-contained;
