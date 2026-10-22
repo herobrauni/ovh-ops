@@ -1,0 +1,18 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/configmap_v1.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: silo-initdb
+data:
+  # postgres-init executes /initdb/<dbname>.sql as the CNPG superuser, and only
+  # when it creates the database. pgvector is NOT a trusted extension, so the
+  # app's own role cannot install it and Silo's first migration
+  # (001_schema.sql: CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public)
+  # fails with "permission denied to create extension "vector"". Verified
+  # against the live postgres18 cluster: the owner role gets a hard error when
+  # vector is absent, and a NOTICE-level no-op once it exists.
+  # If the database ever has to be created by hand, run the statement below as
+  # the postgres superuser before Silo starts, or every migration pass fails.
+  silo.sql: |
+    CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;

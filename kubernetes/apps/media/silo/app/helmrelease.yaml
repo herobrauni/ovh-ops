@@ -1,0 +1,308 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: silo
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  interval: 30m
+  timeout: "15m"
+  values:
+    controllers:
+      silo:
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: silo-pguser-secret,silo-secret
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+        initContainers:
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.6@sha256:87627baaddb0cabed4ebe033e75038e5c7b6b081c18e86514c99067179a90719
+            envFrom:
+              - secretRef:
+                  name: silo-initdb-secret
+        containers:
+          app:
+            image:
+              repository: ghcr.io/silo-server/silo-server
+              tag: build-1302@sha256:f84ff66c707f70f3a6ba006743161bc468095b66829d60613fe4aa000a7a813c
+            env:
+              # Keep the in-container listeners fixed; the Jellyfin and
+              # Audiobookshelf listeners are separate ports on the same pod.
+              PORT: &port 8080
+              JF_PORT: &jfport 8096
+              MODE: integrated
+              # Silo tunes the database with ALTER SYSTEM at startup. postgres18
+              # is a shared cluster and its app roles are not superusers.
+              POSTGRES_TUNE: "off"
+              DATABASE_URL:
+                valueFrom:
+                  secretKeyRef:
+                    name: silo-pguser-secret
+                    key: uri_no_ssl
+              # Redis-compatible store from components/dragonfly. Optional for
+              # integrated mode, required as soon as a transcode/proxy node is
+              # added; it also caches shared coordination state.
+              REDIS_URL: redis://silo-dragonfly.media.svc.cluster.local:6379
+              SECRET_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: silo-secret
+                    key: SECRET_KEY
+              SILO_PLUGIN_CACHE_DIR: /var/lib/silo/plugins
+              # A single server has nothing to drain to; skip the 5s readiness
+              # fail-window so rollouts do not report a dead endpoint.
+              SILO_SHUTDOWN_DELAY: "0"
+              # The runtime Jellyfin Web installer shells out to npm, which needs
+              # a writable HOME (see the container securityContext note).
+              HOME: /tmp
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/v1/health
+                    port: *port
+                  initialDelaySeconds: 15
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  # Gates on PostgreSQL; storage probes are informational.
+                  httpGet:
+                    path: /api/v1/ready
+                    port: *port
+                  periodSeconds: 15
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  # First boot runs the whole Goose migration set
+                  # (SILO_MIGRATE_TIMEOUT defaults to 60m); 60x10s = 10min.
+                  httpGet:
+                    path: /api/v1/ready
+                    port: *port
+                  failureThreshold: 60
+                  periodSeconds: 10
+            resources:
+              requests:
+                cpu: 250m
+                memory: 1Gi
+              limits:
+                memory: 4Gi
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              # No readOnlyRootFilesystem: the runtime Jellyfin Web installer
+              # runs `npm ci && npm run build:production` in the compat checkout
+              # and npm writes its cache outside the mounted paths.
+          # Read-only view of the InfiniDysk symlink farm, identical to the
+          # jellyfin sidecar. Silo's libraries point at /aio/remote/infinidysk.
+          rclone-infinidysk:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.75@sha256:2687085f718d3c628f7fdfb77c52a1d344332aed543110bb88088f2c70d43eb5
+            command:
+              - /bin/sh
+              - -c
+              - |-
+                umount -l /host-mount/rclone-silo-infinidysk 2>/dev/null || true
+                mkdir -p /host-mount/rclone-silo-infinidysk
+                export RCLONE_CONFIG_INFINIDYSK_PASS="$(rclone obscure "$RCLONE_CONFIG_INFINIDYSK_PASS_RAW")"
+                unset RCLONE_CONFIG_INFINIDYSK_PASS_RAW
+                exec rclone mount infinidysk:/ /host-mount/rclone-silo-infinidysk \
+                  --links \
+                  --read-only \
+                  --poll-interval=0 \
+                  --dir-cache-time=20s \
+                  --allow-non-empty \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=24h \
+                  --vfs-cache-max-size=5G \
+                  --vfs-cache-poll-interval=30s \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=512M \
+                  --vfs-fast-fingerprint \
+                  --vfs-handle-caching=0 \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --uid=1000 \
+                  --gid=1000 \
+                  --cache-dir=/cache
+            env:
+              RCLONE_CONFIG_INFINIDYSK_TYPE: webdav
+              # Backend (WebDAV) port, never the :3000 frontend proxy.
+              RCLONE_CONFIG_INFINIDYSK_URL: http://infinidysk.media.svc.cluster.local:8080/
+              RCLONE_CONFIG_INFINIDYSK_VENDOR: other
+              RCLONE_CONFIG_INFINIDYSK_USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-secret
+                    key: NZBDAV_CONFIG__WEBDAV__USER
+              # Raw value; rclone's obfuscation is not deterministic, so the
+              # sidecar obscures it at start instead of storing a second copy.
+              RCLONE_CONFIG_INFINIDYSK_PASS_RAW:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-secret
+                    key: NZBDAV_CONFIG__WEBDAV__PASS
+              RCLONE_CONFIG_INFINIDYSK_PACER_MIN_SLEEP: "0"
+            probes:
+              liveness: &rclone-infinidysk-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-silo-infinidysk && ls /host-mount/rclone-silo-infinidysk >/dev/null
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              readiness: *rclone-infinidysk-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-silo-infinidysk && ls /host-mount/rclone-silo-infinidysk >/dev/null
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    service:
+      app:
+        controller: silo
+        ports:
+          http:
+            port: *port
+            primary: true
+          jellyfin:
+            port: *jfport
+    route:
+      app:
+        annotations:
+          gatus.home-operations.com/endpoint: |-
+            url: https://silo.480p.com/api/v1/health
+            conditions: ["[STATUS] == 200"]
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Media
+          gethomepage.dev/name: Silo
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=silo
+          gethomepage.dev/icon: mdi-movie-open
+        hostnames:
+          - silo.480p.com
+        parentRefs:
+          - name: envoy-480p-com-public
+            namespace: network
+            sectionName: https
+      # Jellyfin/Emby-compatible listener for ecosystem clients (Infuse,
+      # Findroid, VidHub, ...). One tile and one endpoint are enough, so both
+      # discovery annotations stay off here.
+      jellyfin:
+        annotations:
+          gatus.home-operations.com/enabled: "false"
+          gethomepage.dev/enabled: "false"
+        hostnames:
+          - silo-jf.480p.com
+        parentRefs:
+          - name: envoy-480p-com-public
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - identifier: app
+                port: jellyfin
+    persistence:
+      # kopiur-managed claim: artwork, plugins, Jellyfin Web compat checkout and
+      # every other writable path Silo keeps under /var/lib/silo.
+      config:
+        existingClaim: silo
+        globalMounts:
+          - path: /var/lib/silo
+      # Transcode scratch and prepared downloads both default to /tmp/silo-*,
+      # which Silo creates itself.
+      tmp:
+        type: emptyDir
+        # Transcode scratch and prepared downloads share this tree
+        # (/tmp/silo-transcode, /tmp/silo-download-artifacts).
+        sizeLimit: 20Gi
+        globalMounts:
+          - path: /tmp
+      symlinks:
+        existingClaim: symlinks
+        globalMounts:
+          - path: /aio/symlinks
+      initdb:
+        type: configMap
+        name: silo-initdb
+        advancedMounts:
+          silo:
+            01-init-db:
+              - path: /initdb
+      fuse:
+        type: hostPath
+        hostPath: /dev/fuse
+        hostPathType: CharDevice
+        advancedMounts:
+          silo:
+            rclone-infinidysk:
+              - path: /dev/fuse
+      rclone-cache-infinidysk:
+        type: emptyDir
+        # Hard backstop for the rclone cap (5G).
+        sizeLimit: 6Gi
+        advancedMounts:
+          silo:
+            rclone-infinidysk:
+              - path: /cache
+      host-tmp:
+        type: hostPath
+        hostPath: /tmp
+        hostPathType: Directory
+        advancedMounts:
+          silo:
+            rclone-infinidysk:
+              - path: /host-mount
+                mountPropagation: Bidirectional
+      infinidysk:
+        type: hostPath
+        hostPath: /tmp/rclone-silo-infinidysk
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          silo:
+            app:
+              - path: /aio/remote/infinidysk
+                mountPropagation: HostToContainer
