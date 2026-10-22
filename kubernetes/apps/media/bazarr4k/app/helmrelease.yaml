@@ -243,6 +243,12 @@ spec:
         type: emptyDir
         globalMounts:
           - path: /tmp
+      # See bazarr: the `.srt` files land beside the farm symlink (the path
+      # Radarr reports), which only exists with the `symlinks` claim mounted.
+      symlinks:
+        existingClaim: symlinks
+        globalMounts:
+          - path: /aio/symlinks
       fuse:
         type: hostPath
         hostPath: /dev/fuse
