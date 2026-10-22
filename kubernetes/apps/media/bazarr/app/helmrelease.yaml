@@ -243,6 +243,17 @@ spec:
         type: emptyDir
         globalMounts:
           - path: /tmp
+      # Bazarr writes its `.srt` files **beside the farm symlink** (the path
+      # Sonarr reports), so it needs the `symlinks` claim. The WebDAV sidecar
+      # only exposes the backend tree (`completed-symlinks`/`.ids`), never the
+      # consumer-facing farm — without this mount `series_download_subtitles()`
+      # raises OSError on the missing series directory and no search runs.
+      # Read-write because the subtitle files live here; content stays on the
+      # backend.
+      symlinks:
+        existingClaim: symlinks
+        globalMounts:
+          - path: /aio/symlinks
       fuse:
         type: hostPath
         hostPath: /dev/fuse
