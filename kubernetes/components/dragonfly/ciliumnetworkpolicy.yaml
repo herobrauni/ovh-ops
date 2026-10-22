@@ -18,11 +18,22 @@ spec:
                 - ${APP}
                 - ${APP}-machine-learning
                 - dragonfly
+        # The operator probes `INFO persistence` against the pod IP on 6379 to
+        # decide dataset-loaded/master (internal/controller/dragonfly_instance.go
+        # isDatasetLoaded). That call is what sets the `role: master` pod label,
+        # and the generated Service selects on it — without this rule a new
+        # instance never gets an endpoint, its ClusterIP silently drops, and the
+        # app's client times out even though the pod is Running and listening.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: dbms
+            app.kubernetes.io/name: dragonfly-operator
       toPorts:
         - ports:
             - port: "6379"
               protocol: TCP
   ingressDeny:
+    # Deny rules are evaluated before allow rules, so the operator has to be
+    # listed here too — NotIn would otherwise keep denying it.
     - fromEndpoints:
         - matchExpressions:
             - key: app.kubernetes.io/name
@@ -31,6 +42,7 @@ spec:
                 - ${APP}
                 - ${APP}-machine-learning
                 - dragonfly
+                - dragonfly-operator
       toPorts:
         - ports:
             - port: "6379"
