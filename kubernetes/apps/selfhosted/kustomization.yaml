@@ -17,18 +17,18 @@ resources:
   - ./web-check/ks.yaml
   - ./networking-toolbox/ks.yaml
   - ./karakeep/ks.yaml
-  # TEMP(2026-10-21): idlers + firefly3 taken offline ahead of the critical PHP
-  # security release (CVSS 9.2, 14:00 UTC 2026-10-21). Both run PHP 8.5.x and
-  # idlers is internet-facing. Re-enable once patched images exist and are
-  # bumped — see docs/php-critical-release-2026-10-21.md for the checklist and
-  # the pre-teardown VolumeSnapshots that hold their PVC data.
+  # TEMP(2026-10-21): idlers + firefly3 were taken offline ahead of the critical
+  # PHP security release (CVSS 9.2, 14:00 UTC 2026-10-21). Both run PHP 8.5.x and
+  # idlers is internet-facing. firefly3 is back (2026-10-22) on the 6.7.9 rebuild
+  # with PHP 8.5.12, restored from its pre-teardown VolumeSnapshot; idlers stays
+  # off until the AlteredParadox image carries PHP 8.5.12 too — see
+  # docs/php-critical-release-2026-10-21.md for the checklist.
   # - ./idlers/ks.yaml
   - ./immich/ks.yaml
   - ./atuin/ks.yaml
   - ./jotty/ks.yaml
   - ./bentopdf/ks.yaml
-  # TEMP(2026-10-21): offline with idlers, same reason — see note above.
-  # - ./firefly3/ks.yaml
+  - ./firefly3/ks.yaml
   - ./paperless/ks.yaml
   - ./patchmon/ks.yaml
   - ./silverbullet/ks.yaml

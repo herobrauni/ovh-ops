@@ -1,0 +1,24 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/persistentvolumeclaim_v1.json
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: firefly3
+  labels:
+    # dataSourceRef is immutable once the claim is bound: never update this PVC
+    # again (the same reason components/kopiur/pvc.yaml sets it). The claim was
+    # recreated from the pre-teardown snapshot when firefly3 came back online
+    # after the 2026-10-21 PHP security release; the original PV
+    # (pvc-eab5b501-…) is still Retained as the fallback.
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  accessModes:
+    - ReadWriteOnce
+  dataSourceRef:
+    apiGroup: snapshot.storage.k8s.io
+    kind: VolumeSnapshot
+    name: firefly3-presecurity-20261021
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: ceph-block
