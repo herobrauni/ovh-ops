@@ -56,10 +56,7 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: observability
             app.kubernetes.io/name: prometheus
-        # Browsing/verification pods.
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: media
-            app.kubernetes.io/name: infinidysk-debug
+        # Browsing/verification pod.
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: media-debug
