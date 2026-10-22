@@ -30,6 +30,7 @@ resources:
   # kopiur snapshots are kept as the content rollback; uncomment to revive.
   # - ./zurg-sync-helper/ks.yaml
   - ./jellyfin/ks.yaml
+  - ./silo/ks.yaml
   - ./media-debug/ks.yaml
   # Retired 2026-10-21 (InfiniDysk took over). The zurg PVC and its
   # kopiur snapshots are kept as the content rollback; uncomment to revive.
