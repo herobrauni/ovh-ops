@@ -983,9 +983,10 @@ HelmRelease commented out again) until the farm sections are correct; nothing fa
       `/aio/symlinks/other/ZZHermesScanTest` appeared in the library within 30 s, and the
       full `POST /Library/Refresh` (8 min, all libraries) is not needed for one upload.
       Auth is `Authorization: MediaBrowser Token="<key>"` — Jellyfin 12 disables
-      `X-Emby-Token` and `api_key`, and both return 401. The key is the existing
-      `/zurg/JELLYFIN_TOKEN` value (see the Phase 6 note); a failed refresh is a WARN and
-      never blocks placement or job clearing — the periodic scan is the backstop.
+      `X-Emby-Token` and `api_key`, and both return 401. The key is `/jellyfin/API_KEY`
+      (Infisical, admin-scoped: `/System/Info`, `/Library/MediaFolders` and the refresh
+      endpoint answer 200/204); a failed refresh is a WARN and never blocks placement or
+      job clearing — the periodic scan is the backstop.
 
 **Verification**: wanted-search pass produces `.en.srt` next to farm entries;
 manual NZB lands under `/aio/symlinks/other` and plays.
@@ -1026,10 +1027,9 @@ reads in InfiniDysk's absence — confirm by stopping zurg briefly or watching i
    `app-zurg`, its policy binding and the outpost provider list in
    `blueprints/forward-auth.yaml`, plus `zurg.480p.com` in `outpost-routes.yaml`.
 5. Infisical: delete `/zurg/*` **after** confirming `/infinidysk/*` holds the NNTP
-   creds (Phase 0 copied them) **and** after moving `/zurg/JELLYFIN_TOKEN` to
-   `/jellyfin/API_KEY` — `media/infinidysk-sync-helper` reads the token from the `/zurg`
-   path today (zurg's push-scan was its only other consumer), so deleting the folder
-   without repointing that ExternalSecret breaks the library refresh. If zurg sponsorship ends: remove the
+   creds (Phase 0 copied them). The Jellyfin key is no longer a blocker:
+   `media/infinidysk-sync-helper` reads `/jellyfin/API_KEY` (switched 2026-10-22, before
+   this phase started), so nothing in the tree depends on `/zurg/*` any more. If zurg sponsorship ends: remove the
    `RENOVATE_HOST_RULES` ghcr credentials from `.github/workflows/renovate.yaml`
    secrets (same token as `/zurg/GHCR_*`) — **both** places, per AGENTS.md.
    **Open 2026-10-22**: sponsorship ended 2026-10-21, `/infinidysk/*` is self-contained;
