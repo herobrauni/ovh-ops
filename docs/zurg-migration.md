@@ -1,5 +1,12 @@
 # Migrating from AltMount to zurg
 
+> **Historical — superseded 2026-10-21.** This plan was executed, and its end state was then
+> replaced: zurg was retired in favour of InfiniDysk (`docs/infinidysk-migration.md`), its
+> `__magic__` state went away with it, and its kopiur PVC was garbage-collected along with the
+> Flux Kustomization. Kept as the record of the altmount→zurg cutover and its lessons; do not
+> execute Phases 4–6 of this document. The current backend state lives in
+> `docs/infinidysk-migration.md` and the `media/infinidysk` section of `AGENTS.md`.
+
 Working plan for replacing AltMount with zurg as the Usenet backend. End state:
 zurg serves the whole library through `__magic__`, the \*arrs grab through zurg's
 SABnzbd endpoint and organise inside `__magic__` (row writes, no bytes moved), Plex
@@ -25,14 +32,14 @@ verification and rollback.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 
-| Phase | Status | Note |
-| --- | --- | --- |
-| 0 — reconcile the missing content | `[x]` | **dropped by decision (2026-10-01)** — the missing set will simply re-grab after Phase 3; worklist kept for reference only |
-| 1 — Git: zurg sidecar on the four \*arrs | `[x]` | deployed & verified 2026-10-01 (PR #1329 / main `364cd58b`) |
-| 2 — switch the download clients | `[x]` | deployed & verified 2026-10-01 (all four apps) |
-| 3 — repoint \*arr root folders | `[x]` | bulk repoint done 2026-10-01; 0 files lost, old roots dropped |
-| 4 — Plex cutover | `[~]` | all 5 sections switched to magic-only; Movies/Movies4k/Other converged, TV scanning |
-| 5 — teardown | `[ ]` | only after 1–2 quiet weeks |
+| Phase                                    | Status | Note                                                                                                                       |
+| ---------------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------- |
+| 0 — reconcile the missing content        | `[x]`  | **dropped by decision (2026-10-01)** — the missing set will simply re-grab after Phase 3; worklist kept for reference only |
+| 1 — Git: zurg sidecar on the four \*arrs | `[x]`  | deployed & verified 2026-10-01 (PR #1329 / main `364cd58b`)                                                                |
+| 2 — switch the download clients          | `[x]`  | deployed & verified 2026-10-01 (all four apps)                                                                             |
+| 3 — repoint \*arr root folders           | `[x]`  | bulk repoint done 2026-10-01; 0 files lost, old roots dropped                                                              |
+| 4 — Plex cutover                         | `[~]`  | all 5 sections switched to magic-only; Movies/Movies4k/Other converged, TV scanning                                        |
+| 5 — teardown                             | `[ ]`  | only after 1–2 quiet weeks                                                                                                 |
 
 ### Log
 
@@ -64,7 +71,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   `plex_4k/shows` 0, `plex_4k/movies` 25, `other` 18. All 108 were searched in
   zurg's library: **49 RECOVER** (title+year at the tree's resolution), **25
   WRONG-RES** (only the other resolution present), **30 GONE** (no match —
-  including *all 18* `other` sports entries), **4 LOW-CONF**. Full per-entry table
+  including _all 18_ `other` sports entries), **4 LOW-CONF**. Full per-entry table
   in [`zurg-migration-phase0-worklist.md`](./zurg-migration-phase0-worklist.md).
   Note for the next session: `zurg_library_search` `query` is a literal substring
   and misses dotted release names — use `regex`. Nothing placed yet, so the
@@ -83,20 +90,21 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   (zurg validates host, key, global config **and** category). One real grab per
   app then imported into `__magic__`, no bytes copied:
 
-  | app | grabbed | landed at |
-  | --- | --- | --- |
-  | radarr | Hercules: Zero to Hero (1999) | `__magic__/plex_hd/movies/…` |
-  | radarr4k | Django Unchained (2012) | `__magic__/plex_4k/movies/…` |
-  | sonarr4k | Band of Brothers S01E01 | `__magic__/plex_4k/shows/…` |
-  | sonarr | Last Week Tonight S13E24 | `__magic__/plex_hd/shows/…` |
+    | app      | grabbed                       | landed at                    |
+    | -------- | ----------------------------- | ---------------------------- |
+    | radarr   | Hercules: Zero to Hero (1999) | `__magic__/plex_hd/movies/…` |
+    | radarr4k | Django Unchained (2012)       | `__magic__/plex_4k/movies/…` |
+    | sonarr4k | Band of Brothers S01E01       | `__magic__/plex_4k/shows/…`  |
+    | sonarr   | Last Week Tonight S13E24      | `__magic__/plex_hd/shows/…`  |
 
-  **Ordering correction (important):** the grab test in the Phase 2 text below
-  cannot run while the \*arr root still points at `/aio/symlinks/...`. The import
-  would be a cross-filesystem move (source on the zurg mount, destination on the
-  symlinks PVC) and — with `copyUsingHardlinks=true` — falls back to a **full byte
-  copy into a 10 GiB PVC**. The root must point into `__magic__` first, so each app's
-  grab was preceded by the single-item root repoint from Phase 3. See the Phase 2
-  execution notes added below.
+    **Ordering correction (important):** the grab test in the Phase 2 text below
+    cannot run while the \*arr root still points at `/aio/symlinks/...`. The import
+    would be a cross-filesystem move (source on the zurg mount, destination on the
+    symlinks PVC) and — with `copyUsingHardlinks=true` — falls back to a **full byte
+    copy into a 10 GiB PVC**. The root must point into `__magic__` first, so each app's
+    grab was preceded by the single-item root repoint from Phase 3. See the Phase 2
+    execution notes added below.
+
 - **2026-10-01** — **Phase 3 leading edge (5 items).** Repointed and re-matched
   without moving bytes: radarr movie `Hercules: Zero to Hero`, radarr4k movie
   `Django Unchained`, sonarr4k series `Band of Brothers`, sonarr series `Ted Lasso`
@@ -106,20 +114,20 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   references `/aio/remote/zurg/__magic__/...`, with **no file records lost** and no
   bytes moved (before → after file counts identical):
 
-  | app | items | files before → after | new root |
-  | --- | ---: | --- | --- |
-  | sonarr | 104 series | 3455 → 3455 | `__magic__/plex_hd/shows` |
-  | radarr | 508 movies | 499 → 499 | `__magic__/plex_hd/movies` |
-  | sonarr4k | 88 series | 1368 → 1368 | `__magic__/plex_4k/shows` |
-  | radarr4k | 471 movies | 424 → 424 | `__magic__/plex_4k/movies` |
+    | app      |      items | files before → after | new root                   |
+    | -------- | ---------: | -------------------- | -------------------------- |
+    | sonarr   | 104 series | 3455 → 3455          | `__magic__/plex_hd/shows`  |
+    | radarr   | 508 movies | 499 → 499            | `__magic__/plex_hd/movies` |
+    | sonarr4k |  88 series | 1368 → 1368          | `__magic__/plex_4k/shows`  |
+    | radarr4k | 471 movies | 424 → 424            | `__magic__/plex_4k/movies` |
 
-  Done with a **bulk editor call per app** (`PUT /movie/editor` /
-  `PUT /series/editor`, `moveFiles:false`), then `DELETE /rootfolder/<old-id>` to drop
-  the `/aio/symlinks/...` roots. After that: **health is clear in all four apps**, every
-  movie/episode file path reads `__magic__`, and the old symlink tree is unchanged
-  (103 / 498 / 67 / 426 entries — nothing copied, nothing deleted). Phase 4 (Plex) is
-  the remaining cutover; the \*arrs will now search for and re-grab genuinely missing
-  content on their own schedule.
+    Done with a **bulk editor call per app** (`PUT /movie/editor` /
+    `PUT /series/editor`, `moveFiles:false`), then `DELETE /rootfolder/<old-id>` to drop
+    the `/aio/symlinks/...` roots. After that: **health is clear in all four apps**, every
+    movie/episode file path reads `__magic__`, and the old symlink tree is unchanged
+    (103 / 498 / 67 / 426 entries — nothing copied, nothing deleted). Phase 4 (Plex) is
+    the remaining cutover; the \*arrs will now search for and re-grab genuinely missing
+    content on their own schedule.
 
 ---
 
@@ -128,11 +136,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 ### Already done
 
 - **zurg deployed and healthy** (`media/zurg`): 5 NNTP accounts (Eweka 50 + Frugal EU 75
-  + Frugal US 25 primaries; Frugal bonus + Blocknews as `backup: true` fill),
-  `magic.enabled: true`, `rclone_enabled: false` (consumers mount `/dav/` via their own
-  rclone sidecars — zurg's built-in FUSE mount and its `union_writable` caveats are
-  N/A here), `mount_path: /aio/remote/zurg`, hardened pod, 30Gi `/config` PVC, kopiur
-  backups, Gatus + Authentik + `zurg.480p.com` routes.
+    - Frugal US 25 primaries; Frugal bonus + Blocknews as `backup: true` fill),
+      `magic.enabled: true`, `rclone_enabled: false` (consumers mount `/dav/` via their own
+      rclone sidecars — zurg's built-in FUSE mount and its `union_writable` caveats are
+      N/A here), `mount_path: /aio/remote/zurg`, hardened pod, 30Gi `/config` PVC, kopiur
+      backups, Gatus + Authentik + `zurg.480p.com` routes.
 - **Library populated and cleaned**: ~5,491 probed-clean releases after the 2026-09-30
   sweep (7,368 → removed broken/DMCA'd/unplayable; `__unplayable__` and
   `status_cannot_repair` at 0). Note this is **more releases than AltMount ever
@@ -140,13 +148,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   see the migrate/altmount page), and zurg has them.
 - **`__magic__` tree already organised** with \*arr naming (content already placed):
 
-  | tree                | `__magic__` | symlink farm (old) | missing in zurg |
-  |---------------------|------------:|-------------------:|----------------:|
-  | `plex_hd/shows`     |         102 |                103 |               1 |
-  | `plex_hd/movies`    |         434 |                498 |              64 |
-  | `plex_4k/shows`     |          67 |                 67 |               0 |
-  | `plex_4k/movies`    |         401 |                425 |              24 |
-  | `other`             |          13 |                 31 |              18 |
+    | tree             | `__magic__` | symlink farm (old) | missing in zurg |
+    | ---------------- | ----------: | -----------------: | --------------: |
+    | `plex_hd/shows`  |         102 |                103 |               1 |
+    | `plex_hd/movies` |         434 |                498 |              64 |
+    | `plex_4k/shows`  |          67 |                 67 |               0 |
+    | `plex_4k/movies` |         401 |                425 |              24 |
+    | `other`          |          13 |                 31 |              18 |
 
 - **SABnzbd endpoint live** (`sabnzbd.enabled: true`): verified
   `GET /api?mode=get_config` → `complete_dir: /aio/remote/zurg/__magic__/__all__`,
@@ -174,20 +182,20 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 ### Still on AltMount (the remaining work)
 
 - **All four \*arrs import into the symlink farm and grab from AltMount:**
-  - sonarr → root `/aio/symlinks/plex_hd/shows`, download client `AltMount (SABnzbd)`
-    at `altmount.media.svc.cluster.local:8080` (enabled)
-  - radarr → root `/aio/symlinks/plex_hd/movies`, same client (enabled)
-  - sonarr4k → root `/aio/symlinks/plex_4k/shows`, same client (enabled)
-  - radarr4k → root `/aio/symlinks/plex_4k/movies`, same client (enabled)
-  - No remote path mappings anywhere (both sides share paths — same model works for
-    zurg because `mount_path` matches what consumers mount, so still none needed).
-  - The \*arr pods have **no zurg sidecar yet** — they only mount altmount
-    (`/aio/remote/altmount`, with `--links`) and the `symlinks` PVC (`/aio/symlinks`).
-    Old flow: \*arr "imports" by moving rclone-surfaced symlinks from
-    `/aio/remote/altmount/complete/<cat>/<release>/` into the root folder; targets
-    point back into the altmount mount.
-  - Disabled download clients (`decypharr-*`, `nzbdav`) still configured in sonarr /
-    radarr / radarr4k — dead config, ignore or delete.
+    - sonarr → root `/aio/symlinks/plex_hd/shows`, download client `AltMount (SABnzbd)`
+      at `altmount.media.svc.cluster.local:8080` (enabled)
+    - radarr → root `/aio/symlinks/plex_hd/movies`, same client (enabled)
+    - sonarr4k → root `/aio/symlinks/plex_4k/shows`, same client (enabled)
+    - radarr4k → root `/aio/symlinks/plex_4k/movies`, same client (enabled)
+    - No remote path mappings anywhere (both sides share paths — same model works for
+      zurg because `mount_path` matches what consumers mount, so still none needed).
+    - The \*arr pods have **no zurg sidecar yet** — they only mount altmount
+      (`/aio/remote/altmount`, with `--links`) and the `symlinks` PVC (`/aio/symlinks`).
+      Old flow: \*arr "imports" by moving rclone-surfaced symlinks from
+      `/aio/remote/altmount/complete/<cat>/<release>/` into the root folder; targets
+      point back into the altmount mount.
+    - Disabled download clients (`decypharr-*`, `nzbdav`) still configured in sonarr /
+      radarr / radarr4k — dead config, ignore or delete.
 - **`other` pipeline**: `altmount-sync-helper` copies `/aio/symlinks/complete/other` →
   `/aio/symlinks/other` (non-\*arr content: F1, TT). Dies with AltMount; replacement is
   manual `__magic__` placement or grabs via the `other`/`nonplex` zurg categories.
@@ -202,13 +210,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 - **Move inside `__magic__` = row write; move out of it = hard 403.** Root folders
   must be inside `__magic__` (ours are) and must sit **beside** `__all__`, never at or
   above it (both \*arrs health-check that). `__magic__/__all__` itself is computed —
-  nothing can be written into it; it is only the folder clients import *from*.
+  nothing can be written into it; it is only the folder clients import _from_.
 - **The SABnzbd endpoint now pre-checks articles** (the caveat on the migrate/altmount
   page — "does not yet check whether a post's articles are still on the news server" —
   is **outdated**; the sonarr-radarr guide supersedes it): before a job reports
   Completed, zurg STATs the first article of each content file. A release with gone
   articles reports **Failed**, which the \*arrs blocklist and re-grab unattended. A
-  check that cannot *complete* (account down/throttled) keeps the job Queued and only
+  check that cannot _complete_ (account down/throttled) keeps the job Queued and only
   fails it after 30 attempts spanning ≥3h; a release that leaves the library fails its
   job after 15 min. Remaining gap: the check samples the **first** article per file,
   so mid-file damage still only fails on read — the 2026-09-30 probe sweep makes that
@@ -219,7 +227,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 - **No progress bars**: a job is Queued or Completed, nothing between. A job sitting
   Queued right after the release appears is normal for a poll or two (zurg is settling
   exact file sizes — importing early is what causes "File move incomplete" errors).
-  >60 simultaneously-ready jobs drain through history sixty at a time; expected.
+    > 60 simultaneously-ready jobs drain through history sixty at a time; expected.
 - **\*arr deletes are tombstones, not destruction** (`magic.allow_delete: false`
   here): quality upgrades and post-import job-folder cleanup just hide the entry; the
   release stays in `__all__`. Tombstones are undoable on the `/magic/` dashboard.
@@ -331,7 +339,7 @@ editing in place, so rollback is "re-enable AltMount, disable zurg":
   their `-100` default. `POST …/downloadclient/test` first (200 = all four checks),
   then `POST …/downloadclient`, then `PUT …/downloadclient/<id>` with
   `enable:false` on the AltMount client.
-- **Root-folder repoint is an *editor* call, not a per-item PUT.**
+- **Root-folder repoint is an _editor_ call, not a per-item PUT.**
   `PUT /api/v3/movie/{id}` silently ignores a changed `rootFolderPath` (returns 202,
   no change). Use `PUT /api/v3/movie/editor` with
   `{"movieIds":[…],"rootFolderPath":…,"moveFiles":false}` — likewise

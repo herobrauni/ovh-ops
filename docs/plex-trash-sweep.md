@@ -1,5 +1,12 @@
 # Plex trash sweep for the zurg-backed libraries (design — not implemented)
 
+> **Obsolete — parked permanently 2026-10-21/22.** zurg was retired, so its `plex_settings_policy:
+> guard` no longer re-asserts `autoEmptyTrash=0` on the Plex server, and Plex itself is uninstalled
+> pending its move to the InfiniDysk farm. The premise (a mount that blips mid-scan, holding Plex's
+> trash because a guard writes the setting back) dies with zurg. **When Plex returns:** verify
+> "Empty trash automatically after every scan" is off by hand, then use Plex's own scheduled tasks
+> or a narrow `PUT /library/sections/{id}/emptyTrash` for the farm sections — no zurg involvement.
+
 Written 2026-09-30 when zurg's Plex integration was wired up (`media/zurg` config ExternalSecret).
 Parked deliberately: the cluster currently runs `plex_settings_policy: guard`, which means zurg
 turns Plex's `autoEmptyTrash` off (the mount-blip data-loss guard) and nothing collects Plex's
