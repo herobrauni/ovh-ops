@@ -1,7 +1,8 @@
 # PHP critical security release — idlers + firefly3 temporarily offline (2026-10-21)
 
-**Status: ACTION REQUIRED in the coming days.** Two apps are intentionally disabled in
-Git. Nothing else in the cluster runs PHP.
+**Status: idlers still offline (ACTION REQUIRED). firefly3 re-enabled 2026-10-22** on
+the PHP 8.5.12 rebuild, restored from its pre-teardown snapshot — see
+"Progress" at the end. Nothing else in the cluster runs PHP.
 
 ## Why
 
@@ -97,3 +98,30 @@ recoverable from kopiur even without the CSI snapshot.
 
 Uncomment both entries, reconcile, restore PVCs from the snapshots above. That is the
 pre-teardown PHP versions — only do it if the advisory was withdrawn.
+
+## Progress (2026-10-22)
+
+**firefly3 — done.** Upstream rebuilt `fireflyiii/core:6.7.9` on 2026-10-21T18:42Z with
+PHP 8.5.12 (same app version, base-image rebuild only; `develop` too). Renovate #1539 had
+already moved the pin `a2b5353` (PHP 8.5.10) → `4409f9f0` (PHP 8.5.12), so no image edit
+was needed. What the re-enable took:
+
+- New Git-managed claim `kubernetes/apps/selfhosted/firefly3/app/pvc.yaml` with
+  `dataSourceRef` → `VolumeSnapshot/firefly3-presecurity-20261021`, mounted via
+  `existingClaim: firefly3`. An app-template-rendered PVC cannot carry a `dataSourceRef`,
+  and the field is immutable once bound, hence `ssa: IfNotPresent` on the claim.
+- Verified after reconcile: PVC `Bound` (`pvc-5f7f317e…`), `php -v` in the pod →
+  **8.5.12**, `https://firefly3.brauni.dev` → 302 → `/login` 200, DNSEndpoint + HTTPRoute
+  recreated, Gatus already probing. DB was never touched: 60 accounts, 150
+  transaction journals, 2 users, and 0 attachments — which is why `storage/upload` being
+  empty here is the true state, not a failed restore.
+- `pvc-eab5b501-…` stays `Retain`/`Released` as the fallback copy; delete it (and its
+  RBD image) once the restored claim has run for a while.
+
+**idlers — still blocked.** The AlteredParadox fork still pins
+`php:8.5.11-fpm-alpine`, so no fork image carries the fix. PR
+[AlteredParadox/my-idlers#136](https://github.com/AlteredParadox/my-idlers/pull/136)
+bumps it to `php:8.5.12-fpm-alpine@sha256:4943e6c8…` (verified locally: build succeeds,
+`php -v` → 8.5.12, all five extensions, `artisan` boots). It needs a merge plus a
+`v4.1.0+ap.20` tag before `ghcr.io/alteredparadox/my-idlers` has anything to deploy;
+`4.1.0-ap.19` (PHP 8.5.11) is still the newest tag.
