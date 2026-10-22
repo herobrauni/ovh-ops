@@ -20,6 +20,8 @@ spec:
       namespace: kopiur-system
     - name: rook-ceph-cluster
       namespace: rook-ceph
+    - name: symlinks
+      namespace: media
     - name: authentik
       namespace: authentik
   interval: 1h
