@@ -143,9 +143,6 @@ spec:
     persistence:
       storage:
         enabled: true
-        type: persistentVolumeClaim
-        accessMode: ReadWriteOnce
-        storageClass: ceph-block
-        size: 5Gi
+        existingClaim: firefly3
         globalMounts:
           - path: /var/www/html/storage
