@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cilium.io/ciliumnetworkpolicy_v2.json
+# Ingress-only allowlist. Silo is a media server with its own accounts (like
+# jellyfin/plex), so the Gateway is the only consumer: 8080 is the web app /
+# native API, 8096 the Jellyfin-compatible listener.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: silo
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: silo
+      app.kubernetes.io/instance: silo
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: network
+            gateway.networking.k8s.io/gateway-name: envoy-480p-com-public
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+            - port: "8096"
+              protocol: TCP
