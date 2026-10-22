@@ -77,6 +77,7 @@ spec:
                   secretKeyRef:
                     name: *pguser
                     key: user
+              PROWLARR__SERVER__ALLOWEDHOSTS: "prowlarr.480p.com,prowlarr.media.svc.cluster.local"
               PROWLARR__SERVER__PORT: &targetPort 9696
               PROWLARR__UPDATE__BRANCH: develop
             probes:
@@ -87,6 +88,9 @@ spec:
                   httpGet:
                     path: /ping
                     port: *targetPort
+                    httpHeaders:
+                      - name: Host
+                        value: prowlarr.media.svc.cluster.local
                   initialDelaySeconds: 0
                   periodSeconds: 10
                   timeoutSeconds: 1
@@ -99,6 +103,9 @@ spec:
                   httpGet:
                     path: /ping
                     port: *targetPort
+                    httpHeaders:
+                      - name: Host
+                        value: prowlarr.media.svc.cluster.local
                   failureThreshold: 30
                   periodSeconds: 10
             resources:

@@ -75,6 +75,7 @@ spec:
                   secretKeyRef:
                     name: *pguser
                     key: user
+              SONARR__SERVER__ALLOWEDHOSTS: "sonarr4k.480p.com,sonarr4k.media.svc.cluster.local"
               SONARR__SERVER__PORT: &port 80
               SONARR__UPDATE__BRANCH: develop
             probes:
@@ -85,6 +86,9 @@ spec:
                   httpGet:
                     path: /ping
                     port: *port
+                    httpHeaders:
+                      - name: Host
+                        value: sonarr4k.media.svc.cluster.local
                   initialDelaySeconds: 30
                   periodSeconds: 30
                   timeoutSeconds: 10
@@ -96,6 +100,9 @@ spec:
                   httpGet:
                     path: /ping
                     port: *port
+                    httpHeaders:
+                      - name: Host
+                        value: sonarr4k.media.svc.cluster.local
                   initialDelaySeconds: 30
                   periodSeconds: 15
                   timeoutSeconds: 10
@@ -107,6 +114,9 @@ spec:
                   httpGet:
                     path: /ping
                     port: *port
+                    httpHeaders:
+                      - name: Host
+                        value: sonarr4k.media.svc.cluster.local
                   failureThreshold: 30
                   periodSeconds: 10
             resources:
