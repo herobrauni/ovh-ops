@@ -91,3 +91,12 @@ entries:
       target: !KeyOf app-silo
       group: !Find [authentik_core.group, [name, Silo]]
       order: 0
+  # PolicyBinding identifiers include the group, so swapping the group above
+  # created a *second* binding and left the old Media one granting access.
+  # Declare the stale pair absent; this is a no-op once it is gone.
+  - model: authentik_policies.policybinding
+    state: absent
+    identifiers:
+      target: !KeyOf app-silo
+      group: !Find [authentik_core.group, [name, Media]]
+      order: 0
