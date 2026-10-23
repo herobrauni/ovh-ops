@@ -60,6 +60,13 @@ spec:
                     name: silo-secret
                     key: SECRET_KEY
               SILO_PLUGIN_CACHE_DIR: /var/lib/silo/plugins
+              # Go's runtime never reads the cgroup limit, so without this the
+              # heap grows until the cap and the kernel OOM-kills the container
+              # mid-scan: on 2026-10-23 it rode 3.92GiB of a 4Gi limit for ~10h
+              # and then died during the first TV scan (OOMKilled, exit 137).
+              # Keep the soft target ~2GiB below the limit: the plugin and
+              # ffprobe children live in the same cgroup but outside this heap.
+              GOMEMLIMIT: 3GiB
               # A single server has nothing to drain to; skip the 5s readiness
               # fail-window so rollouts do not report a dead endpoint.
               SILO_SHUTDOWN_DELAY: "0"
@@ -103,9 +110,14 @@ spec:
             resources:
               requests:
                 cpu: 250m
-                memory: 1Gi
+                # The heap alone holds ~3GiB under load, so a 1Gi request made
+                # this the first pod the node would evict under pressure.
+                memory: 2Gi
               limits:
-                memory: 4Gi
+                # 5Gi, not 4Gi: GOMEMLIMIT bounds the Go heap, but the plugin
+                # subprocesses, transient ffprobes and page cache are outside it
+                # and were what pushed the old 4Gi cap over during a scan.
+                memory: 5Gi
             securityContext:
               allowPrivilegeEscalation: false
               capabilities:
