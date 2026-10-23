@@ -13,28 +13,17 @@ resources:
   - ./namespace.yaml
   - ./common/servarr-secret.yaml
   - ./booklore/ks.yaml
-  # - ./altmount/ks.yaml
-  # Retired 2026-10-21 (InfiniDysk took over). The zurg PVC and its
-  # kopiur snapshots are kept as the content rollback; uncomment to revive.
-  # - ./zurg/ks.yaml
   - ./bazarr/ks.yaml
   - ./bazarr4k/ks.yaml
   - ./infinidysk/ks.yaml
   # Polls InfiniDysk's SAB history for category `other` and symlinks manual
   # NZBs into /aio/symlinks/other (the manual-NZB import step an *arr does for
-  # its own categories). Replaces zurg-sync-helper + altmount-sync-helper.
+  # its own categories).
   - ./infinidysk-sync-helper/ks.yaml
   - ./clonarr/ks.yaml
-  # - ./altmount-sync-helper/ks.yaml
-  # Retired 2026-10-21 (InfiniDysk took over). The zurg PVC and its
-  # kopiur snapshots are kept as the content rollback; uncomment to revive.
-  # - ./zurg-sync-helper/ks.yaml
   - ./jellyfin/ks.yaml
   - ./silo/ks.yaml
   - ./media-debug/ks.yaml
-  # Retired 2026-10-21 (InfiniDysk took over). The zurg PVC and its
-  # kopiur snapshots are kept as the content rollback; uncomment to revive.
-  # - ./zurg-debug/ks.yaml
   - ./prowlarr/ks.yaml
   - ./seerr/ks.yaml
   - ./shelfmark/ks.yaml

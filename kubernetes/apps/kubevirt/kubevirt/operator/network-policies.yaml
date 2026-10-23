@@ -8,22 +8,22 @@ metadata:
   namespace: kubevirt
 spec:
   ingress:
-  - ports:
-    - port: 8443
-      protocol: TCP
+    - ports:
+        - port: 8443
+          protocol: TCP
   podSelector:
     matchExpressions:
-    - key: kubevirt.io
-      operator: In
-      values:
-      - virt-operator
-      - virt-handler
-      - virt-controller
-      - virt-api
-      - virt-exportproxy
-      - virt-synchronization-controller
+      - key: kubevirt.io
+        operator: In
+        values:
+          - virt-operator
+          - virt-handler
+          - virt-controller
+          - virt-api
+          - virt-exportproxy
+          - virt-synchronization-controller
   policyTypes:
-  - Ingress
+    - Ingress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -32,14 +32,14 @@ metadata:
   namespace: kubevirt
 spec:
   ingress:
-  - ports:
-    - port: 8443
-      protocol: TCP
+    - ports:
+        - port: 8443
+          protocol: TCP
   podSelector:
     matchLabels:
       kubevirt.io: virt-api
   policyTypes:
-  - Ingress
+    - Ingress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -48,24 +48,24 @@ metadata:
   namespace: kubevirt
 spec:
   egress:
-  - ports:
-    - port: 8443
-      protocol: TCP
-    to:
-    - podSelector:
-        matchExpressions:
-        - key: kubevirt.io
-          operator: In
-          values:
-          - virt-operator
-          - virt-handler
-          - virt-controller
-          - virt-api
+    - ports:
+        - port: 8443
+          protocol: TCP
+      to:
+        - podSelector:
+            matchExpressions:
+              - key: kubevirt.io
+                operator: In
+                values:
+                  - virt-operator
+                  - virt-handler
+                  - virt-controller
+                  - virt-api
   podSelector:
     matchLabels:
       kubevirt.io: virt-api
   policyTypes:
-  - Egress
+    - Egress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -74,16 +74,16 @@ metadata:
   namespace: kubevirt
 spec:
   egress:
-  - to:
-    - namespaceSelector: {}
-      podSelector:
-        matchLabels:
-          kubevirt.io: virt-launcher
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              kubevirt.io: virt-launcher
   podSelector:
     matchLabels:
       kubevirt.io: virt-api
   policyTypes:
-  - Egress
+    - Egress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -92,17 +92,17 @@ metadata:
   namespace: kubevirt
 spec:
   egress:
-  - ports:
-    - protocol: TCP
-    to:
-    - podSelector:
-        matchLabels:
-          kubevirt.io: virt-handler
+    - ports:
+        - protocol: TCP
+      to:
+        - podSelector:
+            matchLabels:
+              kubevirt.io: virt-handler
   podSelector:
     matchLabels:
       kubevirt.io: virt-api
   policyTypes:
-  - Egress
+    - Egress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -111,17 +111,17 @@ metadata:
   namespace: kubevirt
 spec:
   ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          kubevirt.io: virt-api
-    ports:
-    - protocol: TCP
+    - from:
+        - podSelector:
+            matchLabels:
+              kubevirt.io: virt-api
+      ports:
+        - protocol: TCP
   podSelector:
     matchLabels:
       kubevirt.io: virt-handler
   policyTypes:
-  - Ingress
+    - Ingress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -130,14 +130,14 @@ metadata:
   namespace: kubevirt
 spec:
   ingress:
-  - ports:
-    - port: 8444
-      protocol: TCP
+    - ports:
+        - port: 8444
+          protocol: TCP
   podSelector:
     matchLabels:
       kubevirt.io: virt-operator
   policyTypes:
-  - Ingress
+    - Ingress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -146,25 +146,25 @@ metadata:
   namespace: kubevirt
 spec:
   egress:
-  - ports:
-    - port: 8443
-      protocol: TCP
-    to:
-    - namespaceSelector: {}
-      podSelector:
-        matchExpressions:
-        - key: kubevirt.io.virt-export-service
-          operator: Exists
+    - ports:
+        - port: 8443
+          protocol: TCP
+      to:
+        - namespaceSelector: {}
+          podSelector:
+            matchExpressions:
+              - key: kubevirt.io.virt-export-service
+                operator: Exists
   ingress:
-  - ports:
-    - port: 8443
-      protocol: TCP
+    - ports:
+        - port: 8443
+          protocol: TCP
   podSelector:
     matchLabels:
       kubevirt.io: virt-exportproxy
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -173,21 +173,21 @@ metadata:
   namespace: kubevirt
 spec:
   egress:
-  - to:
-    - podSelector:
-        matchLabels:
-          kubevirt.io: virt-handler
+    - to:
+        - podSelector:
+            matchLabels:
+              kubevirt.io: virt-handler
   ingress:
-  - from:
-    - podSelector:
-        matchLabels:
-          kubevirt.io: virt-handler
+    - from:
+        - podSelector:
+            matchLabels:
+              kubevirt.io: virt-handler
   podSelector:
     matchLabels:
       kubevirt.io: virt-handler
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -196,14 +196,14 @@ metadata:
   namespace: kubevirt
 spec:
   egress:
-  - ports:
-    - port: 8443
-      protocol: TCP
+    - ports:
+        - port: 8443
+          protocol: TCP
   podSelector:
     matchLabels:
       kubevirt.io: virt-handler
   policyTypes:
-  - Egress
+    - Egress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -217,15 +217,15 @@ metadata:
   namespace: kubevirt
 spec:
   ingress:
-  - ports:
-    - port: 9443
-      protocol: TCP
+    - ports:
+        - port: 9443
+          protocol: TCP
   podSelector:
     matchLabels:
       app.kubernetes.io/name: virt-template
       control-plane: apiserver
   policyTypes:
-  - Ingress
+    - Ingress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -239,15 +239,15 @@ metadata:
   namespace: kubevirt
 spec:
   ingress:
-  - ports:
-    - port: 8443
-      protocol: TCP
+    - ports:
+        - port: 8443
+          protocol: TCP
   podSelector:
     matchLabels:
       app.kubernetes.io/name: virt-template
       control-plane: controller-manager
   policyTypes:
-  - Ingress
+    - Ingress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -261,12 +261,12 @@ metadata:
   namespace: kubevirt
 spec:
   ingress:
-  - ports:
-    - port: 9443
-      protocol: TCP
+    - ports:
+        - port: 9443
+          protocol: TCP
   podSelector:
     matchLabels:
       app.kubernetes.io/name: virt-template
       control-plane: controller-manager
   policyTypes:
-  - Ingress
+    - Ingress

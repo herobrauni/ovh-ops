@@ -36,7 +36,7 @@ spec:
       # Replaced by a relaxed custom rule in prometheusrule-etcd.yaml.
       disabled:
         etcdMemberCommunicationSlow: true
-        # Default fires at load per core > 2 for 15m. w-ovhsbg2 (zurg + Jellyfin
+        # Default fires at load per core > 2 for 15m. One worker (media servers
         # + external-Ceph traffic) legitimately spends ~23h/7d above 2, so this
         # flapped every few minutes. Replaced by a relaxed rule (> 3 for 30m)
         # in prometheusrule-node.yaml — 7d data: ~4h above 3, ~1h above 4.
@@ -163,7 +163,7 @@ spec:
               # node-exporter textfile directory. ext4 on 6.18+ kernels goes
               # "emergency_ro" after RBD I/O errors WITHOUT flipping the VFS mount to
               # ro, so node_filesystem_readonly never sees it - the probe greps
-              # /proc/1/mounts instead. First victim: altmount's config PVC, 2026-09-27.
+              # /proc/1/mounts instead. First victim: a WebDAV consumer's config PVC, 2026-09-27.
               - alert: NodeFilesystemEmergencyReadonly
                 expr: node_filesystem_emergency_readonly == 1
                 for: 2m

@@ -380,7 +380,7 @@ Create `kubernetes/components/authentik/`:
 ### 2.9 Phased Retirement & Decommissioning
 
 1. **Complete VolSync to Kopiur Migration**:
-    - 8 applications still reference `components/volsync` in their `ks.yaml` (e.g. `profilarr`, ``, ``, `comet`, `cleanuparr`, `nzbdav`, ``, `kometa`).
+    - 8 applications still referenced `components/volsync` in their `ks.yaml` at the time of writing (example apps from the analysis: `profilarr`, `kometa`, and others); since completed — see `docs/agents/backups.md`.
     - Finishing this migration allows removing the VolSync operator HelmRelease, leftover admission policies, and CRDs.
 2. **Decommission Dead TinyAuth Deployments**:
     - `kubernetes/apps/network/tinyauth/` continues running 3 separate deployments (`480p-com`, `brauni-dev`, `riki-boo`) despite Authentik embedded outpost having completely superseded TinyAuth.

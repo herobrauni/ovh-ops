@@ -1,0 +1,76 @@
+# Authentik (extAuth & OIDC) — agent topic guide
+
+Part of the `AGENTS.md` topic guides (`docs/agents/`). Read when onboarding an app to SSO,
+editing the blueprints, or debugging auth failures. Full migration runbook with per-app
+stanzas, manifest diffs, curl verification and rollback:
+`docs/authentik-forward-auth.md` (per-app liveness paths are tabulated there).
+
+## Current state
+
+- Authentik 2026.8's **embedded outpost inside the `authentik-server` process** is the Envoy Gateway `extAuth` provider (there is no separate `ak-outpost-*` Service/Deployment). TinyAuth is still deployed but fronts nothing.
+- Forward auth is wired as `SecurityPolicy.extAuth.http.backendRefs` → Service `authentik-server` (ns `authentik`, port **80** → container 9000), path `/outpost.goauthentik.io/auth/envoy`, with `headersToBackend: [Location, Set-Cookie, X-authentik-*]`.
+- The 2026.8 outpost is OIDC-based: `/auth/envoy` 302s to `https://sso.brauni.dev/application/o/authorize/?client_id=<provider>&redirect_uri=<app>/outpost.goauthentik.io/callback?...`, so every protected hostname needs an `/outpost.goauthentik.io` route that is **not** ext-authed — centralised in `kubernetes/apps/authentik/authentik/app/outpost-routes.yaml` (one HTTPRoute per public Gateway, hostnames listed explicitly). **A hostname missing there shows up as a `404` login, not a redirect loop.**
+- Cross-namespace: a `ReferenceGrant` in ns `authentik` (`app/referencegrant.yaml`) needs one `from` entry per consumer namespace for kind `SecurityPolicy` (the outpost routes live in ns `authentik` and reference the Service locally).
+- Provider matching is by full `Host`, so the original `:authority` must survive to the ext-auth request (it does). Multi-domain apps (e.g. `echo` on three domains) therefore need **one provider per hostname**.
+- Known upstream wart: envoy-mode state JWTs carry a protocol-relative post-login `redirect` (`//sonarr.480p.com/`, goauthentik/authentik#19653, closed as not planned) which desktop browsers resolve fine but some mobile browsers mishandle.
+
+## The blueprint
+
+- All forward-auth objects (groups, users, proxy providers, applications, policy bindings, the embedded outpost's provider list, and the user-switch flow) are Git-managed by the single file `kubernetes/apps/authentik/authentik/app/blueprints/forward-auth.yaml` (kustomize → ConfigMap `authentik-blueprints` → mounted at `/blueprints/custom` in **both** server and worker; only the worker runs the file watcher). OIDC client apps get their own file (see below).
+- Keep `kustomize.toolkit.fluxcd.io/substitute: disabled` on the ConfigMap — every `skip_path_regex` ends in `$`. Cross-referencing entries (`!KeyOf`) must stay in **one** file: blueprint files are applied per-file in arbitrary order, and a dangling reference in a split file would leave an application with zero bindings (i.e. open to every authenticated user) until the next hourly discovery (`blueprints_discovery` at `:26`, `send_on_startup: true`).
+- Provider defaults: `forward_single` mode, `external_host` = the app URL, assigned to the `authentik Embedded Outpost`, `cookie_domain` empty (the `authentik_proxy_*` cookie is host-only and cannot span `brauni.dev`/`riki.boo`/`480p.com` — per-app login is expected; the shared `sso.brauni.dev` session makes the second app a silent redirect).
+- Partial-host pattern (e.g. vaultwarden: only `/admin` protected): the `SecurityPolicy` targets just the admin HTTPRoute; the provider needs **no** `skip_path_regex` (public `/api/*`/`/identity/*` never reach ext-auth).
+
+### Blueprint importer semantics
+
+- Identifiers are ANDed and merged into `attrs` (so `name`/`slug` need not be repeated there); a matching object gets a `partial=True` serializer update; list fields (`Outpost.providers`, `User.groups`) are **replaced** rather than merged (hand-made UI additions are dropped on the next apply); `state: must_created` fails on already-existing rows (the default `present` updates); `Importer.validate()` is the dry run (it applies the file inside a transaction that is rolled back; events/tasks are emitted and discarded).
+- **Email addresses are deliberately not Git-managed** (privacy): the `User` entries carry no `email` attr, and because updates are partial, omitting the field never clears the value already stored in authentik. Set/change emails in the admin UI, via the API (`PATCH /api/v3/core/users/<id>/`), or with `ak shell` (`from authentik_core.models import User; u = User.objects.get(username="<name>"); u.email = "…"; u.save(update_fields=["email"])`). On a fresh database the blueprint creates the users without an email until one is set.
+- `ProxyProviderSerializer.create()`/`.update()` both call `provider.set_oauth_defaults()` (grant_types, callback `redirect_uris`, proxy scope mapping), so `property_mappings`/`redirect_uris` are never declared — a raw ORM create must call it itself or the provider is incomplete.
+
+### Operating on blueprints
+
+- Blueprint state is a DB row, not a CRD: read it via `ak shell` (`BlueprintInstance.objects.get(path='custom/forward-auth.yaml')` → `status`, `last_applied`, `last_applied_hash` = sha512 of the file) and force a re-apply through the worker task `apply_blueprint.send_with_options(args=(b.pk,), rel_obj=b)` — the same entry point as the API/UI apply. `ak apply_blueprint` refuses arbitrary paths, so `kubectl cp` + `/tmp` does not work.
+- Validate a new blueprint before merging by piping it into the worker and running `Importer.from_string(...).validate()` under `ak shell`.
+- An apply can report `successful` with a matching hash and still miss a change (a first apply raced a worker rollout and left `invalidation_flow` unset — re-trigger converged instantly), so do not `kubectl rollout restart deploy/authentik-worker` while an apply is in flight, and re-apply instead of assuming success. A racing apply can also fail with a Postgres deadlock (`guardian_roleobjectpermission`) and stay `status: error` with the old hash — it usually converges on the watcher's own re-enqueue (~16 s); re-check before intervening.
+- **Ordering when adding an app:** force the blueprint apply first (provider must exist), then reconcile the app's `SecurityPolicy` — otherwise the outpost answers `404` on the protected path.
+- **The embedded outpost loads its provider list when `authentik-server` starts** and a provider created afterwards is not picked up by `outpost_send_update` (re-enqueuing does not refresh it either). Whenever one commit adds both a provider and the app's `SecurityPolicy`, proactively `kubectl rollout restart deploy/authentik-server` (surge-1/maxUnavailable-0, no ext-auth downtime) and verify:
+
+    ```sh
+    curl -sS -o /dev/null -w '%{http_code}' -H 'X-Forwarded-Host: <host>' \
+      -H 'X-Forwarded-Proto: https' -H 'X-Forwarded-Uri: /' \
+      https://<host>/outpost.goauthentik.io/auth/envoy   # expect 302
+    ```
+
+- `default/flow-oobe.yaml` sitting in `status: error` is unrelated upstream noise after the 2026.8.2 image upgrade (OOBE cannot re-apply once set up; its instance is disabled).
+- When auditing who is protected, trust `kubectl get securitypolicy -A` and the blueprint provider list, **not** a repo grep — `securitypolicy.yaml` files can exist for apps that are commented out of their namespace `kustomization.yaml` (e.g. `kguardian`) and are then dead config (no route, no DNS, no Gatus endpoint).
+
+## Access control semantics
+
+- Application access is enforced by `PolicyEngine` bindings on the Application, not by authentication alone: `core_default_app_access=True` only makes an app open while it has **zero** bindings, so binding anything (e.g. a `PolicyBinding` → Group `Media`, allow, order 0) locks out every other authenticated user — and `PolicyAccessView.user_has_access()` has **no superuser bypass**, so `akadmin` is denied too until it is in the group.
+- Groups/users live in `forward-auth.yaml` (list attrs there are replaced wholesale, so membership must be declared in that one file). Access scope belongs in its own group per client app (e.g. `Silo`) — binding a client app to `Media` would make "can use X" and "can use the whole media stack" the same permission in both directions.
+
+## Gatus probes behind extAuth
+
+- See `docs/agents/gatus.md` — an unauthenticated probe of `/` now gets a 302 instead of 200, so each endpoint needs a liveness path (`skip_path_regex` on the provider + a `gatus.home-operations.com/endpoint` URL override), or its own auth challenge/not-found assertion (vaultwarden asserts `[STATUS] == 302` with `client.ignore-redirect: true`).
+
+## OIDC client apps (not proxy providers)
+
+Pattern: `kubernetes/apps/authentik/authentik/app/blueprints/silo-oidc.yaml`. These are OAuth2 providers, so nothing is added to the outpost's provider list and the app's HTTPRoutes get **no** `SecurityPolicy` — the app validates the ID token itself. 2026.8 traps:
+
+- `redirect_uris` is a **list of objects** (`[{url, matching_mode: strict|regex}]`, stored in the model's `_redirect_uris`), not the old space-separated string. Regex form for apps with dynamic callback paths (Silo: `api/v[12]/auth/oauth/[0-9]+/callback`).
+- The blueprint importer runs every entry through the model's API serializer, so API field names apply (`!Find`/`!KeyOf` resolve pks for `signing_key`, `property_mappings`, `authorization_flow`).
+- An OAuth2 provider created without `property_mappings` issues an empty ID token — reference the three default mappings explicitly (`authentik default OAuth Mapping: OpenID 'openid'/'email'/'profile'`; the `profile` one emits `groups`, `preferred_username`, `name`, `picture`).
+- `grant_types` has the same trap and a nastier symptom: its model default is an empty list (only the admin wizard fills in `authorization_code`/`refresh_token`), and with no grant types the authorize endpoint accepts the client and matches the redirect URI but bounces back `error=invalid_request` / `Invalid grant_type for provider` — which reads like a broken redirect URI. Always set both `grant_types` and `property_mappings`.
+- `policybinding` identifiers include the group, so _changing_ which group protects an app creates a second binding instead of moving the first — the old group keeps granting access. Pair the new binding with a `state: absent` entry naming the old `{target, group, order}` triple (verify one group via `select ... from authentik_policies_policybinding b join authentik_core_group g ... where a.slug='<app>'`).
+- Without a `signing_key` authentik signs HS256 and clients need `allow_hs256`.
+
+## User switching (2026.8)
+
+- Enabled via `forward-auth.yaml`: flow `user-switch-flow` (designation `authentication`, slug deliberately NOT `default-`-prefixed) with a single binding to the shared `default-authentication-login` stage, plus a partial-update entry on brand `authentik-default` (identifier: `domain`) setting `flow_user_switch`. `terminate_other_sessions` must stay `false` on that stage or every switch destroys the browser's other switch targets.
+- A switch is instant (no password/MFA) by design — the flow only runs for the switch endpoint with the target pre-resolved from a live same-browser session (re-verified right before login); "Add user" goes through the brand's normal `flow_authentication`, and flow-level policies evaluate against the _source_ user. Harden later with password+MFA stage bindings and `authentik.core.user_switching.is_user_switch_target_recent(request, timedelta(hours=24))` on the password stage binding.
+- Blueprint applies/dry-runs of the full file deadlock on `guardian_*` because re-saving all proxy providers spawns `outpost_send_update` tasks whose permission rebuild deadlocks against the apply's own transaction — even on a single worker, even for no-op applies. It converged on the 3rd re-enqueue (~30 s apart). If a worker restart lands mid-apply, `clear_failed_blueprints` sweeps the orphaned task and the instance sits `status: error` with `last_applied_hash` already matching the file (watcher won't re-fire) — just re-enqueue.
+
+## Misc
+
+- Forging a session for end-to-end verification must go through `django.contrib.auth.login()`: 2026.8 stores authentication in an `AuthenticatedSession` **row** plus a `login_event` key in the session data (`SessionStore.create_model_instance()` drops Django's `_auth_user_*` keys), so a hand-inserted `SessionStore` row authenticates nowhere — the authorize view logs `request with no login event` and serves the login form with HTTP `200` (looks like a pass if you only check the status code; assert the final hostname is the app's, not `sso.brauni.dev`). Clean forged sessions up by `last_ip='255.255.255.255'` (what `RequestFactory` sets — filtering by `last_user_agent` matches nothing, the UA only reaches the audit `Event`), which cascades away the `AuthenticatedSession` row.
+- For the goauthentik/authentik Helm chart, `serviceAccount.create: false` alone makes server/worker pods fall back to the namespace's default ServiceAccount. If you don't need managed outpost RBAC, create a dedicated minimal ServiceAccount with `automountServiceAccountToken: false` and set both `server.serviceAccountName` and `worker.serviceAccountName` explicitly.

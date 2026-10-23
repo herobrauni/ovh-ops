@@ -10,14 +10,14 @@ metadata:
   namespace: cdi
 spec:
   ingress:
-  - ports:
-    - port: 8443
-      protocol: TCP
+    - ports:
+        - port: 8443
+          protocol: TCP
   podSelector:
     matchLabels:
       prometheus.cdi.kubevirt.io: "true"
   policyTypes:
-  - Ingress
+    - Ingress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -28,24 +28,24 @@ metadata:
   namespace: cdi
 spec:
   egress:
-  - ports:
-    - port: 8443
-      protocol: TCP
-    to:
-    - namespaceSelector: {}
-      podSelector:
-        matchLabels:
-          cdi.kubevirt.io: cdi-upload-server
+    - ports:
+        - port: 8443
+          protocol: TCP
+      to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              cdi.kubevirt.io: cdi-upload-server
   ingress:
-  - ports:
-    - port: 8443
-      protocol: TCP
+    - ports:
+        - port: 8443
+          protocol: TCP
   podSelector:
     matchLabels:
       cdi.kubevirt.io: cdi-uploadproxy
   policyTypes:
-  - Ingress
-  - Egress
+    - Ingress
+    - Egress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -56,14 +56,14 @@ metadata:
   namespace: cdi
 spec:
   ingress:
-  - ports:
-    - port: 8443
-      protocol: TCP
+    - ports:
+        - port: 8443
+          protocol: TCP
   podSelector:
     matchLabels:
       cdi.kubevirt.io: cdi-apiserver
   policyTypes:
-  - Ingress
+    - Ingress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -74,19 +74,19 @@ metadata:
   namespace: cdi
 spec:
   egress:
-  - ports:
-    - port: 8443
-      protocol: TCP
-    to:
-    - namespaceSelector: {}
-      podSelector:
-        matchLabels:
-          prometheus.cdi.kubevirt.io: "true"
+    - ports:
+        - port: 8443
+          protocol: TCP
+      to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              prometheus.cdi.kubevirt.io: "true"
   podSelector:
     matchLabels:
       cdi.kubevirt.io: cdi-deployment
   policyTypes:
-  - Egress
+    - Egress
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -97,9 +97,9 @@ metadata:
   namespace: cdi
 spec:
   egress:
-  - {}
+    - {}
   podSelector:
     matchLabels:
       cdi.kubevirt.io/dataImportCronPoller: ""
   policyTypes:
-  - Egress
+    - Egress

@@ -64,10 +64,10 @@ post-down iptables -t nat -D POSTROUTING -o ztdiyrsa75 -j MASQUERADE
 
 ### Summary
 
-| VM → Ceph traffic path | Required configuration |
-|---|---|
-| Local (same PVE host) | `tcp_l3mdev_accept=1` / `udp_l3mdev_accept=1` sysctl |
-| Remote (different PVE host) | `MASQUERADE -o ztdiyrsa75` iptables rule |
+| VM → Ceph traffic path      | Required configuration                               |
+| --------------------------- | ---------------------------------------------------- |
+| Local (same PVE host)       | `tcp_l3mdev_accept=1` / `udp_l3mdev_accept=1` sysctl |
+| Remote (different PVE host) | `MASQUERADE -o ztdiyrsa75` iptables rule             |
 
 ## External Ceph Monitoring Configuration
 

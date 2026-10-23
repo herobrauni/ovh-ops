@@ -1,11 +1,10 @@
 ---
-version: '3'
+version: "3"
 
 tasks:
-
   apply:
     desc: Apply Talos config to all nodes (shows a diff and asks first)
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     cmd: topf apply
     preconditions:
       - test -f {{.TALOS_DIR}}/topf.yaml
@@ -16,7 +15,7 @@ tasks:
 
   apply-node:
     desc: Apply Talos config to a node (shows a diff and asks first) [NODE=required MODE=auto|no-reboot|staged|try]
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     cmd: topf apply --nodes-filter '^{{.NODE}}$' --mode '{{.MODE}}'
     vars:
       MODE: '{{.MODE | default "auto"}}'
@@ -31,7 +30,7 @@ tasks:
 
   diff:
     desc: Show pending Talos config changes without applying them
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     cmd: topf apply --dry-run
     preconditions:
       - test -f {{.TALOS_DIR}}/topf.yaml
@@ -42,7 +41,7 @@ tasks:
 
   generate-config:
     desc: Render Talos machine configs to ./output without applying them
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     cmd: topf render
     preconditions:
       - test -f {{.TALOS_DIR}}/topf.yaml
@@ -53,7 +52,7 @@ tasks:
 
   nodes:
     desc: List all nodes and their current state
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     cmd: topf nodes
     preconditions:
       - test -f {{.TALOS_DIR}}/topf.yaml
@@ -64,7 +63,7 @@ tasks:
 
   upgrade:
     desc: Upgrade Talos on all nodes, one at a time (asks first)
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     cmd: topf upgrade
     preconditions:
       - test -f {{.TALOS_DIR}}/topf.yaml
@@ -75,7 +74,7 @@ tasks:
 
   upgrade-node:
     desc: Upgrade Talos on a single node (asks first) [NODE=required]
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     cmd: topf upgrade --nodes-filter '^{{.NODE}}$'
     requires:
       vars: [NODE]
@@ -89,7 +88,7 @@ tasks:
   # topf intentionally does not manage Kubernetes upgrades
   upgrade-k8s:
     desc: Upgrade Kubernetes
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     cmd: |
       talosctl --nodes "$(yq '[.nodes[] | select(.role == "control-plane")][0].ip' topf.yaml)" \
         upgrade-k8s --to "$(yq '.kubernetesVersion' topf.yaml)"
@@ -100,7 +99,7 @@ tasks:
 
   reset:
     desc: Resets nodes back to maintenance mode
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     prompt: This will destroy your cluster and reset the nodes back to maintenance mode... continue?
     cmd: topf reset --confirm=false --graceful=false --full={{.CLI_FORCE}}
     preconditions:
@@ -112,7 +111,7 @@ tasks:
 
   reset-node:
     desc: Resets a node back to maintenance mode [NODE=required]
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     prompt: This will reset node {{.NODE}} back to maintenance mode... continue?
     cmd: topf reset --confirm=false --graceful=false --full={{.CLI_FORCE}} --nodes-filter '^{{.NODE}}$'
     requires:
@@ -126,7 +125,7 @@ tasks:
 
   talosconfig:
     desc: Generate talosconfig from the secrets bundle
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     cmd: topf talosconfig > talosconfig
     preconditions:
       - test -f {{.TALOS_DIR}}/topf.yaml
@@ -137,7 +136,7 @@ tasks:
 
   kubeconfig:
     desc: Generate an admin kubeconfig [VALIDITY=8760h]
-    dir: '{{.TALOS_DIR}}'
+    dir: "{{.TALOS_DIR}}"
     cmd: topf kubeconfig --validity {{.VALIDITY | default "8760h"}} > {{.ROOT_DIR}}/kubeconfig
     preconditions:
       - test -f {{.TALOS_DIR}}/topf.yaml

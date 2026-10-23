@@ -19,7 +19,7 @@ spec:
     name: app-template
   interval: 1h
   # Database migrations run before the backend serves; an empty /config is fast,
-  # but a corpus-sized one can take minutes and a forced rollback must not churn.
+  # but a populated one can take minutes and a forced rollback must not churn.
   timeout: 15m
   values:
     defaultPodOptions:
@@ -93,8 +93,8 @@ spec:
               # importing a husk (zurg does the same, sampling the first
               # article; `sampled` covers each file's head and tail).
               #
-              # This was temporarily disabled for the 2026-10-19/20 corpus
-              # import (the check costs ~20-30s per release and turned 4.6k
+              # This was temporarily disabled for the 2026-10-19/20 bulk
+              # import (the check costs ~20-30s per item and turned thousands of
               # imports into a ~50h job) and is restored now that the import
               # finished — see the Phase 3 log in the migration doc.
               NZBDAV_CONFIG__API__ENSURE_ARTICLE_EXISTENCE_CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex"
@@ -131,7 +131,7 @@ spec:
               # provider capacity, it only reduces head-of-line blocking).
               NZBDAV_CONFIG__QUEUE__WORKER_COUNT: "3"
               # Re-probe a primary after 20s instead of 60s. Our backups are
-              # metered (Frugal bonus cap, Blocknews block pack), so a short
+              # metered (bonus-cap / block-pack accounts), so a short
               # wobble should spend as few backup bytes as possible. Applies on
               # the next provider-pool rebuild / restart; max stays at 300s.
               NZBDAV_CONFIG__USENET__CIRCUIT_BREAKER__INITIAL_COOLDOWN_SECONDS: "20"

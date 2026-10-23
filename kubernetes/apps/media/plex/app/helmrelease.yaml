@@ -30,52 +30,17 @@ spec:
               tag: 1.43.5.11029@sha256:996656c7b98462bc726e5c63ae7778fc084cff4560677b4a4e45edf0f3fa67dc
             env:
               PLEX_ADVERTISE_URL: https://plex.480p.com:443
-            # probes:
-            #   liveness: &probes
-            #     enabled: true
-            #     custom: true
-            #     spec:
-            #       exec:
-            #         command:
-            #           - /bin/sh
-            #           - -c
-            #           - test -r /aio/altmount/version.txt && cat /aio/altmount/version.txt >/dev/null && curl -fsS http://127.0.0.1:32400/identity >/dev/null
-            #       initialDelaySeconds: 30
-            #       periodSeconds: 30
-            #       timeoutSeconds: 10
-            #       failureThreshold: 6
-            #   readiness:
-            #     enabled: true
-            #     custom: true
-            #     spec:
-            #       exec:
-            #         command:
-            #           - /bin/sh
-            #           - -c
-            #           - test -r /aio/altmount/version.txt && cat /aio/altmount/version.txt >/dev/null && curl -fsS http://127.0.0.1:32400/identity >/dev/null
-            #       initialDelaySeconds: 30
-            #       periodSeconds: 15
-            #       timeoutSeconds: 10
-            #       failureThreshold: 6
-            #   startup:
-            #     enabled: true
-            #     spec:
-            #       failureThreshold: 30
-            #       periodSeconds: 10
-            #       tcpSocket:
-            #         port: 32400
             securityContext:
               allowPrivilegeEscalation: false
               readOnlyRootFilesystem: true
               capabilities:
                 drop:
                   - ALL
-          # zurg (the new Usenet backend) mounted at zurg's own mount_path.
-          # Media libraries get added at /aio/remote/zurg/__magic__/tv and
-          # /movies ONLY — never __magic__ itself: __magic__/__all__ mirrors
-          # the whole library, so scanning it too finds everything twice.
-          # Read-only: the media server only reads; __magic__ placements are
-          # the *arrs' job through their own writable sidecars.
+          # The download backend (InfiniDysk) mounted at its own mount_path.
+          # Read-only: the media server only reads; item placement is the
+          # *arrs' job through their own writable sidecars. The libraries
+          # point at the symlink farm (/aio/symlinks/...), not the backend
+          # tree itself.
           rclone-infinidysk:
             image:
               repository: docker.io/rclone/rclone

@@ -33,7 +33,7 @@ spec:
       DOMAIN: 480p.com
       # The main operational database lives in the shared postgres18 cluster
       # (PostgreSQL main-database support is new-install-only — there is no
-      # SQLite migration path). /config still holds blobs, the NZB corpus and
+      # SQLite migration path). /config still holds blobs, the NZB store and
       # the auxiliary SQLite stores (metrics/warden).
       KOPIUR_CAPACITY: 30Gi
       # Greenfield app: deploy empty on a missing snapshot instead of failing.

@@ -12,7 +12,6 @@ spec:
       namespace: network
       sectionName: https
   hostnames:
-    - altmount.480p.com
     - bazarr.480p.com
     - bazarr4k.480p.com
     - clonarr.480p.com
@@ -24,7 +23,6 @@ spec:
     - sonarr.480p.com
     - sonarr4k.480p.com
     - umlautadaptarrex.480p.com
-    - zurg.480p.com
   rules:
     - matches:
         - path:

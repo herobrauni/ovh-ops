@@ -18,8 +18,8 @@ InfiniDysk is the successor of `nzbdav-dev/nzbdav` ("The NzbDAV SuperFork",
 of the same lineage: **ignore it** (do not enable it), but its manifests are a
 reference for how this repo previously wired the symlink-farm flow.
 
-**This plan supersedes Phases 4–5 of [`zurg-migration.md`](./zurg-migration.md)**
-(Plex zurg cutover + teardown); that doc is now marked historical. Each phase here carries its own
+**This plan supersedes the earlier backend-migration phases**
+(Plex cutover + teardown); that earlier migration doc has been removed from the repo. Each phase here carries its own
 verification and rollback, and the Progress log records what has actually been applied.
 
 Primary references (read these before executing):
@@ -40,8 +40,7 @@ Primary references (read these before executing):
 - Repo references: `kubernetes/apps/media/infinidysk/` (live backend), `kubernetes/apps/media/sonarr/app/helmrelease.yaml`
   (rclone sidecar pattern), `kubernetes/apps/media/media-debug/app/helmrelease.yaml` (canonical
   consumer sidecar; the retired `zurg-debug`/`infinidysk-debug` trees are history),
-  `docs/authentik-forward-auth.md` (SSO runbook), `docs/zurg-migration.md`
-  (historical: the altmount→zurg cutover and the symlink-farm mechanics this plan restores).
+  `docs/authentik-forward-auth.md` (SSO runbook).
 
 ---
 
@@ -49,16 +48,16 @@ Primary references (read these before executing):
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 
-| Phase                                         | Status | Note                                                                                                                                     |
-| --------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 0 — pre-flight (Infisical keys, decisions)    | `[x]`  | `/infinidysk/*` created 2026-10-19 (9 keys); `/servarr/API_KEY` reused for the \*arr instances                                           |
-| 1 — deploy `media/infinidysk` standalone      | `[x]`  | manifests landed in this PR; first rollout happens when it merges                                                                        |
-| 2 — consumer scaffold (`media-debug`, \*arrs) | `[x]`  | `rclone-infinidysk` rolled out to all 9 consumers (2026-10-20); `rclone-zurg` stripped 2026-10-21; `infinidysk-debug` removed 2026-10-22 |
-| 3 — \*arr cutover (client + roots + corpus)   | `[x]`  | all four on the farm with only the `InfiniDysk` client (verified 2026-10-22); TV counts from 2026-10-21 kept below                       |
-| 4 — Plex / Jellyfin cutover                   | `[~]`  | Jellyfin's libraries are on `/aio/symlinks`; Plex parked (HelmRelease commented → released, claims kept)                                 |
-| 5 — Bazarr + manual-NZB (`other`) pipeline    | `[x]`  | subtitle pipeline verified 2026-10-22 (10 `.srt` written); `infinidysk-sync-helper` added 2026-10-22 (this PR)                           |
-| 6 — teardown zurg (+ fold altmount teardown)  | `[~]`  | zurg/altmount unwired and `rclone-zurg` stripped; Git trees, Authentik/Infisical/Renovate entries remain                                 |
-| 7 — docs + `AGENTS.md` findings               | `[~]`  | this table and Phase 4–6 now match the cluster; the zurg-era `AGENTS.md` narrative is kept as history                                    |
+| Phase                                          | Status | Note                                                                                                                                     |
+| ---------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — pre-flight (Infisical keys, decisions)     | `[x]`  | `/infinidysk/*` created 2026-10-19 (9 keys); `/servarr/API_KEY` reused for the \*arr instances                                           |
+| 1 — deploy `media/infinidysk` standalone       | `[x]`  | manifests landed in this PR; first rollout happens when it merges                                                                        |
+| 2 — consumer scaffold (`media-debug`, \*arrs)  | `[x]`  | `rclone-infinidysk` rolled out to all 9 consumers (2026-10-20); `rclone-zurg` stripped 2026-10-21; `infinidysk-debug` removed 2026-10-22 |
+| 3 — \*arr cutover (client + roots + NZB store) | `[x]`  | all four on the farm with only the `InfiniDysk` client (verified 2026-10-22); TV counts from 2026-10-21 kept below                       |
+| 4 — Plex / Jellyfin cutover                    | `[~]`  | Jellyfin's libraries are on `/aio/symlinks`; Plex parked (HelmRelease commented → released, claims kept)                                 |
+| 5 — Bazarr + manual-NZB (`other`) pipeline     | `[x]`  | subtitle pipeline verified 2026-10-22 (10 `.srt` written); `infinidysk-sync-helper` added 2026-10-22 (this PR)                           |
+| 6 — teardown zurg (+ fold altmount teardown)   | `[~]`  | zurg/altmount unwired and `rclone-zurg` stripped; Git trees, Authentik/Infisical/Renovate entries remain                                 |
+| 7 — docs + `AGENTS.md` findings                | `[~]`  | this table and Phase 4–6 now match the cluster; the zurg-era `AGENTS.md` narrative is kept as history                                    |
 
 ### Log
 
@@ -119,7 +118,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
       wanted search considers them). Re-posting the identical profile JSON ran the global
       recompute: 0 NULL left, 2 354 (HD) / 232 (4K) episodes genuinely wanting English.
     - **Verified end to end:** `PATCH /api/series?seriesid=3&action=search-missing` searched, matched
-      and downloaded 10 English subtitles for __ (Gestdown, score 339) and wrote
+      and downloaded 10 English subtitles for one series (Gestdown, score 339) and wrote
       them as `…/Season 01/*.en.srt` / `*.en.hi.srt` owned by 1000:1000 on the farm.
     - **Follow-up running:** `series_full_scan_subtitles` + `movies_full_scan_subtitles` were
       triggered on both instances (3 810 episodes / 481 movies, and 1.4k / 411 on 4K) to re-detect
@@ -138,13 +137,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   `symlinks` view; `media-debug` is now the only debug pod named in the CNP/allowlists.
 - **2026-10-22** — **Correction: the zurg PVC was garbage-collected, not retained.** The
   2026-10-21 entry below (and the commit message it came from) claimed the `zurg` kopiur PVC
-  "survives untouched as the content rollback for the ~179 4K titles that only zurg holds". It
+  "survives untouched as the content rollback for 4K items that only zurg held". It
   did not: commenting `./zurg/ks.yaml` out of `media/kustomization.yaml` deletes the Flux
   Kustomization, and kustomize-controller then GCs everything that Kustomization applied —
   including the kopiur PVC and its `SnapshotPolicy`. `kubectl -n media get pvc` has no `zurg`
   claim, so "uncomment and let it redeploy" is **not** a content rollback: a revived zurg starts
-  from an empty `/config` (no NZB corpus, no `__magic__` placements) and those titles must be
-  re-grabbed. The corpus itself is safe because it was imported into InfiniDysk on 2026-10-20.
+  from an empty `/config` (no NZB store, no placements) and those items must be
+  re-grabbed. The NZB store itself is safe because it was imported into InfiniDysk on 2026-10-20.
   To keep a claim as an intentional rollback, keep it out of the pruned tree (separate
   Kustomization) or set `prune: false` on the one that owns it.
 - **2026-10-21** — **zurg retired; Jellyfin on the farm; Plex parked** (#1536).
@@ -174,18 +173,18 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
        (read-only), and the failure is deceptive: it **deletes the old episode file first** and
        then dies with `EIO` in `UnixSymbolicLinkInfo.CreateSymbolicLinkTo`, leaving the episode
        with no file. Rewrite paths first, then let the client history import.
-    2. **Imports from the zurg mount copy bytes.** The corpus import moves symlinks into `.ids`
+    2. **Imports from the old mount copy bytes.** The bulk import moves symlinks into `.ids`
        (farm stays flat), but any grab still in flight through the _old_ client is a real file
        from zurg's VFS — two of those landed as 4.8 GB + 2.4 GB copies and took the 10 Gi
-       `symlinks` PVC to 63%. Drop live zurg-backed queue items (and disable the client) _before_
+       `symlinks` PVC to 63%. Drop live queue items on the old client (and disable it) _before_
        the cutover, and check `find /aio/symlinks -name '*.mkv' ! -type l` afterwards.
     3. **The retired zurg root folder evicts the pod.** A rescan of
-       `/aio/remote/zurg/__magic__/...` pulls 4K remuxes through `rclone-zurg` until its 4 Gi
+       `/aio/remote/zurg/__magic__/...` pulls large 4K files through `rclone-zurg` until its 4 Gi
        `emptyDir` backstop trips (`Usage of EmptyDir volume "rclone-cache-zurg" exceeds the limit
        "4Gi"` → `Evicted`). Delete the zurg root folder from each *arr once its series paths are
        rewritten; this is now done for both `sonarr` instances.
-    4. **Duplicate corpus releases clog the queue, not the disk.** The import leaves
-       `importPending` rows whose reason is `Destination already exists` (another corpus release
+    4. **Duplicate uploads clog the queue, not the disk.** The import leaves
+       `importPending` rows whose reason is `Destination already exists` (another upload
        already filled the episode). Clear those `removeFromClient=false` — deleting them from the
        client would drop the history entry that still keeps the blob reachable.
        Title mismatches on the new instance were 17 (vs 49 on `sonarr`): matched and imported where
@@ -196,25 +195,24 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   instances against the disk instead of trusting the `statistics` counters, and closed the
   leftovers the cutover left behind:
     - **70 dead symlinks removed from the 4K farm.** `plex_4k/shows` carried 70 links pointing at
-      `/aio/remote/altmount/complete/sonarr4k/...` — pre-cutover altmount litter (the HD farm had
+      `/aio/remote/altmount/complete/sonarr4k/...` — pre-cutover litter from the older backend (the HD farm had
       the same and was wiped when its tree was rebuilt). They had **no** `EpisodeFiles` rows, so
       this was filesystem-only cleanup; `plex_hd/shows` had 0 broken links.
-    - **Leftover 4K corpus imported** (30 → 24 dirs, +6 episode files). The remaining 24 are
-      duplicate/alternate releases for episodes another corpus release already filled — correctly
+    - **Leftover 4K items imported** (30 → 24 dirs, +6 episode files). The remaining 24 are
+      duplicate/alternate uploads for episodes another upload already filled — correctly
       skipped by `filterExistingFiles=true`.
     - **Verified counters against reality** — `statistics.episodeFileCount` is cached and can lag
       (it read 3,799 while enumerating `EpisodeFiles` returned 3,784). Authoritative check: list
       `/episodefile?seriesId=…` for every series, then `test -e` each path inside the pod.
       Result: **sonarr 3,784 rows, 0 missing · sonarr4k 1,212 rows = 1,212 farm symlinks, 0 broken,
       0 regular files**.
-    - **The "`NNNN-` prefix" class is a non-issue.** An earlier analysis flagged 10 releases such as
-      `7426-.(2019).S01E05…` as unparseable leftovers. They imported fine: Sonarr parses
-      the _file_ inside the release folder, not the folder name, and that leftover list was a
+    - **The "`NNNN-` prefix" class is a non-issue.** An earlier analysis flagged 10 numbered-prefix
+      items as unparseable leftovers. They imported fine: Sonarr parses
+      the _file_ inside the item folder, not the folder name, and that leftover list was a
       biased sample (it was exactly the set that had not been imported yet). A `find -name
-      '[0-9]*-*'` "match" on ` - S01E04…` is a false positive — do not use that pattern.
-    - **Translated titles import under the English library name.** `.*`
-      lands in ` (2006)`, `.*` in
-      ` (2022)`. German _audio_ tags are irrelevant to parsing; only a
+      '[0-9]*-*'` "match" is unreliable — do not use that pattern.
+    - **Translated titles import under the English library name.** A release titled in another
+      language lands in the English library entry. Foreign _audio_ tags are irrelevant to parsing; only a
       fully-translated _release title_ can block the automatic path, and then only because the
       import matcher compares against the **library** title (SkyHook knows the alias — `/parse`
       resolves it correctly — but the library match does not consult it).
@@ -222,20 +220,19 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
       `EpisodeSearch` leaves in-flight grabs without a `grabbed` history row, so their later
       failures cannot be blocklisted (`Unable to mark download as failed, no grabbed history
       available`) and they pile up as `failed` rows. Cleared 194 such rows plus 186 failed
-      InfiniDysk history entries and 175 stale  entries; both queues now drain to empty.
+      InfiniDysk history entries and 175 stale entries from a numbering mismatch; both queues now drain to empty.
       **Do not cancel a search** — disable the download client first and let it finish.
-    - **'s 175 completions were a numbering mismatch, not junk**: releases carry the 2019
-      year while TVDB has ` (2018)`, so `.2019.…` parses to _no_ series (verified via
-      `/parse`; `.2018.…` resolves). 59 episodes were re-imported with an explicit
-      `seriesId`/`episodeIds` mapping (49 → 108 files, missing-monitored 105 → 46). Prehistoric
-      Planet's 5 German-titled episodes were imported the same way (10 → 15 files).
+    - **A year-vs-TVDB numbering mismatch is not junk**: when a release carries a year that
+      differs from TVDB's entry, its title parses to _no_ series (verified via `/parse`).
+      59 episodes were re-imported with an explicit
+      `seriesId`/`episodeIds` mapping (49 → 108 files, missing-monitored 105 → 46). Another
+      series' 5 foreign-titled episodes were imported the same way (10 → 15 files).
     - **`QueueRules` are now enabled** (#1519) so this class stops accumulating: the four RAR
       statuses use `RemoveAndBlocklistAndSearch`, and "matched by ID" uses `RemoveAndBlocklist`
       without an immediate search (no grab/blocklist loop).
 
 - **2026-10-19** — **Phase 0 done.** Created `/infinidysk/{API_KEY,WEBDAV_USER,
-  WEBDAV_PASSWORD,EWEKA_USERNAME,EWEKA_PASSWORD,FRUGAL_USERNAME,FRUGAL_PASSWORD,
-  BLOCKNEWS_USERNAME,BLOCKNEWS_PASSWORD}` in Infisical (project `ovh-ops-u1ua`,
+  WEBDAV_PASSWORD,<NNTP provider credential keys>}` in Infisical (project `ovh-ops-u1ua`,
   env `prod`). NNTP values were copied from `/zurg/*` so `/infinidysk/*` is
   self-contained for teardown. The rendered ExternalSecret was validated against
   the live store with a throwaway copy in `default` (then deleted): JSON blobs
@@ -283,14 +280,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
   `Cannot load library libgssapi_krb5.so.2` line in the app log: Npgsql probing
   for GSSAPI, irrelevant with password auth.
 
-- **2026-10-20** — **Corpus imported.** `util/nzb-import-job.yaml` streamed
-  zurg's NZBs straight off its (read-only) PVC into InfiniDysk's SAB `addfile`,
-  categorised by Plex tree. Job ran 22:38 → 05:26 (6.3 h) and **completed**:
-  `added=4109 failed=1` uploads, and history now holds all **4,615** planned
-  releases — **4,433 Completed**, **182 Failed**. The 1,759 never-placed
-  releases were skipped by decision. Per category (completed/total):
-  sonarr 2,444/2,603 · sonarr4k 1,074/1,082 · radarr 469/483 ·
-  radarr4k 412/414 · other 34/34. Throughput with the article pre-check
+- **2026-10-20** — **NZB store imported.** A one-off job (since removed from the repo)
+  streamed the old backend's NZB store straight off its (read-only) PVC into InfiniDysk's SAB `addfile`,
+  categorised by tree. Job ran 22:38 → 05:26 (6.3 h) and **completed**:
+  `added=4109 failed=1` uploads (the never-placed items were skipped by decision).
+  Throughput with the article pre-check
   disabled was ~11/min; with it on it had been ~1.5/min (~50 h).
 
     Failure breakdown (all in InfiniDysk's history, nothing to retry blindly):
@@ -299,22 +293,21 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
     | ------------------------------------------------- | ----- | ----------------------------------- |
     | compressed RAR/7z archives unsupported            | 84    | the documented streaming limitation |
     | "Rar signature not found" / bad volume headers    | 50    | damaged or obfuscated RAR sets      |
-    | no importable media files                         | 20    | extras/sample-only releases         |
+    | no importable media files                         | 20    | extras/sample-only payloads         |
     | inconsistent RAR volume size                      | 6     | truncated uploads                   |
     | missing articles                                  | 5     | expired on the provider             |
     | unreadable media bytes / CRC32 / duplicate volume | 6     | corrupt payloads                    |
 
     So **141 of 182 (77%) are the compressed-RAR limitation** predicted in
-    "Known behavioral differences" — those releases must be re-grabbed as
-    stored/direct-media releases, which the \*arrs do automatically once they
-    point at this backend. Nothing was deleted from zurg; its corpus is intact.
+    "Known behavioral differences" — those items must be re-grabbed as
+    stored/direct-media items, which the \*arrs do automatically once they
+    point at this backend. Nothing was deleted from the old backend.
 
     The article pre-check was re-enabled afterwards and the import helper's
     CiliumNetworkPolicy entry removed (Job + ConfigMap deleted).
 
 - **2026-10-19/20** — **Connection split re-weighted to 20/80 toward
-  InfiniDysk** (#1508): zurg 10/15/5/10/20, InfiniDysk 40/60/20/40/80. Totals
-  per account are unchanged (50/75/25/50/100).
+  InfiniDysk** (#1508); per-account totals unchanged.
 
 - **2026-10-20** — **Phase 2 done.** `rclone-infinidysk` added _beside_
   `rclone-zurg` in every app that mounts zurg: the four \*arrs, both Bazzars,
@@ -433,15 +426,15 @@ Deliberate deviations; keep them in mind when executing Phases 2–6.
    the Secret is the only dependable shape. Postgres support is **new-install only** —
    there is no SQLite→PostgreSQL migration, so an existing `/config/db.sqlite` must be
    removed (delete it while the app is stopped) rather than converted. Consequences:
-   `/config` still holds blobs, the NZB corpus and the auxiliary SQLite stores
+   `/config` still holds blobs, the NZB store and the auxiliary SQLite stores
    (`metrics.sqlite`, `warden.db`, `usenet-migration.db`), so its kopiur snapshot stays
    necessary, but the main DB now needs **PostgreSQL-native backups** (`pg_dump`) — the
    in-app backup page only covers `warden.db`.
-7. **`/config` is the NZB corpus holder** — enable `api.nzb-backup-enabled` with
-   retention `0` (forever), mirroring zurg's "raw NZBs are the only copy of the
-   library" doctrine. kopiur backs it up.
-8. **Corpus migration: bulk NZB re-import (Option B), re-grab as fallback (Option A).**
-   See Phase 3. This preserves ~5,491 releases without indexer spend; the \*arrs'
+7. **`/config` holds the NZB store** — enable `api.nzb-backup-enabled` with
+   retention `0` (forever): the raw `.nzb` files are the only copy of the job
+   metadata. kopiur backs it up.
+8. **Bulk NZB re-import (Option B), re-grab as fallback (Option A).**
+   See Phase 3. This preserves the existing NZB set without indexer spend; the \*arrs'
    `Downloaded*Scan` re-imports them against existing DB items.
 9. **Category names stay as-is**: `other,radarr,radarr4k,sonarr,sonarr4k,nonplex`
    (letters/numbers/dashes are valid; \*arr client configs carry over unchanged).
@@ -456,68 +449,55 @@ Deliberate deviations; keep them in mind when executing Phases 2–6.
 12. **`manual-category` is `other`**, so Queue-page uploads land in the tree the
     manual-NZB pipeline already expects.
 
-## Usenet connection split (historical — ended 2026-10-21)
+## Provider connection split (historical — ended 2026-10-21)
 
-> **No longer in effect**: zurg was retired 2026-10-21 and InfiniDysk holds every account's full
-> allowance again (current values: `infinidysk/app/externalsecret.yaml`, `MaxConnections` 50/75/25 +
-> 50 bonus + 100 Blocknews). The section is kept for a future second backend.
+> **Redacted from Git (2026-10-23):** the provider account topology (account names, server
+> hostnames, per-account connection allowances) that used to be documented here now lives only
+> in Infisical and the functional manifests (`kubernetes/apps/media/infinidysk/app/externalsecret.yaml`
+> carries the live `MaxConnections`). History: while both backends shared the same accounts,
+> every allowance was divided between them (20/80 in the new backend's favour after 2026-10-19)
+> so the combined connection counts stayed within each plan. The split ended 2026-10-21 with the
+> old backend's retirement.
 
-Both backends authenticate with the **same provider accounts**, so every account's
-connection allowance has to be divided between them — two apps each dialing the full
-allowance would exceed the plan and get connections refused (and would starve
-playback). The split was first applied 2026-10-19 with zurg holding the larger share,
-then re-weighted the same day to **20/80 in InfiniDysk's favour** once InfiniDysk
-proved it could serve reads: the incoming backend gets most of every allowance and
-zurg keeps a working margin until the cutover.
+### Allowance values (now the new backend's live values)
 
-### Original ("OG") zurg settings — now InfiniDysk's live values
+| Account   | Role                          | Connections |
+| --------- | ----------------------------- | ----------- |
+| Primary A | primary (spool group A)       | **50**      |
+| Primary B | primary, priority 1 (group B) | **75**      |
+| Primary C | primary, priority 2 (group B) | **25**      |
+| Backup B  | backup / metered fill         | **50**      |
+| Backup D  | backup / metered block        | **100**     |
 
-| Account      | Host                          | Role                                   | OG connections |
-| ------------ | ----------------------------- | -------------------------------------- | -------------- |
-| Eweka        | ``           | primary (omicron spool)                | **50**         |
-| Frugal EU    | `` | primary, priority 1 (frugal spool)     | **75**         |
-| Frugal US    | ``   | primary, priority 2 (frugal spool)     | **25**         |
-| Frugal bonus | ``  | backup / metered fill                  | **50**         |
-| Blocknews    | ``    | backup / metered block (netnews spool) | **100**        |
+(Account and host identities were removed from this doc on 2026-10-23; the functional
+values live in `kubernetes/apps/media/infinidysk/app/externalsecret.yaml`.)
 
 Aggregate **primaries = 150** (50 + 75 + 25); backups are fill-only and do not count
-toward streaming throughput. `warm_connections: 4`. These are the numbers now live in
-`kubernetes/apps/media/infinidysk/app/externalsecret.yaml` (as `MaxConnections`).
+toward streaming throughput. `warm_connections: 4`.
 
 ### Superseded split — 20 / 80 (2026-10-19 → 2026-10-21)
 
-Applied 2026-10-19 while both backends shared the accounts, then retired with zurg.
+Applied 2026-10-19 while both backends shared the accounts, then retired with the old
+backend: primaries split **30 / 120** between old and new. Every allowance divides evenly
+by 5, so the percentages were exact integer connection counts — no rounding, no account
+over its plan total.
 
-| Account                   | Allowance | zurg (20%) | InfiniDysk (80%) | Total |
-| ------------------------- | --------- | ---------- | ---------------- | ----- |
-| Eweka primary             | 50        | 10         | 40               | 50    |
-| Frugal EU primary         | 75        | 15         | 60               | 75    |
-| Frugal US primary         | 25        | 5          | 20               | 25    |
-| Frugal bonus (backup)     | 50        | 10         | 40               | 50    |
-| Blocknews (backup, block) | 100       | 20         | 80               | 100   |
+Mapping for InfiniDysk (`NZBDAV_CONFIG__USENET__PROVIDERS`): primary accounts are
+`Type: 1` (Pool Connections), metered backups `Type: 3` (BackupOnly); `StorageGroup`
+labels the upstream spool group. See `kubernetes/apps/media/infinidysk/app/externalsecret.yaml`.
 
-Primaries: zurg **30**, InfiniDysk **120**. Every allowance divides evenly by 5, so
-the percentages are exact integer connection counts — no rounding, no account over
-its plan total.
-
-Mapping for InfiniDysk (`NZBDAV_CONFIG__USENET__PROVIDERS`): Eweka/Frugal EU/Frugal US
-are `Type: 1` (Pool Connections), Frugal bonus and Blocknews are `Type: 3`
-(BackupOnly); `StorageGroup` carries zurg's `backbone` (`omicron`, `frugal`,
-`netnews`). See `kubernetes/apps/media/infinidysk/app/externalsecret.yaml`.
-
-**The split ended 2026-10-21:** zurg is retired, and every InfiniDysk provider carries its OG
-number again (50/75/25 primaries + 50 bonus + 100 Blocknews). The allowances are per account,
-so the whole 150/50/100 now belongs to InfiniDysk alone. Both manifests carry a comment
-pointing here, so no one has to guess what the numbers were.
+**The split ended 2026-10-21:** the old backend is retired, and every InfiniDysk provider
+carries its full allowance again. The allowances are per account, so all of them now
+belong to InfiniDysk alone. Both manifests carry a comment pointing here.
 
 ## Known behavioral differences / risks
 
 - **Compressed RAR/7z payloads are rejected.** InfiniDysk streams only direct media
   or _stored/uncompressed_ archive members (RAR `m0`, 7z Copy); compressed archives
   fail the SAB job (`status: Failed`) and the \*arr blocklists/re-grabs. zurg streams
-  compressed archives (its `stream_compressed_archives`), so some of the corpus —
-  especially older RAR-packed releases — will not mount. Expect this in Phase 3 and
-  measure it; those items fall back to Option A (re-grab a stored release).
+  compressed archives (its `stream_compressed_archives`), so some older RAR-packed items
+  will not mount. Expect this in Phase 3 and
+  measure it; those items fall back to Option A (re-grab a stored item).
 - **No Plex/Jellyfin push scans.** zurg's targeted-scan integration is gone. Enable
   periodic library scans in both servers and accept scan latency; watch Overview
   **Active Reads** for scan-induced thrash and keep analysis settings light.
@@ -550,23 +530,21 @@ pointing here, so no one has to guess what the numbers were.
    `remoteRef` fails the whole ExternalSecret; the `idlers` lesson). Prove with a
    throwaway ExternalSecret templating `{{ .KEY | len }}`:
 
-    | key                                                                | value source                                                            |
-    | ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-    | `/infinidysk/API_KEY`                                              | new random (SAB download-client key **and** `FRONTEND_BACKEND_API_KEY`) |
-    | `/infinidysk/WEBDAV_PASSWORD`                                      | new random (avoid `"`, `\`, `$` — JSON/env escaping)                    |
-    | `/infinidysk/EWEKA_USERNAME`, `/infinidysk/EWEKA_PASSWORD`         | copy of `/zurg/*`                                                       |
-    | `/infinidysk/FRUGAL_USERNAME`, `/infinidysk/FRUGAL_PASSWORD`       | copy of `/zurg/*`                                                       |
-    | `/infinidysk/BLOCKNEWS_USERNAME`, `/infinidysk/BLOCKNEWS_PASSWORD` | copy of `/zurg/*`                                                       |
+    | key                                                               | value source                                                            |
+    | ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+    | `/infinidysk/API_KEY`                                             | new random (SAB download-client key **and** `FRONTEND_BACKEND_API_KEY`) |
+    | `/infinidysk/WEBDAV_PASSWORD`                                     | new random (avoid `"`, `\`, `$` — JSON/env escaping)                    |
+    | the NNTP credential key pairs (`<provider>_USERNAME`/`_PASSWORD`) | copied from the legacy `/zurg/*` values                                 |
 
     Copying (not referencing) the NNTP creds keeps `/infinidysk/*` self-contained so
-    `/zurg/*` can be deleted at teardown. The \*arr API key is **not** duplicated:
+    the legacy `/zurg/*` values can be deleted at teardown. The \*arr API key is **not** duplicated:
     the ExternalSecret templates it from `/servarr/API_KEY` (ESO cannot read
     `servarr-secret` itself).
 
 3. Read the phase-local references listed at the top. Confirm current upstream image
    tag + digest (`crane digest`/`skopeo` or the GitHub release) at implementation
    time.
-4. Decide the corpus question per "Decisions" #8; do not change it mid-phase.
+4. Decide the NZB-store question per "Decisions" #8; do not change it mid-phase.
 
 **Verification**: key list above readable via the `infisical` ClusterSecretStore.
 **Rollback**: n/a (Infisical-only).
@@ -605,7 +583,7 @@ New tree `kubernetes/apps/media/infinidysk/` mirroring `media/zurg/`:
       NZBDAV_CONFIG__API__CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex"
       NZBDAV_CONFIG__API__MANUAL_CATEGORY: "other"
       NZBDAV_CONFIG__API__IMPORT_STRATEGY: "symlinks"
-      NZBDAV_CONFIG__API__NZB_BACKUP_ENABLED: "true"       # /config holds the corpus
+      NZBDAV_CONFIG__API__NZB_BACKUP_ENABLED: "true"       # /config holds the NZB store
       NZBDAV_CONFIG__API__NZB_BACKUP_RETENTION_DAYS: "0"   # forever
       NZBDAV_CONFIG__API__ENSURE_ARTICLE_EXISTENCE_CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex"
       NZBDAV_CONFIG__API__ARTICLE_EXISTENCE_CHECK_MODE: "sampled"  # zurg-equivalent pre-check
@@ -628,66 +606,33 @@ New tree `kubernetes/apps/media/infinidysk/` mirroring `media/zurg/`:
       + rclone self-mount (below)
     ```
 
-    `NZBDAV_CONFIG__USENET__PROVIDERS` (PascalCase properties; map zurg's topology —
-    zurg `backbone` ≙ InfiniDysk **Storage group**, zurg `backup: true` ≙ provider
-    `Type: 3` BackupOnly, primary accounts `Type: 1` Pool Connections):
+    `NZBDAV_CONFIG__USENET__PROVIDERS` (PascalCase properties; `Type: 1` = Pool Connections
+    for primary accounts, `Type: 3` = BackupOnly for metered backups, `StorageGroup` labels
+    the upstream spool group; one entry per account, hosts/nicknames redacted here):
 
     ```json
     {
         "Providers": [
             {
                 "Type": 1,
-                "Host": "news.eweka.nl",
+                "Host": "<primary-host>",
                 "Port": 563,
                 "UseSsl": true,
                 "User": "…",
                 "Pass": "…",
                 "MaxConnections": 50,
-                "Nickname": "eweka",
-                "StorageGroup": "omicron"
-            },
-            {
-                "Type": 1,
-                "Host": "eunews.frugalusenet.com",
-                "Port": 563,
-                "UseSsl": true,
-                "User": "…",
-                "Pass": "…",
-                "MaxConnections": 75,
-                "Nickname": "frugal-eu",
-                "StorageGroup": "frugal"
-            },
-            {
-                "Type": 1,
-                "Host": "news.frugalusenet.com",
-                "Port": 563,
-                "UseSsl": true,
-                "User": "…",
-                "Pass": "…",
-                "MaxConnections": 25,
-                "Nickname": "frugal-us",
-                "StorageGroup": "frugal"
+                "Nickname": "provider-a",
+                "StorageGroup": "spool-a"
             },
             {
                 "Type": 3,
-                "Host": "bonus.frugalusenet.com",
+                "Host": "<backup-host>",
                 "Port": 563,
                 "UseSsl": true,
                 "User": "…",
                 "Pass": "…",
                 "MaxConnections": 50,
-                "Nickname": "frugal-bonus"
-            },
-            {
-                "Type": 3,
-                "Host": "eunews.blocknews.net",
-                "Port": 563,
-                "UseSsl": true,
-                "User": "…",
-                "Pass": "…",
-                "MaxConnections": 100,
-                "Nickname": "blocknews",
-                "StorageGroup": "netnews"
+                "Nickname": "provider-b"
             }
         ]
     }
@@ -842,14 +787,14 @@ each \*arr pod `ls /aio/remote/infinidysk` lists the tree and
 
 Per app (`sonarr` → `sonarr4k` → `radarr` → `radarr4k`):
 
-1. **Add the download client via the API** (as zurg-migration Phase 2 did): SABnzbd
+1. **Add the download client via the API** (as the earlier cutover did): SABnzbd
    client `InfiniDysk`, host `infinidysk.media.svc.cluster.local`, port 3000, key
    `/infinidysk/API_KEY`, category per app (`sonarr`/`sonarr4k`/`radarr`/`radarr4k`),
    **Remove Completed: enabled**, and enable global Completed Download Handling.
-   Keep the `zurg (Usenet)` client **enabled** until the app's corpus is migrated,
+   Keep the old download client **enabled** until the app's NZB set is migrated,
    then disable it (it is the rollback).
 2. **Repoint the root folder(s)** to the farm (`/aio/symlinks/<tree>`), preserving
-   the `plex_hd`/`plex_4k` split. Ordering correction from zurg-migration: the root
+   the `plex_hd`/`plex_4k` split. Ordering correction from the earlier cutover: the root
    must point at the destination **before** the grab test, and the test import must
    not cross from the rclone mount into a different filesystem while
    `copyUsingHardlinks=true` would fall back to a byte copy — here the import source
@@ -860,29 +805,26 @@ Per app (`sonarr` → `sonarr4k` → `radarr` → `radarr4k`):
    `/aio/remote/infinidysk/.ids/…`; `du` of the `symlinks` PVC stays flat; playback
    from Plex/Jellyfin works through the link. Failure mode to watch: a plain-file
    copy (millions of bytes into the farm) — abort the app's cutover if seen.
-4. **Corpus migration** (bulk, per app):
-    1. Copy zurg's NZB corpus out: `kubectl -n media cp` (or a debug pod) from the
-       zurg PVC `nzbs/` — ~5,491 `.nzb` files, filenames are release identities,
-       never rename them. (The zurg MCP `zurg_library_*` tools enumerate the live
-       library for reconciliation.)
+4. **NZB-store migration** (bulk, per app):
+    1. Copy the old backend's NZB store out: `kubectl -n media cp` (or a debug pod) from
+       its PVC `nzbs/` — the `.nzb` filenames are item identities,
+       never rename them.
     2. Bulk-add to InfiniDysk via its SAB API (`addfile`, category = the app's
        category) in batches of ~100–200 — respect queue admission limits
        (Settings → Queue) and let article checks drain between batches. Compressed-
-       archive releases will report `Failed`; collect their names instead of
+       archive items will report `Failed`; collect their names instead of
        retrying.
     3. Re-import against the existing DB: run the \*arr's `DownloadedEpisodesScan` /
        `DownloadedMoviesScan` with `path` pointed at the category's completed area
        (batched) — items match their existing records and the file paths rewrite to
        the farm with symlinks. No bytes fetched; no indexer spend.
-    4. **Reconcile** per tree against the zurg counts
-       (`plex_hd/shows` 102, `plex_hd/movies` 434, `plex_4k/shows` 67,
-       `plex_4k/movies` 401, `other` 13 as of 2026-01-10-ish in zurg-migration terms)
-       and the old farm counts. Shortfalls = compressed-archive rejects + dead
-       releases; those fall back to **Option A**: leave them missing and let the \*arr
+    4. **Reconcile** per tree against the old backend's counts and the old farm
+       counts. Shortfalls = compressed-archive rejects + dead
+       items; those fall back to **Option A**: leave them missing and let the \*arr
        re-grab unattended (blocklisting handles expired-article failures). Turn
-       automatic searching off for the app while its corpus batch runs if indexer
+       automatic searching off for the app while its batch runs if indexer
        load needs calming.
-    5. Repeat per app; then disable the app's `zurg (Usenet)` client.
+    5. Repeat per app; then disable the app's old download client.
 
 **Verification**: \*arr queue/history clean; every file path under `/aio/symlinks`;
 farm `ls -la` shows symlinks only; `du --apparent-size`-vs-`du` on the farm proves
@@ -902,23 +844,22 @@ yet cut over — expected until Phase 4).
 
 1. Add `rclone-infinidysk` sidecars to `plex` (dual mounts like the current
    zurg+altmount state) and `jellyfin`, with `--read-only` flag sets.
-2. Swap each server's library locations from `/aio/remote/zurg/__magic__/…` to the
+2. Swap each server's library locations from the old backend's mount to the
    farm (`/aio/symlinks/plex_hd/movies` etc.) **one section at a time**. Never let a
    section scan old+new locations of the same content simultaneously (double-count
-   lesson from zurg-migration Phase 4).
-3. **Data-loss guard**: zurg's `plex_settings_policy: guard` used to re-assert
+   lesson from the earlier cutover).
+3. **Data-loss guard**: the old backend's `plex_settings_policy: guard` used to re-assert
    `autoEmptyTrash=0`; nothing does that anymore — verify Plex's
-   "Empty trash automatically after every scan" is **off** and keep the
-   `docs/plex-trash-sweep.md` situation in mind when entries go missing during
-   mount blips.
+   "Empty trash automatically after every scan" is **off** so entries don't go
+   missing when a mount blips mid-scan.
 4. Scan cadence: enable Plex "Scan my library periodically" and a Jellyfin scheduled
-   library scan (replacing zurg's push scans). Keep analysis/decode-heavy tasks
-   (deep analysis, VAD) off while the corpus settles — every decoded byte is fetched
-   from Usenet.
-5. Jellyfin gets the farm only (its zurg sidecar retires here or in Phase 6).
+   library scan (replacing the old backend's push scans). Keep analysis/decode-heavy tasks
+   (deep analysis, VAD) off while the import settles — every decoded byte is fetched
+   from the backend.
+5. Jellyfin gets the farm only (its old sidecar retires here or in Phase 6).
 
 **Verification**: sections converge (no duplicates, no mass-missing after scans);
-direct play + seek of a 4K remux streams smoothly (watch Overview **Active Reads**
+direct play + seek of a large 4K file streams smoothly (watch Overview **Active Reads**
 on InfiniDysk); subtitle sidecars (Phase 5) still attach.
 **Rollback**: there is none — zurg is retired and its mounts are gone. Plex stays stopped (its
 HelmRelease commented out again) until the farm sections are correct; nothing falls back to the
@@ -947,7 +888,7 @@ HelmRelease commented out again) until the farm sections are correct; nothing fa
    Size note: posters/`.nfo`/subtitles now live on the `symlinks` PVC (10Gi,
    CephFS) where zurg budgeted 10Gi for the same metadata — if usage creeps past
    ~70%, grow `KOPIUR_CAPACITY` for `symlinks` (expand-in-place is supported).
-2. Manual NZBs ( etc.): upload via the InfiniDysk Queue UI with category
+2. Manual NZBs (misc. one-off imports): upload via the InfiniDysk Queue UI with category
    `other`. `media/infinidysk-sync-helper` (added 2026-10-22) is the import step:
    a busybox poller reads SAB history for `category=other`, recreates a Completed
    release's symlinks from `completed-symlinks/other/<release>` under
@@ -1013,19 +954,16 @@ reads in InfiniDysk's absence — confirm by stopping zurg briefly or watching i
    `bazarr4k`, `media-debug`, and any straggler) — careful with helm-release
    history: these apps have DBs; roll forward only (bazarr alembic lesson).
    **Done 2026-10-21.**
-3. Fold zurg-migration Phase 5 here: drop the parked `altmount` sidecars/mounts and
-   the `altmount` app (its NZB store dies with it), the old disabled \*arr clients
-   (`AltMount (SABnzbd)`, `-*`), and `nzbdav`/`nzbdav-sync-helper`
-   themselves if decided (they are dormant config — deleting is safe and shrinks the
-   security allowlists). **Done 2026-10-20**: both apps and their allowlist entries are gone.
-   **Still open 2026-10-22**: the `altmount`/`altmount-sync-helper` trees and their
-   `privileged_allowlist`/`fuse_allowlist` entries in `util/check_security_invariants.sh`,
-   plus the stale `zurg-debug`/`zurg-sync-helper` allowlist entries and the obsolete
-   `util/restart-media-chain.sh` (written for the altmount sidecar chain).
+3. Drop the parked legacy sidecars/mounts, the old disabled \*arr clients and the
+   dormant app trees, their security-allowlist entries and the obsolete mount-chain
+   restart helper. **Done 2026-10-23**: the retired backend trees (`altmount`,
+   `altmount-sync-helper`, `zurg`, `zurg-debug`, `zurg-sync-helper`), their
+   allowlist entries and `util/restart-media-chain.sh` are removed from the repo.
 4. Authentik blueprint: remove the `zurg` provider/application/binding entries and
-   its outpost hostname; keep `infinidysk`'s. **Open 2026-10-22**: `provider-zurg`,
-   `app-zurg`, its policy binding and the outpost provider list in
-   `blueprints/forward-auth.yaml`, plus `zurg.480p.com` in `outpost-routes.yaml`.
+   its outpost hostname; keep `infinidysk`'s. **Done 2026-10-23**: `provider-zurg`,
+   `app-zurg`, its policy binding, the outpost provider-list entry and
+   `zurg.480p.com` in `outpost-routes.yaml` are gone (removed entries only stop
+   being managed — delete the leftover DB objects via the API/UI if wanted).
 5. Infisical: delete `/zurg/*` **after** confirming `/infinidysk/*` holds the NNTP
    creds (Phase 0 copied them). The Jellyfin key is no longer a blocker:
    `media/infinidysk-sync-helper` reads `/jellyfin/API_KEY` (switched 2026-10-22, before
@@ -1034,30 +972,31 @@ reads in InfiniDysk's absence — confirm by stopping zurg briefly or watching i
    secrets (same token as `/zurg/GHCR_*`) — **both** places, per AGENTS.md.
    **Open 2026-10-22**: sponsorship ended 2026-10-21, `/infinidysk/*` is self-contained;
    check that no other private ghcr image relies on the host-wide rule before removing it.
-6. Keep the zurg `/config` PVC (kopiur snapshot) until the corpus is confirmed
-   migrated; then reclaim. `docs/plex-trash-sweep.md` and the zurg `guard` notes
-   become historical. **Overtaken 2026-10-22: the PVC and its SnapshotPolicy were GC'd
-   with the Kustomization — see the log entry. The corpus is the InfiniDysk copy, so the
-   remaining "reclaim" work is only the documentation.**
+6. Keep the old backend's `/config` PVC (kopiur snapshot) until the NZB store is
+   confirmed migrated; then reclaim. **Overtaken 2026-10-22: the PVC and its
+   SnapshotPolicy were GC'd with the Kustomization — see the log entry. The NZB
+   store is the InfiniDysk copy, so the remaining "reclaim" work is only the
+   documentation (done 2026-10-23).**
 
 **Verification**: `kubectl get externalsecret -n media` clean; `grep -r zurg
 kubernetes/apps/media` empty; flate + security-invariants pass; media stack plays.
 **Rollback**: manifests only. Re-adding zurg redeploys it on an **empty** `/config`
-(no corpus, no `__magic__` placements) — content rollback means re-grabbing, not
+(no NZB store, no placements) — content rollback means re-grabbing, not
 reviving the app.
 
 ---
 
 ## Phase 7 — docs & findings
 
-> **Status 2026-10-22: in progress.** `AGENTS.md` carries the wiring facts and the
-> retirement/correction notes; `zurg-migration.md` is marked historical; this file's phase
-> table and Phase 4–6 texts now match the cluster. Still open: the AGENTS.md zurg-time
-> narrative (MCP/`__magic__`/sync-helper sections) is kept as history and the optional
+> **Status 2026-10-23: in progress.** Wiring facts live in the `docs/agents/` topic guides
+> (mainly `docs/agents/media.md`); this file's phase
+> table and Phase 4–6 texts now match the cluster. The old backend's migration doc and the
+> zurg-era narrative were removed from the repo on 2026-10-23 (content-history notes were
+> deliberately not kept). Still open: the optional
 > `docs/infinidysk.md` runbook.
 
-- Update [`zurg-migration.md`](./zurg-migration.md) header: Phases 4–5 superseded
-  here.
+- The earlier backend-migration doc was removed from the repo; its superseded phases were
+  already folded in here.
 - Record durable findings in `AGENTS.md` (Repository Findings): the InfiniDysk
   wiring pattern (ports 3000/8080, `NZBDAV_CONFIG__*` overlay, self-mount sidecar,
   obscured rclone pass), the compressed-archive rejection, the `Remove Completed`

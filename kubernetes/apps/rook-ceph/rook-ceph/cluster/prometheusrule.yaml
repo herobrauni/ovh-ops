@@ -32,7 +32,7 @@ spec:
       rules:
         - alert: "CephMonDownQuorumAtRisk"
           annotations:
-            description: "{{ $min := query \"floor(count(ceph_mon_metadata) / 2) + 1\" | first | value }}Quorum requires a majority of monitors (x {{ $min }}) to be active. Without quorum the cluster will become inoperable, affecting all services and connected clients. The following monitors are down: {{- range query \"(ceph_mon_quorum_status == 0) + on(ceph_daemon) group_left(hostname) (ceph_mon_metadata * 0)\" }} - {{ .Labels.ceph_daemon }} on {{ .Labels.hostname }} {{- end }}"
+            description: '{{ $min := query "floor(count(ceph_mon_metadata) / 2) + 1" | first | value }}Quorum requires a majority of monitors (x {{ $min }}) to be active. Without quorum the cluster will become inoperable, affecting all services and connected clients. The following monitors are down: {{- range query "(ceph_mon_quorum_status == 0) + on(ceph_daemon) group_left(hostname) (ceph_mon_metadata * 0)" }} - {{ .Labels.ceph_daemon }} on {{ .Labels.hostname }} {{- end }}'
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#mon-down"
             summary: "Monitor quorum is at risk"
           expr: |
@@ -60,10 +60,10 @@ spec:
             type: "ceph_default"
         - alert: "CephMonDiskspaceCritical"
           annotations:
-            description: "The free space available to a monitor's store is critically low. You should increase the space available to the monitor(s). The default directory is /var/lib/ceph/mon-*/data/store.db on traditional deployments, and /var/lib/rook/mon-*/data/store.db on the mon pod's worker node for Rook. Look for old, rotated versions of *.log and MANIFEST*. Do NOT touch any *.sst files. Also check any other directories under /var/lib/rook and other directories on the same filesystem, often /var/log and /var/tmp are culprits. Your monitor hosts are; {{- range query \"ceph_mon_metadata\"}} - {{ .Labels.hostname }} {{- end }}"
+            description: 'The free space available to a monitor''s store is critically low. You should increase the space available to the monitor(s). The default directory is /var/lib/ceph/mon-*/data/store.db on traditional deployments, and /var/lib/rook/mon-*/data/store.db on the mon pod''s worker node for Rook. Look for old, rotated versions of *.log and MANIFEST*. Do NOT touch any *.sst files. Also check any other directories under /var/lib/rook and other directories on the same filesystem, often /var/log and /var/tmp are culprits. Your monitor hosts are; {{- range query "ceph_mon_metadata"}} - {{ .Labels.hostname }} {{- end }}'
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#mon-disk-crit"
             summary: "Filesystem space on at least one monitor is critically low"
-          expr: "ceph_health_detail{name=\"MON_DISK_CRIT\"} == 1"
+          expr: 'ceph_health_detail{name="MON_DISK_CRIT"} == 1'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.3.2"
@@ -71,10 +71,10 @@ spec:
             type: "ceph_default"
         - alert: "CephMonDiskspaceLow"
           annotations:
-            description: "The space available to a monitor's store is approaching full (>70% is the default). You should increase the space available to the monitor(s). The default directory is /var/lib/ceph/mon-*/data/store.db on traditional deployments, and /var/lib/rook/mon-*/data/store.db on the mon pod's worker node for Rook. Look for old, rotated versions of *.log and MANIFEST*.  Do NOT touch any *.sst files. Also check any other directories under /var/lib/rook and other directories on the same filesystem, often /var/log and /var/tmp are culprits. Your monitor hosts are; {{- range query \"ceph_mon_metadata\"}} - {{ .Labels.hostname }} {{- end }}"
+            description: 'The space available to a monitor''s store is approaching full (>70% is the default). You should increase the space available to the monitor(s). The default directory is /var/lib/ceph/mon-*/data/store.db on traditional deployments, and /var/lib/rook/mon-*/data/store.db on the mon pod''s worker node for Rook. Look for old, rotated versions of *.log and MANIFEST*.  Do NOT touch any *.sst files. Also check any other directories under /var/lib/rook and other directories on the same filesystem, often /var/log and /var/tmp are culprits. Your monitor hosts are; {{- range query "ceph_mon_metadata"}} - {{ .Labels.hostname }} {{- end }}'
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#mon-disk-low"
             summary: "Drive space on at least one monitor is approaching full"
-          expr: "ceph_health_detail{name=\"MON_DISK_LOW\"} == 1"
+          expr: 'ceph_health_detail{name="MON_DISK_LOW"} == 1'
           for: "5m"
           labels:
             severity: "warning"
@@ -84,7 +84,7 @@ spec:
             description: "Ceph monitors rely on closely synchronized time to maintain quorum and cluster consistency. This event indicates that the time on at least one mon has drifted too far from the lead mon. Review cluster status with ceph -s. This will show which monitors are affected. Check the time sync status on each monitor host with 'ceph time-sync-status' and the state and peers of your ntpd or chrony daemon."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#mon-clock-skew"
             summary: "Clock skew detected among monitors"
-          expr: "ceph_health_detail{name=\"MON_CLOCK_SKEW\"} == 1"
+          expr: 'ceph_health_detail{name="MON_CLOCK_SKEW"} == 1'
           for: "1m"
           labels:
             severity: "warning"
@@ -93,7 +93,7 @@ spec:
       rules:
         - alert: "CephOSDDownHigh"
           annotations:
-            description: "{{ $value | humanize }}% or {{ with query \"count(ceph_osd_up == 0)\" }}{{ . | first | value }}{{ end }} of {{ with query \"count(ceph_osd_up)\" }}{{ . | first | value }}{{ end }} OSDs are down (>= 10%). The following OSDs are down: {{- range query \"(ceph_osd_up * on(ceph_daemon) group_left(hostname) ceph_osd_metadata) == 0\" }} - {{ .Labels.ceph_daemon }} on {{ .Labels.hostname }} {{- end }}"
+            description: '{{ $value | humanize }}% or {{ with query "count(ceph_osd_up == 0)" }}{{ . | first | value }}{{ end }} of {{ with query "count(ceph_osd_up)" }}{{ . | first | value }}{{ end }} OSDs are down (>= 10%). The following OSDs are down: {{- range query "(ceph_osd_up * on(ceph_daemon) group_left(hostname) ceph_osd_metadata) == 0" }} - {{ .Labels.ceph_daemon }} on {{ .Labels.hostname }} {{- end }}'
             summary: "More than 10% of OSDs are down"
           expr: "count(ceph_osd_up == 0) / count(ceph_osd_up) * 100 >= 10"
           for: "5m"
@@ -103,9 +103,9 @@ spec:
             type: "ceph_default"
         - alert: "CephOSDHostDown"
           annotations:
-            description: "The following OSDs are down: {{- range query \"(ceph_osd_up * on(ceph_daemon) group_left(hostname) ceph_osd_metadata) == 0\" }} - {{ .Labels.hostname }} : {{ .Labels.ceph_daemon }} {{- end }}"
+            description: 'The following OSDs are down: {{- range query "(ceph_osd_up * on(ceph_daemon) group_left(hostname) ceph_osd_metadata) == 0" }} - {{ .Labels.hostname }} : {{ .Labels.ceph_daemon }} {{- end }}'
             summary: "An OSD host is offline"
-          expr: "ceph_health_detail{name=\"OSD_HOST_DOWN\"} == 1"
+          expr: 'ceph_health_detail{name="OSD_HOST_DOWN"} == 1'
           for: "5m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.4.8"
@@ -117,7 +117,7 @@ spec:
               {{ $num := query "count(ceph_osd_up == 0)" | first | value }}{{ $s := "" }}{{ if gt $num 1.0 }}{{ $s = "s" }}{{ end }}{{ $num }} OSD{{ $s }} down for over 5mins. The following OSD{{ $s }} {{ if eq $s "" }}is{{ else }}are{{ end }} down: {{- range query "(ceph_osd_up * on(ceph_daemon) group_left(hostname) ceph_osd_metadata) == 0"}} - {{ .Labels.ceph_daemon }} on {{ .Labels.hostname }} {{- end }}
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#osd-down"
             summary: "An OSD has been marked down"
-          expr: "ceph_health_detail{name=\"OSD_DOWN\"} == 1"
+          expr: 'ceph_health_detail{name="OSD_DOWN"} == 1'
           for: "5m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.4.2"
@@ -128,7 +128,7 @@ spec:
             description: "One or more OSDs have reached the NEARFULL threshold. Use 'ceph health detail' and 'ceph osd df' to identify the problem. To resolve, add capacity to the affected OSD's failure domain, restore down/out OSDs, or delete unwanted data."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#osd-nearfull"
             summary: "OSD(s) running low on free space (NEARFULL)"
-          expr: "ceph_health_detail{name=\"OSD_NEARFULL\"} == 1"
+          expr: 'ceph_health_detail{name="OSD_NEARFULL"} == 1'
           for: "5m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.4.3"
@@ -139,7 +139,7 @@ spec:
             description: "An OSD has reached the FULL threshold. Writes to pools that share the affected OSD will be blocked. Use 'ceph health detail' and 'ceph osd df' to identify the problem. To resolve, add capacity to the affected OSD's failure domain, restore down/out OSDs, or delete unwanted data."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#osd-full"
             summary: "OSD full, writes blocked"
-          expr: "ceph_health_detail{name=\"OSD_FULL\"} > 0"
+          expr: 'ceph_health_detail{name="OSD_FULL"} > 0'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.4.6"
@@ -150,7 +150,7 @@ spec:
             description: "An OSD has reached the BACKFILL FULL threshold. This will prevent rebalance operations from completing. Use 'ceph health detail' and 'ceph osd df' to identify the problem. To resolve, add capacity to the affected OSD's failure domain, restore down/out OSDs, or delete unwanted data."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#osd-backfillfull"
             summary: "OSD(s) too full for backfill operations"
-          expr: "ceph_health_detail{name=\"OSD_BACKFILLFULL\"} > 0"
+          expr: 'ceph_health_detail{name="OSD_BACKFILLFULL"} > 0'
           for: "1m"
           labels:
             severity: "warning"
@@ -160,7 +160,7 @@ spec:
             description: "Reads from an OSD have used a secondary PG to return data to the client, indicating a potential failing drive."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#osd-too-many-repairs"
             summary: "OSD reports a high number of read errors"
-          expr: "ceph_health_detail{name=\"OSD_TOO_MANY_REPAIRS\"} == 1"
+          expr: 'ceph_health_detail{name="OSD_TOO_MANY_REPAIRS"} == 1'
           for: "30s"
           labels:
             severity: "warning"
@@ -169,7 +169,7 @@ spec:
           annotations:
             description: "OSD heartbeats on the cluster's 'public' network (frontend) are running slow. Investigate the network for latency or loss issues. Use 'ceph health detail' to show the affected OSDs."
             summary: "Network issues delaying OSD heartbeats (public network)"
-          expr: "ceph_health_detail{name=\"OSD_SLOW_PING_TIME_FRONT\"} == 1"
+          expr: 'ceph_health_detail{name="OSD_SLOW_PING_TIME_FRONT"} == 1'
           for: "1m"
           labels:
             severity: "warning"
@@ -178,7 +178,7 @@ spec:
           annotations:
             description: "OSD heartbeats on the cluster's 'cluster' network (backend) are slow. Investigate the network for latency issues on this subnet. Use 'ceph health detail' to show the affected OSDs."
             summary: "Network issues delaying OSD heartbeats (cluster network)"
-          expr: "ceph_health_detail{name=\"OSD_SLOW_PING_TIME_BACK\"} == 1"
+          expr: 'ceph_health_detail{name="OSD_SLOW_PING_TIME_BACK"} == 1'
           for: "1m"
           labels:
             severity: "warning"
@@ -188,7 +188,7 @@ spec:
             description: "One or more OSDs have an internal inconsistency between metadata and the size of the device. This could lead to the OSD(s) crashing in future. You should redeploy the affected OSDs."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#bluestore-disk-size-mismatch"
             summary: "OSD size inconsistency error"
-          expr: "ceph_health_detail{name=\"BLUESTORE_DISK_SIZE_MISMATCH\"} == 1"
+          expr: 'ceph_health_detail{name="BLUESTORE_DISK_SIZE_MISMATCH"} == 1'
           for: "1m"
           labels:
             severity: "warning"
@@ -198,7 +198,7 @@ spec:
             description: "The device health module has determined that one or more devices will fail soon. To review device status use 'ceph device ls'. To show a specific device use 'ceph device info <dev id>'. Mark the OSD out so that data may migrate to other OSDs. Once the OSD has drained, destroy the OSD, replace the device, and redeploy the OSD."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#id2"
             summary: "Device(s) predicted to fail soon"
-          expr: "ceph_health_detail{name=\"DEVICE_HEALTH\"} == 1"
+          expr: 'ceph_health_detail{name="DEVICE_HEALTH"} == 1'
           for: "1m"
           labels:
             severity: "warning"
@@ -208,7 +208,7 @@ spec:
             description: "The device health module has determined that devices predicted to fail can not be remediated automatically, since too many OSDs would be removed from the cluster to ensure performance and availability. Prevent data integrity issues by adding new OSDs so that data may be relocated."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#device-health-toomany"
             summary: "Too many devices are predicted to fail, unable to resolve"
-          expr: "ceph_health_detail{name=\"DEVICE_HEALTH_TOOMANY\"} == 1"
+          expr: 'ceph_health_detail{name="DEVICE_HEALTH_TOOMANY"} == 1'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.4.7"
@@ -219,7 +219,7 @@ spec:
             description: "The device health module has determined that one or more devices will fail soon, but the normal process of relocating the data on the device to other OSDs in the cluster is blocked. \nEnsure that the cluster has available free space. It may be necessary to add capacity to the cluster to allow data from the failing device to successfully migrate, or to enable the balancer."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#device-health-in-use"
             summary: "Device failure is predicted, but unable to relocate data"
-          expr: "ceph_health_detail{name=\"DEVICE_HEALTH_IN_USE\"} == 1"
+          expr: 'ceph_health_detail{name="DEVICE_HEALTH_IN_USE"} == 1'
           for: "1m"
           labels:
             severity: "warning"
@@ -239,7 +239,7 @@ spec:
             description: "An OSD has encountered read errors, but the OSD has recovered by retrying the reads. This may indicate an issue with hardware or the kernel."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#bluestore-spurious-read-errors"
             summary: "Device read errors detected"
-          expr: "ceph_health_detail{name=\"BLUESTORE_SPURIOUS_READ_ERRORS\"} == 1"
+          expr: 'ceph_health_detail{name="BLUESTORE_SPURIOUS_READ_ERRORS"} == 1'
           for: "30s"
           labels:
             severity: "warning"
@@ -265,7 +265,7 @@ spec:
             description: "Filesystem metadata has been corrupted. Data may be inaccessible. Analyze metrics from the MDS daemon admin socket, or escalate to support."
             documentation: "https://docs.ceph.com/en/latest/cephfs/health-messages#cephfs-health-messages"
             summary: "CephFS filesystem is damaged."
-          expr: "ceph_health_detail{name=\"MDS_DAMAGE\"} > 0"
+          expr: 'ceph_health_detail{name="MDS_DAMAGE"} > 0'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.5.1"
@@ -276,7 +276,7 @@ spec:
             description: "All MDS ranks are unavailable. The MDS daemons managing metadata are down, rendering the filesystem offline."
             documentation: "https://docs.ceph.com/en/latest/cephfs/health-messages/#mds-all-down"
             summary: "CephFS filesystem is offline"
-          expr: "ceph_health_detail{name=\"MDS_ALL_DOWN\"} > 0"
+          expr: 'ceph_health_detail{name="MDS_ALL_DOWN"} > 0'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.5.3"
@@ -287,7 +287,7 @@ spec:
             description: "One or more metadata daemons (MDS ranks) are failed or in a damaged state. At best the filesystem is partially available, at worst the filesystem is completely unusable."
             documentation: "https://docs.ceph.com/en/latest/cephfs/health-messages/#fs-degraded"
             summary: "CephFS filesystem is degraded"
-          expr: "ceph_health_detail{name=\"FS_DEGRADED\"} > 0"
+          expr: 'ceph_health_detail{name="FS_DEGRADED"} > 0'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.5.4"
@@ -298,7 +298,7 @@ spec:
             description: "The filesystem's 'max_mds' setting defines the number of MDS ranks in the filesystem. The current number of active MDS daemons is less than this value."
             documentation: "https://docs.ceph.com/en/latest/cephfs/health-messages/#mds-up-less-than-max"
             summary: "Ceph MDS daemon count is lower than configured"
-          expr: "ceph_health_detail{name=\"MDS_UP_LESS_THAN_MAX\"} > 0"
+          expr: 'ceph_health_detail{name="MDS_UP_LESS_THAN_MAX"} > 0'
           for: "1m"
           labels:
             severity: "warning"
@@ -308,7 +308,7 @@ spec:
             description: "The minimum number of standby daemons required by standby_count_wanted is less than the current number of standby daemons. Adjust the standby count or increase the number of MDS daemons."
             documentation: "https://docs.ceph.com/en/latest/cephfs/health-messages/#mds-insufficient-standby"
             summary: "Ceph filesystem standby daemons too few"
-          expr: "ceph_health_detail{name=\"MDS_INSUFFICIENT_STANDBY\"} > 0"
+          expr: 'ceph_health_detail{name="MDS_INSUFFICIENT_STANDBY"} > 0'
           for: "1m"
           labels:
             severity: "warning"
@@ -318,7 +318,7 @@ spec:
             description: "An MDS daemon has failed, leaving only one active rank and no available standby. Investigate the cause of the failure or add a standby MDS."
             documentation: "https://docs.ceph.com/en/latest/cephfs/health-messages/#fs-with-failed-mds"
             summary: "MDS daemon failed, no further standby available"
-          expr: "ceph_health_detail{name=\"FS_WITH_FAILED_MDS\"} > 0"
+          expr: 'ceph_health_detail{name="FS_WITH_FAILED_MDS"} > 0'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.5.5"
@@ -329,7 +329,7 @@ spec:
             description: "The filesystem has switched to READ ONLY due to an unexpected error when writing to the metadata pool. Either analyze the output from the MDS daemon admin socket, or escalate to support."
             documentation: "https://docs.ceph.com/en/latest/cephfs/health-messages#cephfs-health-messages"
             summary: "CephFS filesystem in read only mode due to write error(s)"
-          expr: "ceph_health_detail{name=\"MDS_HEALTH_READ_ONLY\"} > 0"
+          expr: 'ceph_health_detail{name="MDS_HEALTH_READ_ONLY"} > 0'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.5.2"
@@ -342,7 +342,7 @@ spec:
             description: "One or more mgr modules have crashed and have yet to be acknowledged by an administrator. A crashed module may impact functionality within the cluster. Use the 'ceph crash' command to determine which module has failed, and archive it to acknowledge the failure."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#recent-mgr-module-crash"
             summary: "A manager module has recently crashed"
-          expr: "ceph_health_detail{name=\"RECENT_MGR_MODULE_CRASH\"} == 1"
+          expr: 'ceph_health_detail{name="RECENT_MGR_MODULE_CRASH"} == 1'
           for: "5m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.6.1"
@@ -352,7 +352,7 @@ spec:
           annotations:
             description: "The mgr/prometheus module at {{ $labels.instance }} is unreachable. This could mean that the module has been disabled or the mgr daemon itself is down. Without the mgr/prometheus module metrics and alerts will no longer function. Open a shell to an admin node or toolbox pod and use 'ceph -s' to to determine whether the mgr is active. If the mgr is not active, restart it, otherwise you can determine module status with 'ceph mgr module ls'. If it is not listed as enabled, enable it with 'ceph mgr module enable prometheus'."
             summary: "The mgr/prometheus module is not available"
-          expr: "up{job=\"ceph\"} == 0"
+          expr: 'up{job="ceph"} == 0'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.6.2"
@@ -385,7 +385,7 @@ spec:
             description: "During data consistency checks (scrub), at least one PG has been flagged as being damaged or inconsistent. Check to see which PG is affected, and attempt a manual repair if necessary. To list problematic placement groups, use 'rados list-inconsistent-pg <pool>'. To repair PGs use the 'ceph pg repair <pg_num>' command."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#pg-damaged"
             summary: "Placement group damaged, manual intervention needed"
-          expr: "ceph_health_detail{name=~\"PG_DAMAGED|OSD_SCRUB_ERRORS\"} == 1"
+          expr: 'ceph_health_detail{name=~"PG_DAMAGED|OSD_SCRUB_ERRORS"} == 1'
           for: "5m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.7.4"
@@ -396,7 +396,7 @@ spec:
             description: "Data redundancy is at risk since one or more OSDs are at or above the 'full' threshold. Add more capacity to the cluster, restore down/out OSDs, or delete unwanted data."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#pg-recovery-full"
             summary: "OSDs are too full for recovery"
-          expr: "ceph_health_detail{name=\"PG_RECOVERY_FULL\"} == 1"
+          expr: 'ceph_health_detail{name="PG_RECOVERY_FULL"} == 1'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.7.5"
@@ -407,7 +407,7 @@ spec:
             description: "Data availability is reduced, impacting the cluster's ability to service I/O. One or more placement groups (PGs) are in a state that blocks I/O."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#pg-availability"
             summary: "PG is unavailable, blocking I/O"
-          expr: "((ceph_health_detail{name=\"PG_AVAILABILITY\"} == 1) - scalar(ceph_health_detail{name=\"OSD_DOWN\"})) == 1"
+          expr: '((ceph_health_detail{name="PG_AVAILABILITY"} == 1) - scalar(ceph_health_detail{name="OSD_DOWN"})) == 1'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.7.3"
@@ -418,7 +418,7 @@ spec:
             description: "Data redundancy may be at risk due to lack of free space within the cluster. One or more OSDs have reached the 'backfillfull' threshold. Add more capacity, or delete unwanted data."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#pg-backfill-full"
             summary: "Backfill operations are blocked due to lack of free space"
-          expr: "ceph_health_detail{name=\"PG_BACKFILL_FULL\"} == 1"
+          expr: 'ceph_health_detail{name="PG_BACKFILL_FULL"} == 1'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.7.6"
@@ -429,7 +429,7 @@ spec:
             description: "One or more PGs have not been scrubbed recently. Scrubs check metadata integrity, protecting against bit-rot. They check that metadata is consistent across data replicas. When PGs miss their scrub interval, it may indicate that the scrub window is too small, or PGs were not in a 'clean' state during the scrub window. You can manually initiate a scrub with: ceph pg scrub <pgid>"
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#pg-not-scrubbed"
             summary: "Placement group(s) have not been scrubbed"
-          expr: "ceph_health_detail{name=\"PG_NOT_SCRUBBED\"} == 1"
+          expr: 'ceph_health_detail{name="PG_NOT_SCRUBBED"} == 1'
           for: "5m"
           labels:
             severity: "warning"
@@ -439,7 +439,7 @@ spec:
             description: "The number of placement groups per OSD is too high (exceeds the mon_max_pg_per_osd setting).\n Check that the pg_autoscaler has not been disabled for any pools with 'ceph osd pool autoscale-status', and that the profile selected is appropriate. You may also adjust the target_size_ratio of a pool to guide the autoscaler based on the expected relative size of the pool ('ceph osd pool set cephfs.cephfs.meta target_size_ratio .1') or set the pg_autoscaler mode to 'warn' and adjust pg_num appropriately for one or more pools."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks/#too-many-pgs"
             summary: "Placement groups per OSD is too high"
-          expr: "ceph_health_detail{name=\"TOO_MANY_PGS\"} == 1"
+          expr: 'ceph_health_detail{name="TOO_MANY_PGS"} == 1'
           for: "1m"
           labels:
             severity: "warning"
@@ -449,7 +449,7 @@ spec:
             description: "One or more PGs have not been deep scrubbed recently. Deep scrubs protect against bit-rot. They compare data replicas to ensure consistency. When PGs miss their deep scrub interval, it may indicate that the window is too small or PGs were not in a 'clean' state during the deep-scrub window."
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#pg-not-deep-scrubbed"
             summary: "Placement group(s) have not been deep scrubbed"
-          expr: "ceph_health_detail{name=\"PG_NOT_DEEP_SCRUBBED\"} == 1"
+          expr: 'ceph_health_detail{name="PG_NOT_DEEP_SCRUBBED"} == 1'
           for: "5m"
           labels:
             severity: "warning"
@@ -469,16 +469,16 @@ spec:
           annotations:
             description: "A pool is approaching the near full threshold, which will prevent recovery/backfill operations from completing. Consider adding more capacity."
             summary: "Free space in a pool is too low for recovery/backfill"
-          expr: "ceph_health_detail{name=\"POOL_BACKFILLFULL\"} > 0"
+          expr: 'ceph_health_detail{name="POOL_BACKFILLFULL"} > 0'
           labels:
             severity: "warning"
             type: "ceph_default"
         - alert: "CephPoolFull"
           annotations:
-            description: "A pool has reached its MAX quota, or OSDs supporting the pool have reached the FULL threshold. Until this is resolved, writes to the pool will be blocked. Pool Breakdown (top 5) {{- range query \"topk(5, sort_desc(ceph_pool_percent_used * on(pool_id) group_right ceph_pool_metadata))\" }} - {{ .Labels.name }} at {{ .Value }}% {{- end }} Increase the pool's quota, or add capacity to the cluster first then increase the pool's quota (e.g. ceph osd pool set quota <pool_name> max_bytes <bytes>)"
+            description: 'A pool has reached its MAX quota, or OSDs supporting the pool have reached the FULL threshold. Until this is resolved, writes to the pool will be blocked. Pool Breakdown (top 5) {{- range query "topk(5, sort_desc(ceph_pool_percent_used * on(pool_id) group_right ceph_pool_metadata))" }} - {{ .Labels.name }} at {{ .Value }}% {{- end }} Increase the pool''s quota, or add capacity to the cluster first then increase the pool''s quota (e.g. ceph osd pool set quota <pool_name> max_bytes <bytes>)'
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#pool-full"
             summary: "Pool is full - writes are blocked"
-          expr: "ceph_health_detail{name=\"POOL_FULL\"} > 0"
+          expr: 'ceph_health_detail{name="POOL_FULL"} > 0'
           for: "1m"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.9.1"
@@ -488,7 +488,7 @@ spec:
           annotations:
             description: "A pool has exceeded the warning (percent full) threshold, or OSDs supporting the pool have reached the NEARFULL threshold. Writes may continue, but you are at risk of the pool going read-only if more capacity isn't made available. Determine the affected pool with 'ceph df detail', looking at QUOTA BYTES and STORED. Increase the pool's quota, or add capacity to the cluster first then increase the pool's quota (e.g. ceph osd pool set quota <pool_name> max_bytes <bytes>). Also ensure that the balancer is active."
             summary: "One or more Ceph pools are nearly full"
-          expr: "ceph_health_detail{name=\"POOL_NEAR_FULL\"} > 0"
+          expr: 'ceph_health_detail{name="POOL_NEAR_FULL"} > 0'
           for: "5m"
           labels:
             severity: "warning"
@@ -510,7 +510,7 @@ spec:
             description: "{{ $labels.ceph_daemon }} operations are taking too long to process (complaint time exceeded)"
             documentation: "https://docs.ceph.com/en/latest/rados/operations/health-checks#slow-ops"
             summary: "{{ $labels.ceph_daemon }} operations are slow to complete"
-          expr: "ceph_daemon_health_metrics{type=\"SLOW_OPS\"} > 0"
+          expr: 'ceph_daemon_health_metrics{type="SLOW_OPS"} > 0'
           for: "30s"
           labels:
             severity: "warning"
@@ -521,7 +521,7 @@ spec:
           annotations:
             description: "The Prometheus job that scrapes Ceph MGR is missing, which means Ceph metrics and alerts may not be available. Ensure the rook-ceph-mgr ServiceMonitor is being discovered by Prometheus."
             summary: "The scrape job for Ceph MGR is missing from Prometheus"
-          expr: "absent(up{namespace=\"rook-ceph\",service=\"rook-ceph-mgr-external\"})"
+          expr: 'absent(up{namespace="rook-ceph",service="rook-ceph-mgr-external"})'
           for: "30s"
           labels:
             oid: "1.3.6.1.4.1.50495.1.2.1.12.1"

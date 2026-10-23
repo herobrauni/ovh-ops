@@ -124,12 +124,12 @@ spec:
               capabilities:
                 drop:
                   - ALL
-          # zurg (the Usenet backend) mounted at the same path sonarr/radarr
-          # report for their libraries, so subtitle sidecars land beside the
-          # video files. Writable on purpose: Bazarr writes the .srt files it
-          # downloads into __magic__ subpaths, and extracts embedded subs
-          # straight from the video files. Only __magic__ subpaths are ever
-          # addressed, never __magic__ or __magic__/__all__ themselves.
+          # The download backend (InfiniDysk) mounted at the same path
+          # sonarr/radarr report for their libraries, so subtitle sidecars
+          # land beside the video files. Writable on purpose: Bazarr writes
+          # the .srt files it downloads beside the items, and extracts
+          # embedded subs straight from the video files. Only item subpaths
+          # are ever addressed, never the tree roots.
           rclone-infinidysk:
             image:
               repository: docker.io/rclone/rclone
@@ -279,9 +279,8 @@ spec:
             rclone-infinidysk:
               - path: /host-mount
                 mountPropagation: Bidirectional
-      # Writable zurg mount: Bazarr PUTs .srt sidecars beside the release
-      # folders under __magic__ — the same path pattern the *arrs use for
-      # posters/.nfo. Only __magic__ subpaths are addressed.
+      # Writable backend mount: Bazarr PUTs .srt sidecars beside the item
+      # folders — the same path pattern the *arrs use for posters/.nfo.
       infinidysk:
         type: hostPath
         hostPath: /tmp/rclone-bazarr-infinidysk

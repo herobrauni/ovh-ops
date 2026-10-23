@@ -126,12 +126,11 @@ spec:
                   - CHOWN
                   - DAC_OVERRIDE
                   - FOWNER
-          # zurg (the Usenet backend) mounted where zurg reports it, so the
-          # *arr sees a release at the same path the SABnzbd endpoint hands
-          # over. Writable on purpose: an import MOVEs the released folder
-          # inside __magic__ (a server-side row write, no bytes moved) and
-          # PUTs posters/.nfo sidecars beside it. Only __magic__ subpaths are
-          # ever addressed, never __magic__ or __magic__/__all__ themselves.
+          # The download backend (InfiniDysk) mounted where it reports files,
+          # so the *arr sees an item at the same path the SABnzbd endpoint
+          # hands over. Writable on purpose: sidecars (posters/.nfo) are
+          # written beside the items and completed items move into place.
+          # Only item subpaths are ever addressed, never the tree roots.
           rclone-infinidysk:
             image:
               repository: docker.io/rclone/rclone

@@ -13,7 +13,7 @@ spec:
         # RTT > 0.15s for 10m, but etcd probes each peer only every ~64s (~40 samples
         # per 5m window), so its p99 is the single worst probe and any one 200-400ms
         # WAN bubble trips it. This cluster runs external Ceph over the same uplink
-        # (media IO, zurg scans, kopiur backups), so those bubbles are routine.
+        # (media IO, library scans, kopiur backups), so those bubbles are routine.
         #
         # max_over_time raises the bar to sustained slowness: the WORST probe must
         # exceed 0.5s for 15 of the last 15 minutes before alerting, which filters

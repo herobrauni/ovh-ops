@@ -12,6 +12,9 @@
 # Deliberately NOT managed here:
 #   - passwords (set once per user in the UI or with `ak changepassword <username>`;
 #     re-applying this blueprint never touches them)
+#   - email addresses (kept out of Git deliberately; the importer updates users
+#     partially, so omitting the field never clears the value stored in authentik -
+#     set or change it in the admin UI, via the API, or with `ak shell`)
 #   - `client_id` / `client_secret` (auto-derived by `ProxyProvider.set_oauth_defaults()`
 #     and not settable through the blueprint serializer)
 #   - `property_mappings` (the same `set_oauth_defaults()` call adds the five managed
@@ -74,7 +77,7 @@ entries:
       name: Silo
 
   # ---------------------------------------------------------------------------
-  # Users. No passwords here - see the header.
+  # Users. No passwords or email addresses here - see the header.
   # `authentik_testuser1` authenticates successfully but belongs to no group, so it
   # must be denied by every application and is used for negative tests.
   # ---------------------------------------------------------------------------
@@ -84,7 +87,6 @@ entries:
       username: brauni
     attrs:
       name: brauni
-      email: 
       is_active: true
       type: internal
       path: users
@@ -98,7 +100,6 @@ entries:
       username: authentik_testuser1
     attrs:
       name: authentik_testuser1
-      email: 
       is_active: true
       type: internal
       path: users
@@ -253,60 +254,9 @@ entries:
       group: !KeyOf group-media
       order: 0
 
-  - id: provider-altmount
-    model: authentik_providers_proxy.proxyprovider
-    identifiers:
-      name: AltMount
-    attrs:
-      mode: forward_single
-      cookie_domain: ""
-      external_host: https://altmount.480p.com
-      skip_path_regex: ^/health$
-      authorization_flow: !KeyOf flow-authorization-implicit-consent
-      invalidation_flow: !KeyOf flow-invalidation
-  - id: app-altmount
-    model: authentik_core.application
-    identifiers:
-      slug: altmount
-    attrs:
-      name: AltMount
-      provider: !KeyOf provider-altmount
-  - model: authentik_policies.policybinding
-    identifiers:
-      target: !KeyOf app-altmount
-      group: !KeyOf group-media
-      order: 0
-
-  - id: provider-zurg
-    model: authentik_providers_proxy.proxyprovider
-    identifiers:
-      name: Zurg
-    attrs:
-      mode: forward_single
-      cookie_domain: ""
-      external_host: https://zurg.480p.com
-      # Gatus liveness path; zurg serves /http/version.txt on its unprotected
-      # router, so the probe answers 200 without a session. The SABnzbd endpoint
-      # bypasses ext-auth entirely via its own HTTPRoute + API key.
-      skip_path_regex: ^/http/version\.txt$
-      authorization_flow: !KeyOf flow-authorization-implicit-consent
-      invalidation_flow: !KeyOf flow-invalidation
-  - id: app-zurg
-    model: authentik_core.application
-    identifiers:
-      slug: zurg
-    attrs:
-      name: Zurg
-      provider: !KeyOf provider-zurg
-  - model: authentik_policies.policybinding
-    identifiers:
-      target: !KeyOf app-zurg
-      group: !KeyOf group-media
-      order: 0
-
-  # InfiniDysk replaces zurg as the Usenet backend. Gatus probes /healthz, the
-  # frontend's health endpoint, which the outpost skips so it answers 200
-  # without a session. Unlike zurg there is no unauthenticated SABnzbd route:
+  # InfiniDysk is the media backend. Gatus probes /healthz, the frontend's health
+  # endpoint, which the outpost skips so it answers 200
+  # without a session. There is no unauthenticated SABnzbd route:
   # the *arrs reach the SAB API over the in-cluster Service on :3000, and the
   # WebDAV backend (:8080) is never published through the Gateway.
   - id: provider-infinidysk
@@ -752,8 +702,6 @@ entries:
         - !KeyOf provider-radarr4k
         - !KeyOf provider-bazarr
         - !KeyOf provider-bazarr4k
-        - !KeyOf provider-altmount
-        - !KeyOf provider-zurg
         - !KeyOf provider-infinidysk
         - !KeyOf provider-clonarr
         - !KeyOf provider-prowlarr

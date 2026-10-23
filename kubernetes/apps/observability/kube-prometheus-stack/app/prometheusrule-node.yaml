@@ -10,8 +10,8 @@ spec:
       rules:
         # Replacement for the kube-prometheus-stack default NodeSystemSaturation
         # (disabled in helmrelease.yaml defaultRules). The default (load per core
-        # > 2, for 15m) flaps constantly on w-ovhsbg2: 7d of 5m samples show
-        # ~23h above 2 (zurg + Jellyfin media bursts plus external-Ceph/rclone
+        # > 2, for 15m) flaps constantly on one worker: 7d of 5m samples show
+        # ~23h above 2 (media-server bursts plus external-Ceph/rclone
         # IO on the same node), vs ~4h above 3 and ~1h above 4 (peak 5.33).
         # No other node ever exceeded ~1.2 in the same window.
         #
@@ -28,7 +28,7 @@ spec:
             description: >-
               System load per core on {{ $labels.instance }} has been above 3 for 30+ minutes
               (currently {{ $value | humanize }}). Sustained saturation can make this instance
-              unresponsive. On w-ovhsbg2 this usually means zurg/Jellyfin media bursts are
+              unresponsive. On the media-heavy worker this usually means media-server bursts are
               stacking with external-Ceph storage traffic — check the top pods on that node
               and NodeDiskIOSaturation before suspecting platform trouble.
             summary: >-

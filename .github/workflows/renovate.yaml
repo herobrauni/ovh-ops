@@ -64,8 +64,9 @@ jobs:
           RENOVATE_AUTODISCOVER: true
           RENOVATE_AUTODISCOVER_FILTER: ${{ github.repository }}
           RENOVATE_DRY_RUN: ${{ inputs.dryRun }}
-          # ghcr.io credentials for private packages (e.g. /zurg).
-          # Same values as the Infisical /zurg/GHCR_* pull-secret. Keep the token
+          # ghcr.io credentials for private packages (a retired private image used to need
+          # them; kept while any private ghcr dependency remains). Same values as the
+          # Infisical GHCR_* pull-secret. Keep the token
           # valid: ghcr rejects lookups with a bad token instead of falling back
           # to anonymous, so a stale one breaks EVERY ghcr dependency, not only
           # the private ones.

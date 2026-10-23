@@ -23,7 +23,7 @@ spec:
     name: sftp
   # GFS retention — the ONLY thing that prunes successful snapshots, and the
   # buckets are a union in which an ABSENT bucket keeps nothing, so each one is
-  # declared explicitly (see AGENTS.md). These defaults keep the long-horizon
+  # declared explicitly (see docs/agents/backups.md). These defaults keep the long-horizon
   # points the volsync fork effectively kept forever, bounded to ~6 months:
   # ~3 days at 6-hourly granularity, daily out to 2 weeks, weekly out to
   # 2 months, then monthly. Override per app with the KOPIUR_KEEP_* substitutes.

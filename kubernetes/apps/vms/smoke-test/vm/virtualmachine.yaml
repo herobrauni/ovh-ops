@@ -81,7 +81,7 @@ spec:
                   shell: /bin/ash
                   lock_passwd: true
                   ssh_authorized_keys:
-                    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILwDfQMN5rPy6wGN62UMqBDfNa4F5kOwUnubzRAOe1TS 
+                    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILwDfQMN5rPy6wGN62UMqBDfNa4F5kOwUnubzRAOe1TS
               packages:
                 - qemu-guest-agent
               runcmd:
