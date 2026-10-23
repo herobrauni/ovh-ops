@@ -36,6 +36,14 @@ entries:
     attrs:
       client_id: silo
       client_type: confidential
+      # The model default for grant_types is an EMPTY list (the admin UI's
+      # wizard fills it in, a blueprint does not), and an empty list makes the
+      # authorize endpoint answer `invalid_request` /
+      # "Invalid grant_type for provider". Silo sends authorization_code and
+      # wants refresh tokens.
+      grant_types:
+        - authorization_code
+        - refresh_token
       authorization_flow:
         !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
       invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
