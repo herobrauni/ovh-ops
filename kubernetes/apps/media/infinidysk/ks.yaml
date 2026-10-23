@@ -11,7 +11,6 @@ spec:
       app.kubernetes.io/name: *app
   components:
     - ../../../../components/dnsendpoint
-    - ../../../../components/authentik
     - ../../../../components/kopiur
   dependsOn:
     - name: infisical
@@ -22,8 +21,6 @@ spec:
       namespace: kopiur-system
     - name: rook-ceph-cluster
       namespace: rook-ceph
-    - name: authentik
-      namespace: authentik
   interval: 1h
   path: ./kubernetes/apps/media/infinidysk/app
   postBuild:

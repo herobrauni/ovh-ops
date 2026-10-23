@@ -75,6 +75,37 @@ spec:
               SECURE_COOKIES: "true"
               NZBDAV_CONFIG__GENERAL__BASE_URL: https://infinidysk.480p.com
 
+              # --- OIDC / SSO (authentik) --------------------------------------
+              # Since 0.10.0 the frontend is its own OIDC client (PKCE,
+              # authorization-code) and mints the same signed session local login
+              # does, so it replaced the forward-auth proxy provider this host
+              # used to sit behind (blueprint: authentik/blueprints/
+              # infinidysk-oidc.yaml). These are *frontend process* variables, not
+              # NZBDAV_CONFIG__* settings: they are read at start, never stored in
+              # SQLite, and never shown in Settings.
+              #
+              # OIDC_CLIENT_SECRET comes from infinidysk-secret (externalsecret
+              # templates it from /infinidysk/OIDC_CLIENT_SECRET, loaded via
+              # envFrom). Missing any of ISSUER/CLIENT_ID/CLIENT_SECRET disables
+              # OIDC (with a startup warning) instead of failing the pod, so local
+              # login stays available as break-glass.
+              # Issuer must be the application URL with the trailing slash —
+              # authentik's discovery document hangs off it.
+              OIDC_ISSUER: https://sso.brauni.dev/application/o/infinidysk/
+              OIDC_CLIENT_ID: infinidysk
+              # Pinned instead of left to `general.base-url`: an explicit public
+              # HTTPS URI cannot drift with proxy headers, and it is the exact
+              # strict redirect_uri registered on the provider.
+              OIDC_REDIRECT_URI: https://infinidysk.480p.com/auth/oidc/callback
+              OIDC_SCOPES: openid profile email
+              OIDC_USERNAME_CLAIM: preferred_username
+              # Read-only is a *UI* role only (the frontend still talks to the
+              # backend with the shared API key, so it is not a security
+              # boundary): admin goes to `Platform`, so a Media member who can
+              # open the app cannot mutate providers/queue/settings.
+              OIDC_ADMIN_CLAIM: groups
+              OIDC_ADMIN_CLAIM_VALUE: Platform
+
               # --- SABnzbd compatibility (what the *arrs talk to) -------------
               # Keep the category names zurg already used: the *arr download
               # clients carry over unchanged, and one queue filtered by category
