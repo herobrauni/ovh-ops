@@ -1,0 +1,109 @@
+---
+# yayamlls-disable-file (embedded blueprint ConfigMap; the goauthentik.io schema now mismatches the ConfigMap wrapper)
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# OIDC sign-in for `media/infinidysk`.
+#
+# This *replaces* the forward-auth (proxy provider) setup InfiniDysk used to
+# have. InfiniDysk has been its own OIDC client since 0.10.0: the frontend runs
+# the authorization-code flow with PKCE and mints its own session, so an extAuth
+# hop in front of it only added a second login (and made the *UI's* notion of
+# "who am I" always the outpost's, not the user's). The app therefore no longer
+# carries the `components/authentik` component and this host is gone from
+# `outpost-routes.yaml`. Consequence to keep in mind: everything the frontend
+# serves is now public up to InfiniDysk's own auth — the SABnzbd API on
+# :3000 included (API-key protected). The WebDAV backend (:8080) still never
+# leaves the cluster.
+#
+# The Application slug stays `infinidysk` so the existing PolicyBinding (group
+# Media) and the user dashboard entry carry over; only `provider` changes.
+#
+# `client_id` is pinned so it matches the `OIDC_CLIENT_ID` env var in the app.
+# `client_secret` is deliberately left to authentik (generated on create) and
+# never enters Git: it is read once from the provider and stored in Infisical as
+# /infinidysk/OIDC_CLIENT_SECRET.
+#
+# `client_secret_basic` (what `openid-client` discovers from authentik metadata)
+# needs RS256 ID tokens, hence the explicit `signing_key`; without one authentik
+# signs HS256 and InfiniDysk would reject the token.
+version: 1
+metadata:
+  name: ovh-ops - InfiniDysk OIDC
+  labels:
+    blueprints.goauthentik.io/description: OIDC provider and application for the InfiniDysk usenet media backend.
+entries:
+  - id: provider-infinidysk-oidc
+    model: authentik_providers_oauth2.oauth2provider
+    identifiers:
+      # Not plain "InfiniDysk": that name belongs to the retired proxy provider
+      # (deleted below), and a proxy provider *is* an oauth2provider row here —
+      # reusing the name would make the blueprint adopt the old row instead of
+      # creating an OAuth2-only one.
+      name: InfiniDysk OIDC
+    attrs:
+      client_id: infinidysk
+      client_type: confidential
+      # The model default for grant_types is an EMPTY list (only the admin UI
+      # wizard fills it in) and an empty list answers `invalid_request` /
+      # "Invalid grant_type for provider". InfiniDysk sends authorization_code;
+      # refresh_token is harmless and lets the session outlive the ID token.
+      grant_types:
+        - authorization_code
+        - refresh_token
+      authorization_flow:
+        !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      signing_key:
+        !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      # The default mappings carry what InfiniDysk reads: `openid` for the
+      # subject, `email`, and `profile` (preferred_username, name and the
+      # `groups` claim the admin role is mapped from).
+      property_mappings:
+        - !Find [
+            authentik_providers_oauth2.scopemapping,
+            [name, "authentik default OAuth Mapping: OpenID 'openid'"],
+          ]
+        - !Find [
+            authentik_providers_oauth2.scopemapping,
+            [name, "authentik default OAuth Mapping: OpenID 'email'"],
+          ]
+        - !Find [
+            authentik_providers_oauth2.scopemapping,
+            [name, "authentik default OAuth Mapping: OpenID 'profile'"],
+          ]
+      # Matched strictly (no regex): the callback is a fixed route in the
+      # frontend (`frontend/server/oidc-routes.ts`) and the app sends exactly the
+      # `OIDC_REDIRECT_URI` from its helmrelease.
+      redirect_uris:
+        - matching_mode: strict
+          url: https://infinidysk.480p.com/auth/oidc/callback
+
+  # Application access stays bound to group `Media` (unchanged from the
+  # forward-auth era): the *backend* is part of the media stack, so "may use the
+  # *arrs" and "may open InfiniDysk" are the same permission. Admin vs read-only
+  # is decided by the `groups` claim in the app (OIDC_ADMIN_CLAIM / _VALUE =
+  # Platform), which keeps mutations with the operators.
+  - id: app-infinidysk
+    model: authentik_core.application
+    identifiers:
+      slug: infinidysk
+    attrs:
+      name: InfiniDysk
+      provider: !KeyOf provider-infinidysk-oidc
+      meta_launch_url: https://infinidysk.480p.com
+      meta_description: Usenet WebDAV media backend
+
+  # Retired by the migration to native OIDC. Blueprints never delete an object
+  # whose entry they stop managing, so the old proxy provider is removed
+  # explicitly — declared *after* the Application above has been re-pointed,
+  # because deleting a provider the Application still references would cascade
+  # into the Application (and with it the policy binding). No-op once it is gone.
+  - model: authentik_providers_proxy.proxyprovider
+    state: absent
+    identifiers:
+      name: InfiniDysk
+
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-infinidysk
+      group: !Find [authentik_core.group, [name, Media]]
+      order: 0

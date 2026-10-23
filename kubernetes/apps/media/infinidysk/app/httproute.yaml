@@ -1,10 +1,11 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/httproute_v1.json
-# The route name is load-bearing: the shared `components/authentik` SecurityPolicy
-# targets "${APP}-${DOMAIN_SLUG}" (infinidysk-480p-com). Only the frontend (3000)
-# is published — the WebDAV backend (8080) stays in-cluster, so there is no
-# unauthenticated bypass route like zurg's SABnzbd endpoint. Manual NZB uploads
-# go through this authenticated UI.
+# This route is NOT ext-authed: InfiniDysk authenticates itself against authentik
+# over OIDC (see the OIDC_* block in helmrelease.yaml), so there is no
+# `components/authentik` SecurityPolicy targeting it. Only the frontend (3000) is
+# published — the WebDAV backend (8080) stays in-cluster. Manual NZB uploads go
+# through the session-authenticated UI; the SABnzbd API is on this host too and
+# is API-key protected (the *arrs use the in-cluster Service instead).
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -15,9 +16,9 @@ metadata:
     gethomepage.dev/name: InfiniDysk
     gethomepage.dev/pod-selector: app.kubernetes.io/name=infinidysk
     gethomepage.dev/icon: mdi-harddisk-plus
-    # Gatus liveness: /healthz is the frontend's health endpoint and is skipped
-    # by the outpost (skip_path_regex on the provider), so it answers 200
-    # without a session.
+    # Gatus liveness: /healthz is the frontend's health endpoint, served without
+    # a session (it is not behind the OIDC login either), so it answers 200 for
+    # the in-cluster probes.
     gatus.home-operations.com/endpoint: |-
       url: https://infinidysk.480p.com/healthz
 spec:
