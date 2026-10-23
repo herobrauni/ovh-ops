@@ -65,6 +65,13 @@ entries:
     model: authentik_core.group
     identifiers:
       name: Platform
+  # Per-app sign-in groups: membership here grants *only* that app, so adding
+  # someone to Silo does not also hand them the *arrs (which are all bound to
+  # Media). Media stays the "may use the media stack" group.
+  - id: group-silo
+    model: authentik_core.group
+    identifiers:
+      name: Silo
 
   # ---------------------------------------------------------------------------
   # Users. No passwords here - see the header.
@@ -84,6 +91,7 @@ entries:
       groups:
         - !KeyOf group-media
         - !KeyOf group-platform
+        - !KeyOf group-silo
   - id: user-authentik-testuser1
     model: authentik_core.user
     identifiers:
