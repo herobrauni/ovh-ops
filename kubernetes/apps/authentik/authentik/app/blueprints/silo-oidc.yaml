@@ -83,10 +83,11 @@ entries:
       meta_launch_url: https://silo.480p.com
       meta_description: Media server
 
-  # Same access model as the rest of the media set: members of Media may sign in.
-  # Silo applies its own admin-group rule (Platform) inside the plugin config.
+  # Grants *Silo only*: the app is bound to its own group, not Media, so adding
+  # someone here does not also let them into the *arrs behind forward auth.
+  # Silo's plugin config applies the same group in `access.allowed_groups`.
   - model: authentik_policies.policybinding
     identifiers:
       target: !KeyOf app-silo
-      group: !Find [authentik_core.group, [name, Media]]
+      group: !Find [authentik_core.group, [name, Silo]]
       order: 0
