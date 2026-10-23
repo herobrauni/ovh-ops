@@ -65,8 +65,13 @@ entries:
             [name, "authentik default OAuth Mapping: OpenID 'profile'"],
           ]
       redirect_uris:
+        # `v[12]`: the web app posts its handshake to /api/v2/auth/oauth/... and
+        # comes back to the v2 callback, while the v1 login flow and the apps
+        # still use /api/v1/... . Matching only v1 makes the browser's round
+        # trip fail with authentik's "Redirect URI Error" (cause
+        # redirect_uri_no_match) even though a curl against v1 succeeds.
         - matching_mode: regex
-          url: 'https://silo\.480p\.com/api/v1/auth/oauth/[0-9]+/callback'
+          url: 'https://silo\.480p\.com/api/v[12]/auth/oauth/[0-9]+/callback'
 
   - id: app-silo
     model: authentik_core.application
