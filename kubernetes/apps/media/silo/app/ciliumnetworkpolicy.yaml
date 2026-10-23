@@ -1,8 +1,12 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cilium.io/ciliumnetworkpolicy_v2.json
 # Ingress-only allowlist. Silo is a media server with its own accounts (like
-# jellyfin/plex), so the Gateway is the only consumer: 8080 is the web app /
-# native API, 8096 the Jellyfin-compatible listener.
+# jellyfin/plex), so the Gateway serves users: 8080 is the web app / native API,
+# 8096 the Jellyfin-compatible listener. The *arrs and the farm sync-helper are
+# the only other consumers, and only for the autoscan webhook ingress on 8080:
+# the libraries live on CephFS, which cannot be watched for changes (inotify is
+# per-mount, and every pod here mounts the volume separately), so new files are
+# announced over that endpoint instead.
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
@@ -22,4 +26,24 @@ spec:
             - port: "8080"
               protocol: TCP
             - port: "8096"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: sonarr
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: sonarr4k
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: radarr
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: radarr4k
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: infinidysk-sync-helper
+      toPorts:
+        - ports:
+            - port: "8080"
               protocol: TCP

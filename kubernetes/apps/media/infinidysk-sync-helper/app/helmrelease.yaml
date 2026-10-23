@@ -63,6 +63,15 @@ spec:
                   secretKeyRef:
                     name: infinidysk-sync-helper-secret
                     key: JELLYFIN_TOKEN
+              # Silo cannot watch the farm — every library root is CephFS, where
+              # inotify only reports changes made through the watching mount — so
+              # each placed release is announced to an autoscan webhook source.
+              # The URL carries that source's bearer token, hence a secret.
+              SILO_WEBHOOK_URL:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-sync-helper-secret
+                    key: SILO_WEBHOOK_URL
             resources:
               requests:
                 cpu: 10m

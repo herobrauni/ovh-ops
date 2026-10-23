@@ -31,13 +31,19 @@ data:
     # the farm yet", which makes each pass idempotent and restart-safe without a
     # state file.
     #
-    # When at least one release was placed, the "Other" Jellyfin library is
-    # refreshed once per pass — the same "section scan after placement" the old
-    # `altmount-sync-helper` did against Plex. Jellyfin's realtime monitor cannot
-    # do it: `EnableRealtimeMonitor` is off for that library (its options.xml),
-    # so it does not watch /aio/symlinks/other and `POST /Library/Media/Updated`
-    # is a no-op there (verified 2026-10-22). A library refresh is requested
-    # instead, which is also what a periodic scan would do — just now.
+    # When at least one release was placed, both media servers are told, once
+    # per placed release for Silo and once per pass for Jellyfin:
+    #
+    # - Silo: its libraries sit on CephFS, which it refuses to watch (inotify
+    #   reports only changes made through the watching mount, and every pod here
+    #   mounts the volume separately — verified 2026-10-23: a file created by
+    #   another pod's mount is visible immediately but produces no event). So a
+    #   scan has to be announced: one autoscan webhook POST per placed release,
+    #   subtree-scoped to the release folder.
+    # - Jellyfin: its realtime monitor is off for this library, and
+    #   `POST /Library/Media/Updated` is a no-op there (verified 2026-10-22), so
+    #   the library is refreshed once per pass instead — the same "section scan
+    #   after placement" the old `altmount-sync-helper` did against Plex.
     set -u
 
     SAB_URL="${SAB_URL:-http://infinidysk.media.svc.cluster.local:3000}"
@@ -53,11 +59,16 @@ data:
     JELLYFIN_URL="${JELLYFIN_URL:-http://jellyfin.media.svc.cluster.local:8096}"
     JELLYFIN_TOKEN="${JELLYFIN_TOKEN:-}"
     JELLYFIN_LIBRARY="${JELLYFIN_LIBRARY:-Other}"
+    SILO_WEBHOOK_URL="${SILO_WEBHOOK_URL:-}"
 
     SRC_ROOT="$MOUNT_DIR/completed-symlinks/$CATEGORY"
     SLOTS_FILE=/tmp/history-slots
     LINKS_FILE=/tmp/source-links
     PLACED_FILE=/tmp/placed-links
+    # One line per release placed by the current pass, scanned in Silo once the
+    # history walk is done. An "already placed" release is not appended: it
+    # needs no scan, and re-announcing it every pass would be pure noise.
+    PLACED_RELEASES=/tmp/placed-releases
     WARNED_FILE=/tmp/warned
     LIB_ID=
     PLACED_ANY=0
@@ -199,8 +210,38 @@ data:
             return 1
         fi
         log "Placed '$release' ($count link(s), all resolving)"
+        printf '%s\n' "$release" >>"$PLACED_RELEASES"
         PLACED_ANY=1
         return 0
+    }
+
+    # json_escape <string> -> the string as a JSON string body (no quotes).
+    # Release names come from the backend and can contain quotes or backslashes;
+    # a mangled body is rejected by Silo and the scan is silently skipped.
+    json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
+
+    # silo_scan <release> — announce one placed release to Silo, which cannot
+    # watch the farm at all: its library roots are CephFS, and inotify reports
+    # only changes made through the watching mount while every pod mounts the
+    # volume separately. The URL is an autoscan webhook source (bearer token in
+    # the path) bound to the `other` library, so the payload is the arr shape
+    # Silo ingests: an import event whose file details are absent, which makes
+    # Silo fall back to a subtree scan of the release folder — the narrowest
+    # target available over that ingress.
+    silo_scan() {
+        release=$1
+        if [ -z "$SILO_WEBHOOK_URL" ]; then
+            log "WARN: SILO_WEBHOOK_URL not set — skipping the Silo scan for '$release'"
+            return 0
+        fi
+        folder=$(json_escape "$DEST_ROOT/$release")
+        payload="{\"eventType\":\"Download\",\"movie\":{\"folderPath\":\"$folder\"}}"
+        if wget -qO- -T 30 --header='Content-Type: application/json' \
+            --post-data="$payload" "$SILO_WEBHOOK_URL" >/dev/null 2>&1; then
+            log "Silo: scan queued for '$release'"
+        else
+            log "WARN: Silo scan request failed for '$release' — the nightly scan will pick it up"
+        fi
     }
 
     # jf_api <url> -> body on stdout. Jellyfin 12 rejects X-Emby-Token/api_key
@@ -301,6 +342,7 @@ data:
                 printf '%s' "$body" | sed 's/},{/}\n{/g' >"$SLOTS_FILE"
                 echo >>"$SLOTS_FILE"
                 PLACED_ANY=0
+                : >"$PLACED_RELEASES"
                 while IFS= read -r slot; do
                     [ -n "$(json_str "$slot" nzo_id)" ] || continue
                     if process_slot "$slot"; then
@@ -308,9 +350,15 @@ data:
                         touch /tmp/heartbeat
                     fi
                 done <"$SLOTS_FILE"
-                # One refresh per pass, only when something was actually
-                # placed — "already placed" items need no scan.
-                [ "$PLACED_ANY" = "1" ] && jellyfin_refresh
+                # Only when something was actually placed — "already placed"
+                # items need no scan. Silo is told per release so each scan is
+                # subtree-scoped; Jellyfin only has a whole-library refresh.
+                if [ "$PLACED_ANY" = "1" ]; then
+                    while IFS= read -r placed; do
+                        [ -n "$placed" ] && silo_scan "$placed"
+                    done <"$PLACED_RELEASES"
+                    jellyfin_refresh
+                fi
             fi
         fi
 
