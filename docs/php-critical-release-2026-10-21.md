@@ -1,8 +1,9 @@
 # PHP critical security release — idlers + firefly3 temporarily offline (2026-10-21)
 
-**Status: idlers still offline (ACTION REQUIRED). firefly3 re-enabled 2026-10-22** on
-the PHP 8.5.12 rebuild, restored from its pre-teardown snapshot — see
-"Progress" at the end. Nothing else in the cluster runs PHP.
+**Status: resolved 2026-10-23 — both apps back online on PHP 8.5.12.** firefly3
+re-enabled 2026-10-22 from its pre-teardown snapshot; idlers re-enabled 2026-10-23 on
+`my-idlers:4.1.0-ap.20`, restored by its kopiur `Restore`. See "Progress" at the end.
+Nothing else in the cluster runs PHP.
 
 ## Why
 
@@ -118,10 +119,29 @@ was needed. What the re-enable took:
 - `pvc-eab5b501-…` stays `Retain`/`Released` as the fallback copy; delete it (and its
   RBD image) once the restored claim has run for a while.
 
-**idlers — still blocked.** The AlteredParadox fork still pins
-`php:8.5.11-fpm-alpine`, so no fork image carries the fix. PR
-[AlteredParadox/my-idlers#136](https://github.com/AlteredParadox/my-idlers/pull/136)
-bumps it to `php:8.5.12-fpm-alpine@sha256:4943e6c8…` (verified locally: build succeeds,
-`php -v` → 8.5.12, all five extensions, `artisan` boots). It needs a merge plus a
-`v4.1.0+ap.20` tag before `ghcr.io/alteredparadox/my-idlers` has anything to deploy;
-`4.1.0-ap.19` (PHP 8.5.11) is still the newest tag.
+**idlers — done 2026-10-23.** The AlteredParadox fork merged the PHP bump
+([#136](https://github.com/AlteredParadox/my-idlers/pull/136)) and released
+`v4.1.0+ap.20` on 2026-10-22 21:17 UTC; `ghcr.io/alteredparadox/my-idlers:4.1.0-ap.20`
+(index digest `sha256:e2ac5638…`) carries `PHP_VERSION=8.5.12` — verified by reading the
+image config blob, not the tag, and `PHP_SHA256` matches php.net's published
+`php-8.5.12.tar.xz`. Its changelog is explicit that ap.20 changes nothing but the base
+image, so the only schema work on first boot is ap.18's `seedboxes` pricing FK, applied
+by `AUTO_MIGRATE=true`.
+
+Data came back through the standard kopiur populator, not the CSI snapshot: the
+component's `idlers` claim has `dataSourceRef` → `Restore/idlers`, and the repository
+still held `idlers@selfhosted:/data` snapshots up to **2026-10-21 06:31 CEST** (183 MB,
+`ka0353dba8ee…`) — ~30 min before the teardown. That is the preferred path because it is
+Git-native: no hand-created claim, and the claim is portable to a rebuilt cluster. The
+`idlers-presecurity-20261021` VolumeSnapshot stays as the fallback (its PV
+`pvc-cd3e0b81-…` is still `Retain`/`Released`), and `kubectl -n selfhosted get restore
+idlers` shows the populate progress. On `Restore` failure the app pod stays `Pending` on
+the unbound claim rather than starting on an empty volume (`KOPIUR_ON_MISSING_SNAPSHOT:
+Fail`).
+
+Ops notes worth keeping: the stale `Restore/idlers2` (Pending since 2026-09-17) is a
+leftover of the pre-merge fork instance and stays inert — policy `idlers2` no longer
+exists. ap.19 moved boot-time migrations to `www-data` via `su-exec`, which is why the
+container keeps `SETUID`/`SETGID`/`CHOWN` (it cannot drop to non-root). With `APP_KEY`
+derived from `MYSQL_ROOT_PASSWORD` in the ExternalSecret, sessions and the encrypted
+queued password-reset payloads survive restarts fine.

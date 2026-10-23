@@ -68,7 +68,12 @@ spec:
           app:
             image:
               repository: ghcr.io/alteredparadox/my-idlers
-              tag: 4.1.0-ap.13@sha256:62289fe9dd7242f82224884f9adf76f0fe62da41a11d158c79499a038dab59d6
+              # ap.20 is a security rebuild of ap.19 on php:8.5.12-fpm-alpine, the
+              # 2026-10-21 out-of-band release fixing two CVSS 9.2 RCEs
+              # (CVE-2026-109618 / CVE-2026-109619). Nothing else changes, so the
+              # pending ap.18 seedboxes migration is the only schema work on boot.
+              # Every tag up to ap.19 (8.5.11) is vulnerable — never roll back.
+              tag: 4.1.0-ap.20@sha256:e2ac5638ac688ebff94790da71277582e586bc6444d6105b73401440ca80e79c
             env:
               DB_HOST: 127.0.0.1
               DB_PORT: "3306"
