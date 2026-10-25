@@ -14,6 +14,7 @@ configMapGenerator:
   - name: authentik-blueprints
     files:
       - forward-auth.yaml=./blueprints/forward-auth.yaml
+      - infinidysk-oidc.yaml=./blueprints/infinidysk-oidc.yaml
       - silo-oidc.yaml=./blueprints/silo-oidc.yaml
 generatorOptions:
   disableNameSuffixHash: true

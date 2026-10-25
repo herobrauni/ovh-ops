@@ -55,7 +55,7 @@ stanzas, manifest diffs, curl verification and rollback:
 
 ## OIDC client apps (not proxy providers)
 
-Pattern: `kubernetes/apps/authentik/authentik/app/blueprints/silo-oidc.yaml`. These are OAuth2 providers, so nothing is added to the outpost's provider list and the app's HTTPRoutes get **no** `SecurityPolicy` — the app validates the ID token itself. 2026.8 traps:
+Pattern: `kubernetes/apps/authentik/authentik/app/blueprints/silo-oidc.yaml` (and `infinidysk-oidc.yaml`). These are OAuth2 providers, so nothing is added to the outpost's provider list and the app's HTTPRoutes get **no** `SecurityPolicy` — the app validates the ID token itself. 2026.8 traps:
 
 - `redirect_uris` is a **list of objects** (`[{url, matching_mode: strict|regex}]`, stored in the model's `_redirect_uris`), not the old space-separated string. Regex form for apps with dynamic callback paths (Silo: `api/v[12]/auth/oauth/[0-9]+/callback`).
 - The blueprint importer runs every entry through the model's API serializer, so API field names apply (`!Find`/`!KeyOf` resolve pks for `signing_key`, `property_mappings`, `authorization_flow`).
@@ -63,6 +63,8 @@ Pattern: `kubernetes/apps/authentik/authentik/app/blueprints/silo-oidc.yaml`. Th
 - `grant_types` has the same trap and a nastier symptom: its model default is an empty list (only the admin wizard fills in `authorization_code`/`refresh_token`), and with no grant types the authorize endpoint accepts the client and matches the redirect URI but bounces back `error=invalid_request` / `Invalid grant_type for provider` — which reads like a broken redirect URI. Always set both `grant_types` and `property_mappings`.
 - `policybinding` identifiers include the group, so _changing_ which group protects an app creates a second binding instead of moving the first — the old group keeps granting access. Pair the new binding with a `state: absent` entry naming the old `{target, group, order}` triple (verify one group via `select ... from authentik_policies_policybinding b join authentik_core_group g ... where a.slug='<app>'`).
 - Without a `signing_key` authentik signs HS256 and clients need `allow_hs256`.
+- **A proxy provider _is_ an `oauth2provider` row** (multi-table inheritance), so a new OAuth2 provider must not reuse a proxy provider's `name`: the blueprint would adopt that row (and with it the `mode`/`external_host` child table) instead of creating an OAuth2-only provider. `infinidysk-oidc.yaml` names its provider `InfiniDysk OIDC` for exactly this reason and retires the old `InfiniDysk` proxy provider with a `state: absent` entry — blueprints never delete objects whose entry they stop managing. That absent entry sits _after_ the Application has been re-pointed, because deleting a provider the Application still references cascades into the Application (and its policy binding). Reusing an Application `slug` for the new provider is fine and keeps the existing binding and dashboard entry.
+- Switching an app from forward auth to native OIDC is **not** additive: the extAuth hop has to go (drop the `components/authentik` component, the `outpost-routes.yaml` hostname and the outpost provider entry) or the user logs in twice and the app only ever sees the outpost's identity. Everything the app itself serves then becomes internet-reachable up to its own auth — check what that exposes (for InfiniDysk: the SABnzbd API, API-key protected).
 
 ## User switching (2026.8)
 
