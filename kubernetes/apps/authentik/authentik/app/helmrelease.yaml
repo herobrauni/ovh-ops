@@ -127,6 +127,19 @@ spec:
     worker:
       serviceAccountName: authentik
       automountServiceAccountToken: false
+      # Serialize task execution: the chart default is 2 Dramatiq threads per
+      # worker process, so two tasks run at once. A blueprint apply re-saves every
+      # proxy provider, which enqueues one `outpost_send_update` per outpost —
+      # with two threads those run concurrently with the apply that spawned them
+      # and both rebuild guardian permissions, so Postgres aborts one with 40P01
+      # (`deadlock detected ... guardian_roleobjectpermission`). The aborted
+      # transaction silently rolls the apply back to a half-applied state while
+      # the blueprint instance still reports `successful`. One thread removes the
+      # intra-process race; task throughput is not a constraint here (no LDAP or
+      # enterprise source syncs).
+      env:
+        - name: AUTHENTIK_WORKER__THREADS
+          value: "1"
       initContainers:
         - name: init-db
           image: ghcr.io/home-operations/postgres-init:18.6@sha256:87627baaddb0cabed4ebe033e75038e5c7b6b081c18e86514c99067179a90719
