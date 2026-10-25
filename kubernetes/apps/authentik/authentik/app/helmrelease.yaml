@@ -28,6 +28,16 @@ spec:
 
     global:
       env:
+        # Disable Gunicorn request-count worker recycling: by default Gunicorn
+        # recycles workers after 1000 requests. When worker 1 recycles, its
+        # post_worker_init triggers root_app.call_startup() -> proxy_set_defaults(),
+        # which acquires SELECT ... FOR UPDATE across all ProxyProviders and wipes/rebuilds
+        # outpost guardian permissions in a loop (~3 times/hour under Gatus probe traffic).
+        # Setting to 0 disables request-count recycling to eliminate steady-state deadlocks.
+        - name: AUTHENTIK_WEB__MAX_REQUESTS
+          value: "0"
+        - name: AUTHENTIK_WEB__MAX_REQUESTS_JITTER
+          value: "0"
         - name: AUTHENTIK_POSTGRESQL__HOST
           valueFrom:
             secretKeyRef:
