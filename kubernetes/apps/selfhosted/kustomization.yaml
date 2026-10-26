@@ -14,8 +14,14 @@ resources:
   - ./homepage/ks.yaml
   - ./opencloud/ks.yaml
   - ./open-webui/ks.yaml
-  - ./web-check/ks.yaml
-  - ./networking-toolbox/ks.yaml
+  # TEMP(CVE-2026-111497 "node2shell", brotli OOB write, CVSS 9.2): both apps are
+  # public and unauthenticated, and networking-toolbox has no patched upstream
+  # build (pinned 1.6.0 ships Node 22.21.1; `latest` still 22.23.3). web-check was
+  # already bumped to the fixed Node 22.23.4 on 2026-10-26 and is only taken
+  # offline because it fetches attacker-supplied URLs for a living.
+  # Re-enable per docs/cve-2026-111497-brotli.md.
+  # - ./web-check/ks.yaml
+  # - ./networking-toolbox/ks.yaml
   - ./karakeep/ks.yaml
   # idlers + firefly3 were briefly offline for the 2026-10-21 critical PHP
   # release (CVSS 9.2); both are back on PHP 8.5.12 — see
