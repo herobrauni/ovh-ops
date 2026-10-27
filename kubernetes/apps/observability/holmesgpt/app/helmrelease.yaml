@@ -21,27 +21,34 @@ spec:
     image: holmes@sha256:a6edc27204a8725d45419863474c41e2822333e938a8e79fafb99068131629c3
     logLevel: INFO
 
-    # Default model + credentials, straight against the OpenCode (Console/Zen)
-    # gateway - no litellm hop. opencode.ai splits its surface per upstream
-    # protocol: Claude/GPT/Grok/Gemini live on /anthropic/v1/messages,
-    # /openai/v1/responses and /google/v1beta, so the only models reachable from
-    # an OpenAI-compatible client like HolmesGPT are the chat/completions ones
-    # (GLM, Kimi, Qwen*Max, DeepSeek, MiniMax, Mistral). Free-tier models are
-    # gated to the OpenCode clients, hence a paid model here.
+    # Default model + credentials, straight against OpenCode Go - no litellm hop.
+    # Go serves from a different base URL than pay-as-you-go
+    # (https://opencode.ai/inference vs .../inference/go) and refuses requests
+    # without an x-opencode-session header (400 MissingSessionID), so Holmes sends
+    # both the session id and a non-generic User-Agent via EXTRA_HEADERS - the
+    # header contract from https://opencode.ai/docs/go/#where-can-i-use-it.
     #
-    # Swappable for any other /inference/openai/v1/chat/completions id, e.g.
-    # glm-5.3, kimi-k2.7-code, qwen3.8-max, minimax-m3.
+    # deepseek-v4.1-flash is on Go's chat/completions surface; tool calling is
+    # verified against this endpoint. Swappable for any other Go model that is too
+    # (glm-5.3, kimi-k2.7-code, qwen3.8-max, minimax-m3).
     additionalEnvVars:
       - name: OPENAI_API_BASE
-        value: https://opencode.ai/inference/openai/v1
+        value: https://opencode.ai/inference/go/openai/v1
       - name: MODEL
         value: deepseek-v4.1-flash
+      - name: EXTRA_HEADERS
+        value: '{"User-Agent": "holmesgpt/0.45.0", "x-opencode-session": "holmesgpt-observability"}'
     modelList:
       deepseek-v4.1-flash:
         model: openai/deepseek-v4.1-flash
-        api_base: https://opencode.ai/inference/openai/v1
+        api_base: https://opencode.ai/inference/go/openai/v1
         api_key: "{{ env.OPENAI_API_KEY }}"
         temperature: 0
+        # Peak DeepSeek V4.1 Flash pricing ($0.30/$1.20 per 1M, $0.006 cached read)
+        # so Holmes can report usage cost instead of 0.
+        input_cost_per_token: 0.0000003
+        output_cost_per_token: 0.0000012
+        cache_read_input_token_cost: 0.000000006
     extraEnvVarsSecrets:
       - holmesgpt-secret
 
