@@ -111,3 +111,16 @@ spec:
       registry: robustadev
       # renovate: datasource=docker depName=robustadev/holmes-operator
       image: holmes-operator@sha256:fb9ed8389b6b5b92daa504478dff5c507ce610d036e04d81beb9fe66b91f720f
+
+    # Remediation MCP (the "act on the cluster" half): restart/scale, drain,
+    # patch, read files inside containers, launch netshoot/busybox diagnostic
+    # pods. Mutating calls are always gated behind human approval
+    # (approval_required_tools: run_kubectl_command); the read-only allowlisted
+    # ones run directly. The chart ships a scoped ClusterRole (no secrets, no
+    # cluster-admin), an ingress-only NetworkPolicy, and a pre-install/pre-upgrade
+    # hook Job that mints the MCP bearer token.
+    mcpAddons:
+      kubernetesRemediation:
+        enabled: true
+        # renovate: datasource=docker depName=us-central1-docker.pkg.dev/genuine-flight-317411/mcp/kubernetes-remediation-mcp
+        image: kubernetes-remediation-mcp@sha256:874820be9f6ad0b76d8065e312f8f889ae423f1c35f0ad5a5c9d09da9ed001dc
