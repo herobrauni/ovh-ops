@@ -28,7 +28,30 @@ Part of the `AGENTS.md` topic guides (`docs/agents/`). Read when touching
   conventional + `tailscale-user-*` headers; if a new client sends a new
   metacharacter-laden header, add it there.
 - There is **no web UI** in the OSS server — `/` 404s, the API is `/api/chat`
-  (SSE), `/api/info`, `/api/model`, `/healthz`. The tailscale Ingress is for
-  `curl`/`holmes` CLI callers, not browsing.
+  (SSE), `/api/info`, `/api/model`, `/healthz`. The tailscale Ingress
+  (`https://holmesgpt.<tailnet>.ts.net`) is for API callers. The only upstream
+  "web UI" is the **Robusta Platform** (`docs/installation/ui-installation.md`,
+  titled "3rd party"): SaaS is free to start, self-hosted is an Enterprise plan,
+  and Robusta's own docs say standalone HolmesGPT is "CLI only — no web UI".
 - Operator mode is enabled but no `ScheduledHealthCheck` exists: every check is at
   least one LLM call, so add them sparingly.
+- **Remediation MCP** (`mcpAddons.kubernetesRemediation`) gives Holmes the write
+  half: restart/scale/drain/patch, file reads inside containers, and short-lived
+  netshoot/busybox diagnostic pods. Mutations always pause for human approval
+  (`approval_required_tools: run_kubectl_command`); the chart adds a scoped
+  ClusterRole (no `secrets`, no `cluster-admin`), an ingress-only NetworkPolicy,
+  and a **pre-install/pre-upgrade hook Job** (`…-k8s-remediation-mcp-auth-bootstrap`)
+  that mints the MCP bearer token — that Job is expected to exist per upgrade,
+  don't "clean it up". If the approval prompt is ignored (e.g. an API caller
+  that never approves), the mutating tool just returns `pending_approvals`.
+- **Laptop access is MCP, not a UI.** `~/.config/holmes-mcp/server.py` (run via
+  `run.sh` → `uv run --with 'mcp>=2,<3'`) is a stdio MCP shim exposing
+  `ask_holmes` and `holmes_status`; registered as `holmes` in
+  `~/.pi/agent/mcp.json` with `timeout: 1200` (investigations exceed the 60s
+  default). It only talks to the tailnet API, so it needs no cluster credentials.
+- Toolsets deliberately **not** connected: `grafana/dashboards` (needs a Grafana
+  service-account token), `database-postgresql` (needs a read-only CNPG role and
+  exposes app data), `helm/core` (needs `secrets` read), `cilium`+`hubble` (no
+  `cilium`/`hubble` binaries in the image and Hubble is disabled in
+  `kube-system/cilium`), `inspektor-gadget` (privileged `kubectl debug` on
+  nodes), `github-mcp` (needs a repo/write PAT).
