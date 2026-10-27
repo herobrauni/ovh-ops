@@ -49,9 +49,23 @@ Part of the `AGENTS.md` topic guides (`docs/agents/`). Read when touching
   `ask_holmes` and `holmes_status`; registered as `holmes` in
   `~/.pi/agent/mcp.json` with `timeout: 1200` (investigations exceed the 60s
   default). It only talks to the tailnet API, so it needs no cluster credentials.
-- Toolsets deliberately **not** connected: `grafana/dashboards` (needs a Grafana
-  service-account token), `database-postgresql` (needs a read-only CNPG role and
-  exposes app data), `helm/core` (needs `secrets` read), `cilium`+`hubble` (no
-  `cilium`/`hubble` binaries in the image and Hubble is disabled in
-  `kube-system/cilium`), `inspektor-gadget` (privileged `kubectl debug` on
-  nodes), `github-mcp` (needs a repo/write PAT).
+- **Grafana**: `grafana/dashboards` uses a **Viewer** service account
+  (`holmes-readonly` in Grafana 12) whose token lives at
+  `/holmesgpt/GRAFANA_API_KEY`. Minting it needs the admin pair **split across two
+  secrets** (`grafana-admin-credentials.GF_SECURITY_ADMIN_USER` +
+  `grafana-admin-password-secret.GF_SECURITY_ADMIN_PASSWORD`) — using the
+  password from the first secret returns 401. No image renderer is installed, so
+  the visual-rendering tools stay unregistered.
+- **Postgres**: read-only via the **CNPG-managed** role `holmes_readonly`
+  (`pg_read_all_data` + `pg_read_all_stats`, `login` only) declared in
+  `dbms/cloudnative-pg/cluster/cluster18.yaml`, with its password from
+  `/holmesgpt/POSTGRES_READONLY_PASSWORD` (same value feeds the role and the
+  Holmes connection URL). Toolsets connect over the replica service
+  `postgres18-ro` to `litellm`, `patchmon`, `open-webui` only.
+  `pg_read_all_data` is cluster-wide, so the safety boundary is _which databases_
+  we hand over — `authentik`, `vaultwarden`, `immich`, `firefly3` are excluded on
+  purpose. Adding a DB = copy one block in the HelmRelease.
+- Toolsets deliberately **not** connected: `helm/core` (needs `secrets` read),
+  `cilium`+`hubble` (no `cilium`/`hubble` binaries in the image and Hubble is
+  disabled in `kube-system/cilium`), `inspektor-gadget` (privileged
+  `kubectl debug` on nodes), `github-mcp` (needs a repo/write PAT).
