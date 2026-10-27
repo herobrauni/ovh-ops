@@ -1,0 +1,24 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/networking.k8s.io/ingress_v1.json
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: holmesgpt
+spec:
+  # Tailnet-only: the tailscale-operator provisions a MagicDNS name and a
+  # Let's Encrypt certificate from spec.tls[].hosts (https://<host>.<tailnet>.ts.net)
+  # with no Cloudflare tunnel or public DNS record involved.
+  ingressClassName: tailscale
+  tls:
+    - hosts:
+        - holmesgpt
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: holmesgpt-holmes
+                port:
+                  number: 80

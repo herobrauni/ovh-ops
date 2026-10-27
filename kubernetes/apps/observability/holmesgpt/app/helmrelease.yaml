@@ -1,0 +1,91 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app holmesgpt
+spec:
+  chart:
+    spec:
+      chart: holmes
+      sourceRef:
+        kind: HelmRepository
+        name: robusta
+      version: 0.45.0
+  interval: 30m
+  values:
+    # The chart renders its image as "<registry>/<image>", so the digest pin
+    # lives in the image string rather than a separate tag field.
+    registry: robustadev
+    # renovate: datasource=docker depName=robustadev/holmes
+    image: holmes@sha256:a6edc27204a8725d45419863474c41e2822333e938a8e79fafb99068131629c3
+    logLevel: INFO
+
+    # Default model + credentials. litellm exposes wildcard passthrough model
+    # groups (openrouter/*, tokenrouter/*, z.ai/*) - the "openai/" prefix below is
+    # HolmesGPT's provider hint and is stripped before the request reaches
+    # litellm, which then routes openrouter/anthropic/claude-sonnet-4.5.
+    additionalEnvVars:
+      - name: OPENAI_API_BASE
+        value: http://litellm.ai.svc.cluster.local:4000/v1
+      - name: MODEL
+        value: claude-sonnet-4.5
+    modelList:
+      claude-sonnet-4.5:
+        model: openai/openrouter/anthropic/claude-sonnet-4.5
+        api_base: http://litellm.ai.svc.cluster.local:4000/v1
+        api_key: "{{ env.OPENAI_API_KEY }}"
+        temperature: 0
+    extraEnvVarsSecrets:
+      - holmesgpt-secret
+
+    # Cluster-wide get/list/watch ClusterRole + ServiceAccount token from the
+    # chart (k8sRBAC stays false: that mode swaps the in-pod readers for the
+    # runner and drops the kubernetes/* toolsets).
+    createServiceAccount: true
+    toolsets:
+      kubernetes/core:
+        enabled: true
+      kubernetes/logs:
+        enabled: true
+      internet:
+        enabled: true
+      connectivity_check:
+        enabled: true
+      prometheus/metrics:
+        enabled: true
+        subtype: prometheus
+        config:
+          prometheus_url: http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090
+      victorialogs:
+        enabled: true
+        config:
+          api_url: http://victoria-logs-server.observability.svc.cluster.local:9428
+      # Robusta's SaaS toolset needs a ROBUSTA_UI_TOKEN we do not have.
+      robusta:
+        enabled: false
+      # The bash toolset would let the model read OPENAI_API_KEY and the
+      # ServiceAccount token out of the pod environment. Keep it off; the
+      # kubernetes/* toolsets already cover investigation.
+      bash:
+        enabled: false
+
+    # The holmes image runs as root (upstream Dockerfile has no USER); harden
+    # what we can without breaking it. Chart forces readOnlyRootFilesystem.
+    podSecurityContext:
+      seccompProfile:
+        type: RuntimeDefault
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - ALL
+
+    # Operator mode: HealthCheck / ScheduledHealthCheck / TriggeredHealthCheck
+    # CRDs. Enabling it costs nothing until a check resource exists - each check
+    # is one (or more) LLM call, so add ScheduledHealthChecks sparingly.
+    operator:
+      enabled: true
+      registry: robustadev
+      # renovate: datasource=docker depName=robustadev/holmes-operator
+      image: holmes-operator@sha256:fb9ed8389b6b5b92daa504478dff5c507ce610d036e04d81beb9fe66b91f720f
