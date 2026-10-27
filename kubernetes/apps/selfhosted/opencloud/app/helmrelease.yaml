@@ -92,7 +92,7 @@ spec:
           radicale:
             image:
               repository: docker.io/opencloudeu/radicale
-              tag: latest@sha256:832839467e850935af387bffbc3ca2af7479265434ed44259e15b3fdfe517fd2
+              tag: latest@sha256:35e74785140b24ab7009232bf426ef4e3964e7016d21eebf1a822fb7b212549d
             securityContext:
               allowPrivilegeEscalation: false
               runAsNonRoot: true
