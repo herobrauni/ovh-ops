@@ -30,15 +30,15 @@ spec:
     # gated to the OpenCode clients, hence a paid model here.
     #
     # Swappable for any other /inference/openai/v1/chat/completions id, e.g.
-    # kimi-k2.7-code, qwen3.8-max, deepseek-v4.1-flash, minimax-m3.
+    # glm-5.3, kimi-k2.7-code, qwen3.8-max, minimax-m3.
     additionalEnvVars:
       - name: OPENAI_API_BASE
         value: https://opencode.ai/inference/openai/v1
       - name: MODEL
-        value: glm-5.3
+        value: deepseek-v4.1-flash
     modelList:
-      glm-5.3:
-        model: openai/glm-5.3
+      deepseek-v4.1-flash:
+        model: openai/deepseek-v4.1-flash
         api_base: https://opencode.ai/inference/openai/v1
         api_key: "{{ env.OPENAI_API_KEY }}"
         temperature: 0
