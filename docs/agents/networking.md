@@ -28,4 +28,5 @@ Gateway/Envoy tuning, or tailnet-only exposure.
 ## Tailnet-only apps
 
 - Tailnet-only apps intentionally skip the "App Exposure Rule" (`DNSEndpoint` + Homepage annotations): they get their name from MagicDNS and have no public route to annotate. Layer 3 uses `spec.type: LoadBalancer` + `spec.loadBalancerClass: tailscale` on the Service (app-template v5 templates all three fields); layer 7 uses a standalone Ingress with `ingressClassName: tailscale` and `spec.tls[].hosts`.
+- `observability/holmesgpt` (`app/ingress.yaml`) is the layer-7 reference: the `spec.tls[].hosts[0]` value becomes the MagicDNS name (`https://<host>.<tailnet>.ts.net`) and the operator provisions the Let's Encrypt cert itself — no HTTPRoute, DNSEndpoint or Homepage annotations involved. It needs MagicDNS + HTTPS certificates enabled in the tailnet admin console, otherwise the ingress proxy pod never gets an ADDRESS.
 - The cluster pod network is IPv4-only (relevant for guests: `docs/agents/kubevirt-vms.md`).
