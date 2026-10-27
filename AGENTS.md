@@ -143,6 +143,7 @@ Durable repo-specific findings live in `docs/agents/`, split by topic — read o
 - `docs/agents/kubevirt-vms.md` — VM layout, `firmware.uuid`, vendored KubeVirt/CDI operators, Hermes. _When working in `kubernetes/apps/vms/`._
 - `docs/agents/renovate.md` — datasources/cooldowns, blocked-update diagnosis, GHCR credentials. _When an expected update doesn't happen or when changing Renovate config._
 - `docs/agents/app-notes.md` — image security-context rules, idlers, litellm, niks3, descheduler. _When working on those apps or setting security contexts._
+- `docs/agents/holmesgpt.md` — HolmesGPT deploy shape, OpenCode Go endpoint/headers, header-passthrough quirk that breaks kubectl toolsets. _When working on `observability/holmesgpt`._
 
 Other `docs/*.md` files are historical plans/upgrade logs (`docs/infinidysk-migration.md`, `docs/jellyfin-v12-upgrade.md`, `docs/php-critical-release-2026-10-21.md`, `docs/dry-improvements.md`); check their status headers before relying on them.
 
