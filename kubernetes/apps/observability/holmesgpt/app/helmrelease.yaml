@@ -83,6 +83,38 @@ spec:
         enabled: true
         config:
           api_url: http://victoria-logs-server.observability.svc.cluster.local:9428
+      # Grafana dashboards: Viewer service-account token (minted once, stored in
+      # Infisical at /holmesgpt/GRAFANA_API_KEY). No image renderer installed, so
+      # the visual-rendering tools simply stay unregistered.
+      grafana/dashboards:
+        enabled: true
+        config:
+          api_key: "{{ env.GRAFANA_API_KEY }}"
+          api_url: http://grafana-service.observability.svc.cluster.local:3000
+      # Read-only Postgres via the CNPG role holmes_readonly (pg_read_all_data +
+      # pg_read_all_stats, see dbms/cloudnative-pg/cluster/cluster18.yaml) over the
+      # replica service. One block per database - add more by copying one and
+      # only changing the trailing database name. Deliberately NOT connected:
+      # authentik, vaultwarden, immich, firefly3 (credentials / personal data).
+      postgres-litellm:
+        type: database
+        config:
+          connection_url: postgresql://holmes_readonly:{{ env.POSTGRES_READONLY_PASSWORD }}@postgres18-ro.dbms.svc.cluster.local:5432/litellm
+        llm_instructions: |-
+          Read-only. LiteLLM proxy database: spend logs, virtual keys, model/credential
+          tables. Useful for "who/what is burning tokens" and proxy errors.
+      postgres-patchmon:
+        type: database
+        config:
+          connection_url: postgresql://holmes_readonly:{{ env.POSTGRES_READONLY_PASSWORD }}@postgres18-ro.dbms.svc.cluster.local:5432/patchmon
+        llm_instructions: |-
+          Read-only. PatchMon database: hosts, packages, patching status.
+      postgres-open-webui:
+        type: database
+        config:
+          connection_url: postgresql://holmes_readonly:{{ env.POSTGRES_READONLY_PASSWORD }}@postgres18-ro.dbms.svc.cluster.local:5432/open-webui
+        llm_instructions: |-
+          Read-only. Open WebUI database: chats, models, users (treat user content as PII).
       # Robusta's SaaS toolset needs a ROBUSTA_UI_TOKEN we do not have.
       robusta:
         enabled: false
