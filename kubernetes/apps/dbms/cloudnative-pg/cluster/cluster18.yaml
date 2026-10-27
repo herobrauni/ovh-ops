@@ -21,6 +21,21 @@ spec:
       max_locks_per_transaction: "128"
       shared_buffers: 256MB
       timescaledb.telemetry_level: "off"
+  managed:
+    roles:
+      - name: holmes_readonly
+        ensure: present
+        comment: "Read-only role for HolmesGPT (grafana/postgres toolsets)"
+        login: true
+        superuser: false
+        createdb: false
+        createrole: false
+        inherit: true
+        inRoles:
+          - pg_read_all_data
+          - pg_read_all_stats
+        passwordSecret:
+          name: holmes-readonly-pguser
   nodeMaintenanceWindow:
     inProgress: false
     reusePVC: true

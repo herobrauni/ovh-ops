@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/external-secrets.io/externalsecret_v1.json
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: holmes-readonly-pguser
+spec:
+  refreshInterval: 12h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: infisical
+  target:
+    # Consumed by postgres18.spec.managed.roles[].passwordSecret and, via the
+    # holmesgpt ExternalSecret, by HolmesGPT itself.
+    name: holmes-readonly-pguser
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      data:
+        username: holmes_readonly
+        password: "{{ .POSTGRES_READONLY_PASSWORD }}"
+  data:
+    - secretKey: POSTGRES_READONLY_PASSWORD
+      remoteRef:
+        key: /holmesgpt/POSTGRES_READONLY_PASSWORD
