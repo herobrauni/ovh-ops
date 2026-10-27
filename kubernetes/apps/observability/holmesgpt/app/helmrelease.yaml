@@ -21,19 +21,25 @@ spec:
     image: holmes@sha256:a6edc27204a8725d45419863474c41e2822333e938a8e79fafb99068131629c3
     logLevel: INFO
 
-    # Default model + credentials. litellm exposes wildcard passthrough model
-    # groups (openrouter/*, tokenrouter/*, z.ai/*) - the "openai/" prefix below is
-    # HolmesGPT's provider hint and is stripped before the request reaches
-    # litellm, which then routes openrouter/anthropic/claude-sonnet-4.5.
+    # Default model + credentials, straight against the OpenCode (Console/Zen)
+    # gateway - no litellm hop. opencode.ai splits its surface per upstream
+    # protocol: Claude/GPT/Grok/Gemini live on /anthropic/v1/messages,
+    # /openai/v1/responses and /google/v1beta, so the only models reachable from
+    # an OpenAI-compatible client like HolmesGPT are the chat/completions ones
+    # (GLM, Kimi, Qwen*Max, DeepSeek, MiniMax, Mistral). Free-tier models are
+    # gated to the OpenCode clients, hence a paid model here.
+    #
+    # Swappable for any other /inference/openai/v1/chat/completions id, e.g.
+    # kimi-k2.7-code, qwen3.8-max, deepseek-v4.1-flash, minimax-m3.
     additionalEnvVars:
       - name: OPENAI_API_BASE
-        value: http://litellm.ai.svc.cluster.local:4000/v1
+        value: https://opencode.ai/inference/openai/v1
       - name: MODEL
-        value: claude-sonnet-4.5
+        value: glm-5.3
     modelList:
-      claude-sonnet-4.5:
-        model: openai/openrouter/anthropic/claude-sonnet-4.5
-        api_base: http://litellm.ai.svc.cluster.local:4000/v1
+      glm-5.3:
+        model: openai/glm-5.3
+        api_base: https://opencode.ai/inference/openai/v1
         api_key: "{{ env.OPENAI_API_KEY }}"
         temperature: 0
     extraEnvVarsSecrets:

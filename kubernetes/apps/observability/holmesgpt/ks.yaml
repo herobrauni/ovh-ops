@@ -12,8 +12,6 @@ spec:
   dependsOn:
     - name: infisical
       namespace: external-secrets
-    - name: litellm
-      namespace: ai
   interval: 1h
   path: ./kubernetes/apps/observability/holmesgpt/app
   prune: true
