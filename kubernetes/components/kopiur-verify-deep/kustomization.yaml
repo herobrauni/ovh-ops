@@ -1,0 +1,39 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+# Opt-in WEEKLY SCRATCH-RESTORE verification for a kopiur SnapshotPolicy.
+#
+# List this component AFTER `components/kopiur` in an app's ks.yaml and set
+# KOPIUR_VERIFY_DEEP_CAPACITY (in postBuild.substitute) to the scratch volume
+# size. `deep` restores the policy's newest snapshot into a throwaway PVC and
+# discards it, so the capacity must fit the WHOLE restored snapshot — and the
+# restore downloads every byte from the SFTP backend with no dedup. Only put
+# this on volumes that are small and worth proving restorable; never on media
+# volumes (immich is ~120Gi, zurg ~13Gi, jellyfin ~10Gi).
+#
+# The scratch PVC is auto-deleted with the verify Job; `ceph-block` is RWO and
+# is exactly what a restore target needs.
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - target:
+      group: kopiur.home-operations.com
+      version: v1alpha1
+      kind: SnapshotPolicy
+    patch: |-
+      - op: add
+        path: /spec/verification/deep
+        value:
+          schedule:
+            cron: "${KOPIUR_VERIFY_DEEP_CRON:=H 5 * * 0}"
+            jitter: "${KOPIUR_VERIFY_DEEP_JITTER:=8h}"
+          capacity: "${KOPIUR_VERIFY_DEEP_CAPACITY:=1Gi}"
+          storageClassName: "${KOPIUR_VERIFY_DEEP_STORAGECLASS:=ceph-block}"
+          parallel: 2
+      # Deep is a restore, so `stats.files` is the REAL number of files written
+      # to scratch (unlike the quick tier, where it is kopia's new-file count).
+      # That makes a `> 0` assertion meaningful there and only there, hence the
+      # tier-aware predicate. `restored.checksumMatches` is NOT usable: kopiur
+      # hardcodes it to true (crates/mover/src/main.rs), so it proves nothing.
+      - op: replace
+        path: /spec/verification/successExpr
+        value: "tier == 'deep' ? stats.files > 0 : stats.errors == 0"

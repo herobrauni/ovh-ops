@@ -13,6 +13,7 @@ spec:
     - ../../../../components/cnpg
     - ../../../../components/dnsendpoint
     - ../../../../components/kopiur
+    - ../../../../components/kopiur-verify-deep
   dependsOn:
     - name: cloudnative-pg-cluster
       namespace: dbms
@@ -32,6 +33,7 @@ spec:
       DOMAIN: brauni.dev
       KOPIUR_CAPACITY: 10Gi
       KOPIUR_ON_MISSING_SNAPSHOT: Fail
+      KOPIUR_VERIFY_DEEP_CAPACITY: 1Gi
   prune: true
   sourceRef:
     kind: GitRepository

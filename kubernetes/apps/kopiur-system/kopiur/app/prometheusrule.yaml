@@ -1,0 +1,64 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kopiur-verification
+spec:
+  groups:
+    - name: kopiur.verification
+      rules:
+        # The chart's own rule set (PrometheusRule/kopiur-controller) ships nothing
+        # for verification, and a FAILED verify is invisible in metrics: kopiur
+        # writes it to the policy's status.verificationStamps and the Job is
+        # TTL-reaped, with no resource_phase kind for verification. So a verify
+        # that silently breaks (bad CEL, scratch that cannot bind, SFTP refusing
+        # the session) surfaces only as a STALE stamp — which is this alert.
+        # 3d against a daily quick schedule = 3 missed slots before it fires.
+        - alert: KopiurVerificationStale
+          expr: |
+            (
+              time() - max by (namespace, name) (kopiur_snapshot_verified_timestamp_seconds)
+            ) > 3 * 24 * 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              SnapshotPolicy {{ $labels.namespace }}/{{ $labels.name }} has not
+              verified successfully in over 3 days.
+            description: >-
+              Verification is enabled (spec.verification) but no quick/deep tier
+              has stamped status.lastVerified for 3+ days. Check
+              `kubectl -n {{ $labels.namespace }} get snapshotpolicy
+              {{ $labels.name }} -o yaml` (status.verificationStamps holds the
+              per-tier failure message) and the recent `verify-*` Jobs in that
+              namespace for the actual error.
+        # A policy whose verification block was never stamped at all never gets a
+        # series above, so a brand-new policy that has been backing up fine but
+        # never verified once would page nobody. Gate on "has backups" so the
+        # series only exists for policies that should be verifying.
+        # NOTE the label asymmetry: `kopiur_policy_last_backup_success_*` is keyed
+        # by `policy`, `kopiur_snapshot_verified_timestamp_seconds` by `name` — join
+        # through label_replace or the `unless` never matches.
+        - alert: KopiurVerificationNeverRan
+          expr: |
+            label_replace(
+              (max by (namespace, policy) (kopiur_policy_last_backup_success_timestamp_seconds) > 0),
+              "name", "$1", "policy", "(.*)"
+            )
+            unless on (namespace, name)
+            max by (namespace, name) (kopiur_snapshot_verified_timestamp_seconds)
+          for: 24h
+          labels:
+            severity: warning
+          annotations:
+            summary: >-
+              SnapshotPolicy {{ $labels.namespace }}/{{ $labels.name }} has
+              successful backups but has never verified.
+            description: >-
+              No kopiur_snapshot_verified_timestamp_seconds series exists for this
+              policy despite successful backups, so either spec.verification is
+              missing/disabled on it or the verified gauge was never set. Every
+              component-based kopiur app inherits verification from
+              components/kopiur.

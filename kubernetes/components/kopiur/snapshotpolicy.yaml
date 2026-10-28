@@ -44,4 +44,36 @@ spec:
       sourcePathOverride: /data
   upload:
     maxParallelFileReads: 2
+  # First-class verification (upstream `spec.verification`, opt-in: absent ⇒ no
+  # verification ever runs). `quick` is `kopia snapshot verify` SCOPED to this
+  # policy's own identity (`--sources <policy>@<ns>:<path>`), so on the shared
+  # ClusterRepository each app walks only its own retained snapshots instead of
+  # the whole repository. Tuning defaults are left to kopia unless overridden.
+  #
+  # `verifyFilesPercent` is deliberately NOT set: any non-zero value fully READS
+  # that percentage of *files* over the SFTP backend, so 1% of a 6 GiB media file
+  # is still a 6 GiB download. Index/blob-level verification already catches the
+  # failure that breaks restores (a referenced content blob missing from the
+  # repo) at index-read cost. Opt in per app with KOPIUR_VERIFY_FILES_PERCENT for
+  # small config volumes where a sampled full read is cheap.
+  verification:
+    quick:
+      schedule:
+        # `H` = deterministic per-policy minute (kopiur resolves it in next_fire).
+        # Verification Jobs do NOT draw from the repository's mover concurrency
+        # cap, so without a wide jitter all 32 policies would hit the single
+        # SFTP host in the same minute. Jitter spreads them over ~6h.
+        cron: "${KOPIUR_VERIFY_QUICK_CRON:=H 3 * * *}"
+        jitter: "${KOPIUR_VERIFY_QUICK_JITTER:=6h}"
+      maxErrors: 0
+      parallel: ${KOPIUR_VERIFY_QUICK_PARALLEL:=4}
+    # CAUTION — do not "improve" this into `stats.files > 0`. On the quick tier
+    # `stats.files` is kopia's manifest `fileCount`, which counts NEW/changed
+    # files, not the snapshot's total: an unchanged volume (plex, sonarr) reports
+    # 0 on every run and the predicate would fail daily. `stats.errors` is
+    # hardcoded 0 on both tiers, so this default is effectively permissive — the
+    # mover already fails closed with `VerifyNoSnapshot` when the identity has no
+    # manifest at all (the #456 false pass). Apps that also run `deep` (see
+    # components/kopiur-verify-deep) override this with the tier-aware form.
+    successExpr: "${KOPIUR_VERIFY_SUCCESS_EXPR:=stats.errors == 0}"
   volumeSnapshotClassName: ${KOPIUR_SNAPSHOTCLASS:=csi-ceph-blockpool}

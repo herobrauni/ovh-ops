@@ -126,6 +126,27 @@ spec:
       sourcePathOverride: /data
   upload:
     maxParallelFileReads: 2
+  # Verification is hand-written here (no components/kopiur): this is the DR
+  # artifact for every database, so it gets both tiers. Quick is identity-scoped
+  # `kopia snapshot verify`; deep is a full scratch restore of the newest dump,
+  # MONTHLY because the dump is ~9 GiB and a restore pulls every byte back over
+  # SFTP. `stats.files` means "new files" on the quick tier but "files restored"
+  # on deep, hence the tier-aware predicate.
+  verification:
+    quick:
+      schedule:
+        cron: "H 3 * * *"
+        jitter: 6h
+      maxErrors: 0
+      parallel: 4
+    deep:
+      schedule:
+        cron: "H 5 1 * *"
+        jitter: 12h
+      capacity: 12Gi
+      storageClassName: ceph-block
+      parallel: 2
+    successExpr: "tier == 'deep' ? stats.files > 0 : stats.errors == 0"
   volumeSnapshotClassName: csi-ceph-blockpool
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kopiur.home-operations.com/snapshotschedule_v1alpha1.json
@@ -271,6 +292,23 @@ spec:
       sourcePathOverride: /data
   upload:
     maxParallelFileReads: 2
+  # Both tiers (see the postgres18 policy above for the rationale). The immich
+  # dump is ~100 MiB, so the deep scratch restore is cheap enough to run weekly.
+  verification:
+    quick:
+      schedule:
+        cron: "H 3 * * *"
+        jitter: 6h
+      maxErrors: 0
+      parallel: 4
+    deep:
+      schedule:
+        cron: "H 5 * * 0"
+        jitter: 8h
+      capacity: 1Gi
+      storageClassName: ceph-block
+      parallel: 2
+    successExpr: "tier == 'deep' ? stats.files > 0 : stats.errors == 0"
   volumeSnapshotClassName: csi-ceph-blockpool
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kopiur.home-operations.com/snapshotschedule_v1alpha1.json

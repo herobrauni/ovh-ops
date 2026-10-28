@@ -12,6 +12,7 @@ spec:
   components:
     - ../../../../components/dnsendpoint
     - ../../../../components/kopiur
+    - ../../../../components/kopiur-verify-deep
   dependsOn:
     - name: kopiur-repository
       namespace: kopiur-system
@@ -25,6 +26,7 @@ spec:
       DOMAIN: brauni.dev
       KOPIUR_CAPACITY: 5Gi
       KOPIUR_ON_MISSING_SNAPSHOT: Fail
+      KOPIUR_VERIFY_DEEP_CAPACITY: 1Gi
   prune: true
   sourceRef:
     kind: GitRepository
