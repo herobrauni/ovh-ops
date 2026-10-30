@@ -23,6 +23,10 @@ The cluster consumes an **external** Ceph on Proxmox (the mon address and fsid l
 
 Full aes256k migration checklist for the external cluster lives in the CephX Config Reference (auth-config-ref): rotate clients → let rotating service keys expire (2–3h TTL; `ceph auth wipe-rotating-service-keys` exists but is discouraged) → drop `aes` from the mon `auth_allowed_ciphers` / `mon_auth_allow_insecure_key` settings to enforce secure-only. The cluster still warns `14 auth client entities with insecure key types` (remaining Proxmox-side users on old aes keys) — cosmetic for now, but mons still _allow_ insecure keys.
 
+## Version pinning: Ceph client image must stay on v20.2.x
+
+- Renovate keeps proposing `quay.io/ceph/ceph` v21 (Umbrella, first release 2026-10-28) in `rook-ceph/cluster/helmrelease.yaml`. **Do not merge it on its own**: Rook v1.21.x supports only Squid v19.2.0+ / Tentacle v20.2.1+ (`>=20.2.1 <21.0.0`), the external Proxmox cluster is still v20.2.4 (`ceph versions`: mon/mgr/osd/mds/rgw), and v21 images are Rocky 10/el10 → require x86-64-v3 CPUs. Order of operations if ever revisited: Rook release with v21 support → external cluster upgrade → this image bump. PR #1646 is held for exactly this reason.
+
 ## Legacy-key auth rejection (ceph v20.2.4)
 
 - The external PVE cluster on ceph v20.2.4 rejects legacy-key (`AQ…` aes) client auth outright (`mon_auth_allow_insecure_key=false` default; mon log: `AuthRegistry … failed to pick con mode from client's [1] and our []`). The rook operator's **mon-secret** path (`rook-ceph-mon` secret ← Infisical `/rook-ceph/ROOK_EXTERNAL_MONITOR_SECRET`) fails with `exit status 13` every ~8 min (disruption/OSD-metadata checks) while health polling keeps working via `client.rook-admin` (aes256k) — so `CephCluster HEALTH_OK` stays plausible and the breakage is invisible. Fix: patch the Infisical value to the same `Ag…` key as `ROOK_EXTERNAL_USER_SECRET`, force-sync the ExternalSecret, restart the operator (errors stop after its in-memory ClusterInfo refreshes, ~20 min). Also deleted the unreferenced manual `rook-ceph/ceph-admin-keyring` secret (dead legacy key).
