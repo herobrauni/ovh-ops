@@ -10,6 +10,6 @@ spec:
     mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip
     operation: copy
   ref:
-    tag: 0.19.0
-    digest: sha256:80070875201a6a9809c8bcdec3ead542195ed522ad2a4d33f81477fb8d9970e0
-  url: oci://ghcr.io/home-operations/charts-mirror/k8tz
+    tag: 0.21.0
+    digest: sha256:2a13bee1f7985b2a4c854311bce5ae7f2ea3a4c38f7f58287824162bd71faf02
+  url: oci://ghcr.io/k8tz/k8tz/charts/k8tz
