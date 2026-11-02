@@ -128,8 +128,18 @@ spec:
               # import (the check costs ~20-30s per item and turned thousands of
               # imports into a ~50h job) and is restored now that the import
               # finished — see the Phase 3 log in the migration doc.
-              NZBDAV_CONFIG__API__ENSURE_ARTICLE_EXISTENCE_CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex"
+              NZBDAV_CONFIG__API__ENSURE_ARTICLE_EXISTENCE_CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex,books"
               NZBDAV_CONFIG__API__ARTICLE_EXISTENCE_CHECK_MODE: sampled
+              # The `books` category carries non-media payloads (epub/pdf/azw3),
+              # and the importable-media validator rejects any job that unpacks to
+              # no video or audio — the job fails and its content is unlinked
+              # before the consumer can read it. The switch is global (there is no
+              # per-category variant), so this trades the *arrs' auto-fail on a
+              # no-media release for ebook downloads; a grabbed release that
+              # unpacks to nothing still fails on the article check above, and
+              # anything that does mount surfaces as an import error in the *arr
+              # instead of being blocklisted automatically.
+              NZBDAV_CONFIG__API__ENSURE_IMPORTABLE_VIDEO: "false"
               # The incoming NZBs are the only copy of the library's release
               # identities (they are what a mount is rebuilt from), so keep them
               # forever on the kopiur-backed /config PVC.
