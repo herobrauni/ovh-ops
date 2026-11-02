@@ -111,7 +111,7 @@ spec:
               # clients carry over unchanged, and one queue filtered by category
               # is all the isolation there is (never share a category between
               # two apps). Manual NZB uploads land in `other`.
-              NZBDAV_CONFIG__API__CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex"
+              NZBDAV_CONFIG__API__CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex,books"
               NZBDAV_CONFIG__API__MANUAL_CATEGORY: "other"
               # Symfony-style symlink farm (the altmount-era shape this repo
               # already runs): completed entries appear under completed-symlinks

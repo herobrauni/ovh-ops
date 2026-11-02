@@ -67,6 +67,12 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: infinidysk-sync-helper
+        # Book downloads: SAB client (3000) + read-only WebDAV mount (8080) for
+        # the completed release it then hands to Booklore. Uses its own `books`
+        # category, so the manual-NZB helper's `other` poll never sees it.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: shelfmark
       toPorts:
         - ports:
             - port: "3000"
