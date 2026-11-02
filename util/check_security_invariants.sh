@@ -25,6 +25,7 @@ declare -A privileged_allowlist=(
     [kubernetes/apps/media/silo/app/helmrelease.yaml]=1
     [kubernetes/apps/media/sonarr/app/helmrelease.yaml]=1
     [kubernetes/apps/media/sonarr4k/app/helmrelease.yaml]=1
+    [kubernetes/apps/media/shelfmark/app/helmrelease.yaml]=1
 )
 
 declare -A fuse_allowlist=(
@@ -40,6 +41,7 @@ declare -A fuse_allowlist=(
     [kubernetes/apps/media/silo/app/helmrelease.yaml]=1
     [kubernetes/apps/media/sonarr/app/helmrelease.yaml]=1
     [kubernetes/apps/media/sonarr4k/app/helmrelease.yaml]=1
+    [kubernetes/apps/media/shelfmark/app/helmrelease.yaml]=1
 )
 
 declare -A host_network_allowlist=(
