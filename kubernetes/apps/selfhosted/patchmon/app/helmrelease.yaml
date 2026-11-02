@@ -23,6 +23,10 @@ spec:
 
     controllers:
       app:
+        # Without a second controller in this release app-template drops the
+        # identifier from the Deployment name, which would recreate patchmon-app
+        # as "patchmon". Pin the existing name so this change only rolls the pod.
+        forceRename: patchmon-app
         replicas: 1
         annotations:
           reloader.stakater.com/auto: "true"
@@ -60,7 +64,6 @@ spec:
               TRUST_PROXY: "true"
               ENABLE_HSTS: "true"
               DEFAULT_USER_ROLE: user
-              GUACD_ADDRESS: patchmon-guacd:4822
             envFrom:
               - secretRef:
                   name: patchmon-secret
@@ -119,44 +122,6 @@ spec:
               limits:
                 memory: 512Mi
 
-      guacd:
-        replicas: 1
-        containers:
-          app:
-            image:
-              repository: docker.io/guacamole/guacd
-              tag: 1.6.0@sha256:8974eaa9ba32f713daf311e7cc8cd7e4cdfba1edea39eed75524e78ef4b08f4f
-            probes:
-              liveness:
-                enabled: true
-                spec:
-                  tcpSocket:
-                    port: 4822
-              readiness:
-                enabled: true
-                spec:
-                  tcpSocket:
-                    port: 4822
-              startup:
-                enabled: true
-                spec:
-                  failureThreshold: 30
-                  periodSeconds: 10
-                  tcpSocket:
-                    port: 4822
-            securityContext:
-              allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
-              capabilities:
-                drop:
-                  - ALL
-            resources:
-              requests:
-                cpu: 10m
-                memory: 64Mi
-              limits:
-                memory: 512Mi
-
     service:
       app:
         primary: true
@@ -165,12 +130,6 @@ spec:
         ports:
           http:
             port: &httpPort 3000
-      guacd:
-        controller: guacd
-        forceRename: patchmon-guacd
-        ports:
-          guacd:
-            port: 4822
 
     route:
       app:
