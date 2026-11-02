@@ -47,7 +47,7 @@ spec:
           app:
             image:
               repository: ghcr.io/infinidysk/infinidysk
-              tag: v1.6.3@sha256:8552ebcafb25f9a1e4c8e8f01341f685c45062655db7108e0d2386329b452f76
+              tag: v1.7.0@sha256:5863d090b31a592cdab7bd4c403f600037428de6bfaef4aa946007800de6fba5
             env:
               PUID: "1000"
               PGID: "1000"
