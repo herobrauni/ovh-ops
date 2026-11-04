@@ -11,7 +11,7 @@ spec:
       sourceRef:
         kind: HelmRepository
         name: robusta
-      version: 0.45.0
+      version: 0.46.0
   interval: 30m
   values:
     # The chart renders its image as "<registry>/<image>", so the digest pin
