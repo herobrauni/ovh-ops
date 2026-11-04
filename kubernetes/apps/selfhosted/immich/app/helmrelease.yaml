@@ -94,6 +94,10 @@ spec:
               repository: ghcr.io/immich-app/immich-machine-learning
               tag: v3.3.5@sha256:5b28c9352c8374b8a1ed96fbdd8d6755fea6e43510ec43fdf6538aa02ea40f56
             env:
+              # ONNX Runtime telemetry is enabled by default in the official
+              # builds and uploads to Microsoft (mobile.events.data.microsoft.com).
+              # Documented kill switch: onnxruntime/Privacy.md, ORT >= 1.12.
+              ORT_DISABLE_TELEMETRY: "1"
               MACHINE_LEARNING_CACHE_FOLDER: /cache
               TRANSFORMERS_CACHE: /cache
             envFrom: *envFrom
