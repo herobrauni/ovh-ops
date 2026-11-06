@@ -32,4 +32,5 @@ resources:
   - ./paperless/ks.yaml
   - ./patchmon/ks.yaml
   - ./silverbullet/ks.yaml
+  - ./scanopy/ks.yaml
   - ./vaultwarden/ks.yaml
