@@ -47,6 +47,10 @@ spec:
               # reachable solely over the tailnet, so no public DNS record exists.
               SCANOPY_PUBLIC_URL: https://scanopy.brill-bebop.ts.net
               SCANOPY_LOG_LEVEL: info
+              # The published server image ships the SPA build at /app/static but does
+              # not embed it, so without this the process starts API-only and every UI
+              # route 404s ("web UI is disabled (API-only)" in the startup banner).
+              SCANOPY_WEB_EXTERNAL_PATH: /app/static
               # TLS terminates at the tailscale ingress proxy; without this the
               # session cookie is issued as non-Secure and browsers drop it.
               SCANOPY_USE_SECURE_SESSION_COOKIES: "true"
