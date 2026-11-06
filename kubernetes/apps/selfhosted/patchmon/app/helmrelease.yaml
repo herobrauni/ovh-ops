@@ -43,7 +43,7 @@ spec:
           app:
             image:
               repository: ghcr.io/patchmon/patchmon-server
-              tag: 2.1.6@sha256:6b1acc214e4bf29f3f7cd35787328e88d73f5370e7dce160b7dc9fc6cf7dc0c6
+              tag: 2.1.7@sha256:939f65018ae4fa823465e2050c1f07aab9d6548de10be44d04d5806ac8724051
             env:
               APP_ENV: production
               PORT: "3000"
