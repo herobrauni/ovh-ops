@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/networking.k8s.io/ingress_v1.json
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: scanopy
+spec:
+  # Tailnet-only, same pattern as holmesgpt: the tailscale-operator provisions
+  # scanopy.<tailnet>.ts.net plus a Let's Encrypt cert from spec.tls[].hosts.
+  # Deliberately not public and not behind authentik — the scan daemons authenticate
+  # with their own API keys over DaemonPoll, and an SSO redirect would break that.
+  ingressClassName: tailscale
+  tls:
+    - hosts:
+        - scanopy
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: scanopy
+                port:
+                  number: 60072

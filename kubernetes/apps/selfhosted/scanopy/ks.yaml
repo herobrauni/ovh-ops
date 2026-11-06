@@ -1,0 +1,42 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app scanopy
+spec:
+  targetNamespace: &namespace selfhosted
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  components:
+    # Shared postgres18 cluster: gives ${APP}-initdb-secret (DB/role bootstrap) and
+    # ${APP}-pguser-secret (the ready-made postgresql:// URI the server wants).
+    - ../../../../components/cnpg
+    # Scanner state and the server's own /data. Snapshots go to the shared sftp repo.
+    - ../../../../components/kopiur
+  dependsOn:
+    - name: infisical
+      namespace: external-secrets
+    - name: cloudnative-pg-cluster
+      namespace: dbms
+    - name: kopiur-repository
+      namespace: kopiur-system
+    - name: tailscale-operator
+      namespace: tailscale-operator
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
+  path: ./kubernetes/apps/selfhosted/scanopy/app
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false
+  interval: 1h
+  postBuild:
+    substitute:
+      APP: *app
+      # Two files' worth of static content today; the inventory itself lives in
+      # postgres18, not here.
+      KOPIUR_CAPACITY: 2Gi
