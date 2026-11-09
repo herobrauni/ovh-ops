@@ -122,6 +122,12 @@
       allowedVersions: "/^18\\./",
     },
     {
+      description: "Keep Gotenberg on 8.x until paperless-ngx ships a gotenberg-client that speaks the v9 API",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["docker.io/gotenberg/gotenberg"],
+      allowedVersions: "/^8\\./",
+    },
+    {
       description: "Only allow stable Ceph GA releases, skip dev/RC tags",
       matchDatasources: ["docker"],
       matchPackageNames: ["quay.io/ceph/ceph"],
