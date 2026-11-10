@@ -6,7 +6,13 @@ name: Paperless Gotenberg Compatibility
 # gotenberg-client pinned inside the paperless image has a hardcoded view of
 # gotenberg's HTTP API. A gotenberg major that the client does not speak breaks
 # every conversion (gotenberg 9 moved /forms/pdfengines/* and renamed the pdfa
-# fields). This job refuses that combination instead of pinning gotenberg.
+# fields).
+#
+# An incompatible pair is an expected, self-explaining outcome rather than a
+# broken build, so this job does not go red: it closes the PR with the evidence
+# attached. Red would block nothing here (main has no branch protection) and
+# only produce a failure mail per gotenberg release. Closing keeps the invariant
+# without the noise, and renovate does not recreate a closed non-immortal PR.
 on:
   pull_request:
     paths:
@@ -29,6 +35,9 @@ jobs:
   check:
     name: Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -43,4 +52,37 @@ jobs:
           install_args: aqua:mikefarah/yq
 
       - name: Check gotenberg compatibility
-        run: bash util/check_paperless_gotenberg_compat.sh
+        id: compat
+        continue-on-error: true
+        run: bash util/check_paperless_gotenberg_compat.sh 2>&1 | tee "$RUNNER_TEMP/compat.log"
+
+      - name: Close incompatible pair PR
+        if: >-
+          steps.compat.outcome == 'failure'
+          && github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          LOG: ${{ runner.temp }}/compat.log
+        run: |
+          if gh pr view "$PR_NUMBER" --repo "$REPO" --json comments -q '.comments[].body' \
+            | grep -qF 'Closing this PR automatically'; then
+            echo "already commented, nothing to do"
+            exit 0
+          fi
+
+          {
+            echo "Closing this PR automatically: the gotenberg image proposed here removes HTTP API that the \`gotenberg-client\` inside the paperless image we deploy still calls, so paperless would get 404/400 on every conversion."
+            echo
+            echo '```'
+            sed -n '1,40p' "$LOG"
+            echo '```'
+            echo
+            echo 'The guard (`util/check_paperless_gotenberg_compat.sh`) resolves the client version from the lockfile of the paperless release we deploy, so it clears itself as soon as paperless ships a gotenberg-9-capable client — no pin, no renovate exception. Until then, closing is the mechanism.'
+          } > "$RUNNER_TEMP/comment.md"
+
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$RUNNER_TEMP/comment.md"
+          gh pr close "$PR_NUMBER" --repo "$REPO"
+          echo "::notice::Closed #$PR_NUMBER as an incompatible paperless/gotenberg pair"
