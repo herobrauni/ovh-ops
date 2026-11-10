@@ -1,0 +1,46 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Paperless Gotenberg Compatibility
+
+# Renovate bumps the paperless and gotenberg images independently, but the
+# gotenberg-client pinned inside the paperless image has a hardcoded view of
+# gotenberg's HTTP API. A gotenberg major that the client does not speak breaks
+# every conversion (gotenberg 9 moved /forms/pdfengines/* and renamed the pdfa
+# fields). This job refuses that combination instead of pinning gotenberg.
+on:
+  pull_request:
+    paths:
+      - .github/workflows/paperless-gotenberg-compat.yaml
+      - kubernetes/apps/selfhosted/paperless/app/helmrelease.yaml
+      - util/check_paperless_gotenberg_compat.sh
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/paperless-gotenberg-compat.yaml
+      - kubernetes/apps/selfhosted/paperless/app/helmrelease.yaml
+      - util/check_paperless_gotenberg_compat.sh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        with:
+          version: v2026.10.25
+          sha256: 5d362ecc578dc7c146679b841dda949d6472cbf86ff5635db7afdca1b6b3fd87
+          install_args: aqua:mikefarah/yq
+
+      - name: Check gotenberg compatibility
+        run: bash util/check_paperless_gotenberg_compat.sh
