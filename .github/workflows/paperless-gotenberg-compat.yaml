@@ -54,7 +54,9 @@ jobs:
       - name: Check gotenberg compatibility
         id: compat
         continue-on-error: true
-        run: bash util/check_paperless_gotenberg_compat.sh 2>&1 | tee "$RUNNER_TEMP/compat.log"
+        run: |
+          set -o pipefail
+          bash util/check_paperless_gotenberg_compat.sh 2>&1 | tee "$RUNNER_TEMP/compat.log"
 
       - name: Close incompatible pair PR
         if: >-
