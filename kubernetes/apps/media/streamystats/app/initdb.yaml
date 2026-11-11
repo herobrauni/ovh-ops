@@ -1,0 +1,18 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/configmap_v1.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: streamystats-initdb
+data:
+  # postgres-init runs /initdb/<dbname>.sql as the CNPG superuser and only when
+  # it creates the database. Streamystats' first Drizzle migration opens with
+  # `CREATE EXTENSION IF NOT EXISTS vector` (pgvector, NOT a trusted extension),
+  # so the app's own role gets "permission denied to create extension" and the
+  # job-server (which runs the migrations at startup) exits before it is healthy.
+  # pg_trgm is trusted and only listed so a hand-created database is complete.
+  # Verified on the live postgres18 cluster: vector 0.8.6 and pg_trgm 1.6 are
+  # both available, only uuid-ossp needed nothing.
+  streamystats.sql: |
+    CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
+    CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;

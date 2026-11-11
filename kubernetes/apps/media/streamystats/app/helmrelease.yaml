@@ -1,0 +1,224 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app streamystats
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  interval: 1h
+  # The job-server runs the whole Drizzle migration set before it listens.
+  timeout: "15m"
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+    controllers:
+      streamystats:
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: streamystats-secret,streamystats-pguser-secret
+        initContainers:
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.6@sha256:87627baaddb0cabed4ebe033e75038e5c7b6b081c18e86514c99067179a90719
+            envFrom:
+              - secretRef:
+                  name: streamystats-initdb-secret
+        containers:
+          # Web UI + BFF. Also the only container that serves traffic; the
+          # job-server has no Service of its own and is reached over localhost.
+          app:
+            image:
+              repository: ghcr.io/fredrikburmester/streamystats-nextjs
+              # 2.22.2 (2026-11-10). DB migrations are one-way: a downgrade needs
+              # a restore from the postgres18 backup, not an image rollback.
+              tag: v2.22.2@sha256:de183b3e4361377d7b7795dee7a7f0e2cddbb9c6cb43a1e7ea13298d654d99fa
+            env:
+              NODE_ENV: production
+              HOSTNAME: 0.0.0.0
+              PORT: &port 3000
+              # Same pod, so the browser never talks to the job-server and
+              # nothing needs a second Service.
+              JOB_SERVER_URL: http://127.0.0.1:3005
+              DATABASE_URL:
+                valueFrom:
+                  secretKeyRef:
+                    name: &pguser streamystats-pguser-secret
+                    key: uri_no_ssl
+              # readOnlyRootFilesystem: Next.js only needs scratch space, which
+              # is the emptyDir mounted at /tmp (plus .next/cache below).
+              HOME: /tmp
+            envFrom:
+              - secretRef:
+                  name: streamystats-secret
+            probes:
+              liveness: &appProbes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: *port
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: *port
+                  failureThreshold: 30
+                  periodSeconds: 10
+            resources:
+              requests:
+                cpu: 50m
+                memory: 256Mi
+              limits:
+                # Node + Next.js server components; the AI/embedding work runs in
+                # the job-server, not here.
+                memory: 1Gi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+          job-server:
+            image:
+              repository: ghcr.io/fredrikburmester/streamystats-job-server
+              tag: v2.22.2@sha256:433302aec2dfd3588bb421ad6b580b8c85099d9e300f926c1e31843e805bf049
+            env:
+              NODE_ENV: production
+              PORT: &jobport 3005
+              HOST: 0.0.0.0
+              NEXTJS_URL: http://127.0.0.1:3000
+              DATABASE_URL:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: uri_no_ssl
+              HOME: /tmp
+            envFrom:
+              - secretRef:
+                  name: streamystats-secret
+            probes:
+              liveness: &jobProbes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *jobport
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *jobport
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /health
+                    port: *jobport
+                  # Entrypoint is `./migrate-bin && exec ./server`, so the first
+                  # boot on a new schema can take minutes. 60 x 10s = 10min.
+                  failureThreshold: 60
+                  periodSeconds: 10
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                # Session poller for every server + full sync + embeddings; the
+                # upstream compose file gives this container 2G.
+                memory: 2Gi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    service:
+      app:
+        controller: *app
+        ports:
+          http:
+            port: 80
+            targetPort: *port
+    route:
+      app:
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Media
+          gethomepage.dev/name: Streamystats
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=streamystats
+          gethomepage.dev/icon: jellyfin.png
+        hostnames:
+          - streamystats.480p.com
+        parentRefs:
+          - name: envoy-480p-com-public
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - name: *app
+                port: 80
+    persistence:
+      # The image runs as uid 1001 upstream; this pod is pinned to 1000, so the
+      # only writable paths are these two emptyDirs.
+      tmp:
+        type: emptyDir
+        sizeLimit: 1Gi
+        advancedMounts:
+          streamystats:
+            app:
+              - path: /tmp
+            job-server:
+              - path: /tmp
+      next-cache:
+        type: emptyDir
+        sizeLimit: 2Gi
+        advancedMounts:
+          streamystats:
+            app:
+              - path: /app/apps/nextjs-app/.next/cache
+      initdb:
+        type: configMap
+        name: streamystats-initdb
+        advancedMounts:
+          streamystats:
+            01-init-db:
+              - path: /initdb
