@@ -36,6 +36,12 @@ spec:
             envFrom:
               - secretRef:
                   name: streamystats-initdb-secret
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
         containers:
           # Web UI + BFF. Also the only container that serves traffic; the
           # job-server has no Service of its own and is reached over localhost.
