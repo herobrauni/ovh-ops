@@ -1,25 +1,31 @@
 [pre-commit]
-parallel = true
+# Serial on purpose: formatters must stage their fixes before ggshield scans the
+# staged diff, otherwise the secret scan can check pre-format content.
+parallel = false
 skip = ["merge", "rebase"]
 
 [pre-commit.commands.format-json]
+priority = 1
 glob = ["*.json", "*.json5", "*.jsonc"]
 exclude = [".mise/locks/**"]
 run = "oxfmt {staged_files}"
 stage_fixed = true
 
 [pre-commit.commands.format-markdown]
+priority = 1
 glob = ["*.md", "*.markdown", "*.mdx"]
 run = "oxfmt {staged_files}"
 stage_fixed = true
 
 [pre-commit.commands.format-yaml]
+priority = 1
 glob = ["*.yaml", "*.yml"]
 exclude = [".mise/locks/**"]
 run = "oxfmt {staged_files}"
 stage_fixed = true
 
 [pre-commit.commands.actionlint]
+priority = 2
 glob = [".github/workflows/*.yaml"]
 run = '''
 actionlint -shellcheck= \
@@ -32,5 +38,14 @@ actionlint -shellcheck= \
 '''
 
 [pre-commit.commands.zizmor]
+priority = 2
 glob = [".github/workflows/*.yaml", ".github/actions/**/action.yaml"]
 run = "zizmor --offline {staged_files}"
+
+# GitGuardian secret scan (`mise install` provides ggshield; the command is
+# skipped on machines without it). Runs last so it sees the staged content that
+# the formatters above just re-staged.
+[pre-commit.commands.ggshield]
+priority = 3
+run = "ggshield secret scan pre-commit"
+skip = [{ run = "! command -v ggshield >/dev/null 2>&1" }]
