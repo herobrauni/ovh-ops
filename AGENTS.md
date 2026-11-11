@@ -130,7 +130,7 @@ History follows Conventional Commits (for example `feat(network): ...`, `fix(ech
 
 Durable repo-specific findings live in `docs/agents/`, split by topic — read only the one matching what you are working on:
 
-- `docs/agents/flux.md` — Flux/Kustomize mechanics, drift detection, `postBuild` substitution, konflate, flate. _When adding namespace/app Kustomizations or debugging reconciliation._
+- `docs/agents/flux.md` — Flux/Kustomize mechanics, drift detection, `postBuild` substitution, konflate, flate, git hooks/ggshield scanning. _When adding namespace/app Kustomizations or debugging reconciliation._
 - `docs/agents/components.md` — what `kubernetes/components/*` provides (app-template, dnsendpoint, authentik, cnpg, dragonfly, kopiur) and each component's traps. _When adding/changing apps that consume components._
 - `docs/agents/secrets.md` — ExternalSecret failure modes, credential-splitting pattern, Infisical EU API. _When creating secrets programmatically or debugging ExternalSecrets._
 - `docs/agents/backups.md` — kopiur (retention, mover privileges, restore), dbms pgdumpall, VolSync removal checklist, CNPG barman backups. _When adding backups or restoring data._
