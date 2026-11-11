@@ -27,6 +27,7 @@ resources:
   - ./prowlarr/ks.yaml
   - ./seerr/ks.yaml
   - ./shelfmark/ks.yaml
+  - ./streamystats/ks.yaml
 
   - ./plex/ks.yaml
   - ./radarr/ks.yaml
