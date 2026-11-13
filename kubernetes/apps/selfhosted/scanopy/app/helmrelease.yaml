@@ -35,7 +35,7 @@ spec:
               # Community Edition server. Pinned by index digest: this process holds
               # the DB URI and (later) the daemon's API surface, and `latest` is what
               # the upstream compose file ships by default.
-              tag: v0.19.6@sha256:5a8eea1fb72759deeedcf0e7c3a25f9193c2e3a53f59a6ecf5353e0bfa2def65
+              tag: v0.20.0@sha256:bdeb5858d85cf4232cc227a470bf8d1a05163ae821105de4c3b743ecb7f1fd5e
             env:
               # components/cnpg builds this: postgresql://scanopy:<pw>@postgres18-rw.dbms.svc.cluster.local:5432/scanopy
               SCANOPY_DATABASE_URL:
