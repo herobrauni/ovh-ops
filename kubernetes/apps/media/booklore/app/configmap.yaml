@@ -37,14 +37,16 @@ data:
     # - A book added to a library is on that owner's device within
     #   AUTOSHELF_INTERVAL plus the next device sync.
     #
-    # Only EPUB ever reaches a Kobo: KoboLibrarySnapshotService filters through
-    # KoboCompatibilityService (EPUB, or CBX with conversion enabled) and
-    # KoboEntitlementService filters on BookFileType.EPUB again, so a MOBI sitting
-    # on the shelf is dropped before the device sees it. The eligibility
-    # predicate is therefore "the primary file is an EPUB", primary meaning the
-    # lowest-id file - the same rule BookEntity.getPrimaryBookFile() applies while
-    # a library has no format priority set. Give a library a format priority and
-    # this predicate has to follow it.
+    # Eligibility is "the book's preferred file is an EPUB", because only EPUB
+    # reaches a Kobo: KoboLibrarySnapshotService filters through
+    # KoboCompatibilityService and KoboEntitlementService filters on
+    # BookFileType.EPUB again, so a MOBI on the shelf is dropped before the device
+    # sees it. The preferred file is the first format found in the library's
+    # format priority list, then the lowest id - the same rule
+    # BookEntity.getPrimaryBookFile() applies. A library with no priority set
+    # falls back to the lowest id, which is why the expression below still works
+    # there. This is why a converted book needs its EPUB to win the priority
+    # list, not merely to exist next to the MOBI.
     set -u
 
     DB_HOST="$${DB_HOST:-127.0.0.1}"
@@ -54,6 +56,18 @@ data:
     DB_PASS="$${DATABASE_PASSWORD:?DATABASE_PASSWORD not set}"
     INTERVAL="$${AUTOSHELF_INTERVAL:-60}"
     MAP="$${AUTOSHELF_MAP:?AUTOSHELF_MAP not set}"
+
+    # The book's preferred file type. char(34) is the double quote of the JSON
+    # array in library.format_priority; locate() gives the position, i.e. the
+    # priority rank, and a format missing from the list sorts last.
+    PRIMARY="(select f.book_type
+                from book_file f
+                join library l on l.id = b.library_id
+               where f.book_id = b.id
+               order by coalesce(nullif(locate(concat(char(34), f.book_type, char(34)),
+                                                coalesce(l.format_priority, '[]')), 0), 100000),
+                        f.id
+               limit 1)"
 
     # MYSQL_PWD instead of -p: keeps the password out of the process list and
     # avoids the client's stderr warning. The client also emits a TLS note on
@@ -81,8 +95,7 @@ data:
              join shelf s on s.user_id = $${_user} and s.name = 'Kobo'
              where b.library_id = $${_lib}
                and coalesce(b.deleted, 0) = 0
-               and (select f.book_type from book_file f
-                    where f.book_id = b.id order by f.id limit 1) = 'EPUB';
+               and $${PRIMARY} = 'EPUB';
            select row_count();")" || { echo "[autoshelf] library $${_lib}: add failed"; return 1; }
       _removed="$$(sql "delete m from book_shelf_mapping m
              join shelf s on s.id = m.shelf_id
@@ -90,8 +103,7 @@ data:
              where s.user_id = $${_user} and s.name = 'Kobo'
                and (b.library_id <> $${_lib}
                     or coalesce(b.deleted, 0) <> 0
-                    or coalesce((select f.book_type from book_file f
-                                 where f.book_id = b.id order by f.id limit 1), '') <> 'EPUB');
+                    or coalesce($${PRIMARY}, '') <> 'EPUB');
            select row_count();")" || { echo "[autoshelf] library $${_lib}: prune failed"; return 1; }
       [ "$${_added:-0}" -gt 0 ] && echo "[autoshelf] library $${_lib} -> user $${_user}: +$${_added} book(s)"
       [ "$${_removed:-0}" -gt 0 ] && echo "[autoshelf] library $${_lib} -> user $${_user}: -$${_removed} book(s)"
