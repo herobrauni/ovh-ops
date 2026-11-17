@@ -7,6 +7,11 @@ metadata:
 data:
   kobo-autoshelf.sh: |
     #!/bin/sh
+    # NOTE: every dollar sign below is doubled on purpose. This ConfigMap is
+    # rendered by Flux postBuild, which runs the whole manifest through envsubst
+    # in strict mode: a single dollar before a brace fails the build with
+    # "variable not set", exactly like the mariadb password in the HelmRelease
+    # probe. Two dollars render as one.
     # Keeps each Kobo's library in step with the library it belongs to.
     #
     # Why this exists: Grimmory's own "Auto-Add New Books to Kobo Shelf" is the
@@ -44,28 +49,28 @@ data:
     # picked up later if an EPUB replaces it.
     set -u
 
-    DB_HOST="${DB_HOST:-127.0.0.1}"
-    DB_PORT="${DB_PORT:-3306}"
-    DB_NAME="${DATABASE_NAME:?DATABASE_NAME not set}"
-    DB_USER="${DATABASE_USERNAME:?DATABASE_USERNAME not set}"
-    DB_PASS="${DATABASE_PASSWORD:?DATABASE_PASSWORD not set}"
-    INTERVAL="${AUTOSHELF_INTERVAL:-60}"
-    MAP="${AUTOSHELF_MAP:?AUTOSHELF_MAP not set}"
+    DB_HOST="$${DB_HOST:-127.0.0.1}"
+    DB_PORT="$${DB_PORT:-3306}"
+    DB_NAME="$${DATABASE_NAME:?DATABASE_NAME not set}"
+    DB_USER="$${DATABASE_USERNAME:?DATABASE_USERNAME not set}"
+    DB_PASS="$${DATABASE_PASSWORD:?DATABASE_PASSWORD not set}"
+    INTERVAL="$${AUTOSHELF_INTERVAL:-60}"
+    MAP="$${AUTOSHELF_MAP:?AUTOSHELF_MAP not set}"
 
     # MYSQL_PWD instead of -p: keeps the password out of the process list and
     # avoids the client's stderr warning. The client also emits a TLS note on
     # every connect (no TLS inside the pod), which is filtered so the log keeps
     # only real errors.
     sql() {
-      _err="$(mktemp)" || return 1
-      MYSQL_PWD="$DB_PASS" mariadb \
-        --protocol=tcp -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" \
+      _err="$$(mktemp)" || return 1
+      MYSQL_PWD="$$DB_PASS" mariadb \
+        --protocol=tcp -h "$$DB_HOST" -P "$$DB_PORT" -u "$$DB_USER" \
         --batch --skip-column-names --connect-timeout=10 \
-        "$DB_NAME" -e "$1" 2>"$_err"
-      _rc=$?
-      grep -v 'ssl-verify-server-cert' "$_err" >&2 || true
-      rm -f "$_err"
-      return $_rc
+        "$$DB_NAME" -e "$$1" 2>"$$_err"
+      _rc=$$?
+      grep -v 'ssl-verify-server-cert' "$$_err" >&2 || true
+      rm -f "$$_err"
+      return $$_rc
     }
 
     init() {
@@ -83,13 +88,13 @@ data:
 
     # Prints how many books this pass handed to the device.
     assign() {
-      _lib="$1" _user="$2"
+      _lib="$$1" _user="$$2"
       sql "insert ignore into book_shelf_mapping (book_id, shelf_id)
              select b.id, s.id
              from book b
-             join shelf s on s.user_id = ${_user} and s.name = 'Kobo'
+             join shelf s on s.user_id = $${_user} and s.name = 'Kobo'
              left join kobo_autoshelf_applied a on a.book_id = b.id
-             where b.library_id = ${_lib}
+             where b.library_id = $${_lib}
                and coalesce(b.deleted, 0) = 0
                and a.book_id is null
                and exists (select 1 from book_file f
@@ -98,8 +103,8 @@ data:
            insert ignore into kobo_autoshelf_applied (book_id, shelf_id)
              select b.id, s.id
              from book b
-             join shelf s on s.user_id = ${_user} and s.name = 'Kobo'
-             where b.library_id = ${_lib}
+             join shelf s on s.user_id = $${_user} and s.name = 'Kobo'
+             where b.library_id = $${_lib}
                and coalesce(b.deleted, 0) = 0
                and exists (select 1 from book_file f
                            where f.book_id = b.id and f.book_type = 'EPUB');
@@ -108,33 +113,33 @@ data:
 
     pass() {
       init
-      if [ "$(sql 'select count(*) from kobo_autoshelf_applied')" = "0" ]; then
+      if [ "$$(sql 'select count(*) from kobo_autoshelf_applied')" = "0" ]; then
         baseline
-        echo "[autoshelf] no state yet: baseline recorded for $(sql 'select count(*) from kobo_autoshelf_applied') books, nothing assigned"
+        echo "[autoshelf] no state yet: baseline recorded for $$(sql 'select count(*) from kobo_autoshelf_applied') books, nothing assigned"
         return 0
       fi
       # A shelf that does not exist yet (Kobo sync off) resolves to no rows, so
       # nothing is assigned and nothing is marked; the book is picked up later.
-      for pair in $(printf '%s' "$MAP" | tr ',' ' '); do
-        lib="${pair%%:*}"
-        user="${pair#*:}"
-        n="$(assign "$lib" "$user")" || { echo "[autoshelf] library ${lib}: pass failed"; continue; }
-        [ "${n:-0}" -gt 0 ] && echo "[autoshelf] library ${lib} -> user ${user}: assigned ${n} new book(s)"
+      for pair in $$(printf '%s' "$$MAP" | tr ',' ' '); do
+        lib="$${pair%%:*}"
+        user="$${pair#*:}"
+        n="$$(assign "$$lib" "$$user")" || { echo "[autoshelf] library $${lib}: pass failed"; continue; }
+        [ "$${n:-0}" -gt 0 ] && echo "[autoshelf] library $${lib} -> user $${user}: assigned $${n} new book(s)"
       done
       return 0
     }
 
-    if [ "${AUTOSHELF_ONCE:-0}" = "1" ]; then
+    if [ "$${AUTOSHELF_ONCE:-0}" = "1" ]; then
       pass
       exit 0
     fi
 
     until sql 'select 1' >/dev/null 2>&1; do
-      echo "[autoshelf] waiting for the database at ${DB_HOST}:${DB_PORT}"
+      echo "[autoshelf] waiting for the database at $${DB_HOST}:$${DB_PORT}"
       sleep 5
     done
 
     while :; do
-      pass || echo "[autoshelf] pass failed, retrying in ${INTERVAL}s"
-      sleep "$INTERVAL"
+      pass || echo "[autoshelf] pass failed, retrying in $${INTERVAL}s"
+      sleep "$$INTERVAL"
     done
