@@ -22,6 +22,8 @@ spec:
             runAsGroup: 1000
             fsGroup: 1000
             fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
         initContainers:
           mariadb:
             image:
@@ -65,6 +67,45 @@ spec:
               readOnlyRootFilesystem: true
               seccompProfile:
                 type: RuntimeDefault
+          # Native sidecar (restartPolicy: Always), same shape as mariadb above.
+          # Grimmory's own auto-add cannot separate the two accounts here: its
+          # permission check short-circuits to true for permission_admin before
+          # it looks at library membership, and the admin account is meant to
+          # keep seeing every library. This loop assigns a book that lands in a
+          # library to that library owner's `Kobo` shelf, once, so a Shelfmark
+          # download reaches only the right device without anyone opening the
+          # UI. Runs here rather than as its own workload because the DB listens
+          # on localhost only: no Service, no extra network policy.
+          kobo-autoshelf:
+            image:
+              repository: docker.io/library/mariadb
+              tag: 13.0.2@sha256:54f493ea0d60b621a5bff84e5b20100f8b86b6efa6b79158e04756c5194a5e4d
+            command:
+              - /bin/sh
+            args:
+              - /scripts/kobo-autoshelf.sh
+            env:
+              AUTOSHELF_INTERVAL: "60"
+              # library_id:user_id — the Kobo shelf itself is resolved by name
+              # each pass. Both libraries stay visible to both users; only the
+              # devices are separated.
+              AUTOSHELF_MAP: "3:1,4:2"
+              DATABASE_NAME: booklore
+              DATABASE_USERNAME: booklore
+              DATABASE_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: booklore-secret
+                    key: booklore_mariadb_password
+            restartPolicy: Always
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: true
+              seccompProfile:
+                type: RuntimeDefault
           wait-for-mariadb:
             image:
               repository: wait4x/wait4x
@@ -78,6 +119,14 @@ spec:
                   secretKeyRef:
                     name: booklore-secret
                     key: booklore_mariadb_password
+            securityContext:
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+              readOnlyRootFilesystem: true
+              seccompProfile:
+                type: RuntimeDefault
         containers:
           booklore:
             image:
@@ -139,6 +188,15 @@ spec:
                   - ALL
               readOnlyRootFilesystem: true
     persistence:
+      autoshelf-script:
+        type: configMap
+        name: booklore-autoshelf-script
+        defaultMode: 0o555
+        advancedMounts:
+          booklore:
+            kobo-autoshelf:
+              - path: /scripts
+                readOnly: true
       data:
         existingClaim: booklore
         advancedMounts:
@@ -177,6 +235,9 @@ spec:
             mariadb:
               - path: /tmp
                 subPath: mysql
+            kobo-autoshelf:
+              - path: /tmp
+                subPath: autoshelf
     route:
       booklore:
         annotations:
