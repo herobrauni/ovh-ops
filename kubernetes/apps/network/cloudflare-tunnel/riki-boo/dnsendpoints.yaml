@@ -1,5 +1,6 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/externaldns.k8s.io/dnsendpoint_v1alpha1.json
+# Throwaway change to exercise the flate --supply path in CI; closed without merging.
 apiVersion: externaldns.k8s.io/v1alpha1
 kind: DNSEndpoint
 metadata:
