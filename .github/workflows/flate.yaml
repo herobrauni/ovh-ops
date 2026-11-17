@@ -39,6 +39,10 @@ jobs:
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          # zizmor: the app token passes the installation permissions through by
+          # default; every step here only reads code (checkout) and pulls the
+          # flate release, so hold it to contents: read.
+          permission-contents: read
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -54,10 +58,13 @@ jobs:
 
       # Full-tree validation (not changed-only): a full render of this repo takes
       # single-digit seconds, so there is no reason to skip untouched subtrees.
+      # --supply provides stand-ins for Secrets that only exist in-cluster (the
+      # cloudflare-tunnel IDs); without them flate reports those Kustomizations as
+      # blocked and the run exits non-zero.
       - name: Run flate test
         env:
           FLATE_BASE: ""
-        run: flate test all -p ./kubernetes/flux/cluster --no-progress
+        run: flate test all -p ./kubernetes/flux/cluster --no-progress --supply .github/flate/supply.yaml
 
   diff:
     if: ${{ needs.filter.outputs.changed-files != '[]' }}
@@ -74,6 +81,10 @@ jobs:
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          # zizmor: the app token passes the installation permissions through by
+          # default; every step here only reads code (checkout) and pulls the
+          # flate release, so hold it to contents: read.
+          permission-contents: read
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -90,7 +101,7 @@ jobs:
       # The action exports FLATE_BASE=<default branch>, so this diff renders the
       # PR against main in changed-only mode and prints GitHub-flavored markdown.
       - name: Run flate diff
-        run: flate diff all -o github -p ./kubernetes/flux/cluster --no-progress > diff.md
+        run: flate diff all -o github -p ./kubernetes/flux/cluster --no-progress --supply .github/flate/supply.yaml > diff.md
 
       # GitHub caps PR comments at 65536 chars; cap well below that and flag it.
       - name: Truncate diff

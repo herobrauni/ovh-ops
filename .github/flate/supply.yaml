@@ -1,0 +1,31 @@
+---
+# Placeholder objects for `flate test --supply`.
+#
+# The cloudflare-tunnel Kustomizations take their tunnel IDs from Secrets that
+# only exist in-cluster (rendered by ExternalSecrets from Infisical), so a
+# render that cannot read them reports the Kustomizations as blocked and fails
+# the run. Supplying dummy values keeps the check meaningful (real substitution
+# paths still get exercised) without loosening the manifests themselves.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-tunnel-480p-com-id-secret
+  namespace: network
+stringData:
+  CLOUDFLARE_TUNNEL_480P_COM_ID: 00000000-0000-0000-0000-000000000000
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-tunnel-brauni-dev-id-secret
+  namespace: network
+stringData:
+  CLOUDFLARE_TUNNEL_BRAUNI_DEV_ID: 00000000-0000-0000-0000-000000000000
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-tunnel-riki-boo-id-secret
+  namespace: network
+stringData:
+  CLOUDFLARE_TUNNEL_RIKI_BOO_ID: 00000000-0000-0000-0000-000000000000
