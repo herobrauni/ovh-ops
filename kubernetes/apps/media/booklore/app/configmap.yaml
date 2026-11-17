@@ -1,0 +1,140 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/configmap_v1.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: booklore-autoshelf-script
+data:
+  kobo-autoshelf.sh: |
+    #!/bin/sh
+    # Keeps each Kobo's library in step with the library it belongs to.
+    #
+    # Why this exists: Grimmory's own "Auto-Add New Books to Kobo Shelf" is the
+    # only hands-off path into a device, but its permission check
+    # (KoboAutoShelfService.hasBookLibraryAccess) returns true for any user with
+    # permission_admin before it looks at library membership. The admin account
+    # here keeps access to every library on purpose (both users browse the whole
+    # catalogue in the UI), so native auto-add would push both libraries onto
+    # one device. Restricting library access is not an option either, because
+    # admins implicitly see all libraries anyway.
+    #
+    # So this loop does what auto-add does, minus the "sees everything" part: a
+    # book that lands in a library is assigned once to that library owner's
+    # `Kobo` shelf. KoboLibrarySnapshotService.create() reads the shelf straight
+    # from the DB on every device sync (shelfRepository -> shelf.bookEntities),
+    # so the book is delivered on the next sync without anyone opening the UI.
+    #
+    # One-shot semantics matter. Books are recorded in kobo_autoshelf_applied
+    # once handed over, so a book removed from the Kobo shelf - in the UI or on
+    # the device - stays removed instead of being re-added on the next pass.
+    # The table is the only state; it lives next to the app's own tables and the
+    # app ignores it.
+    #
+    # The very first pass only records a baseline (every existing book is
+    # marked, nothing is assigned). Without it, the first run would assign every
+    # not-yet-curated book in the libraries and flood both devices.
+    #
+    # AUTOSHELF_MAP is "library_id:user_id,..." and the shelf is resolved by
+    # name on every pass, so disabling and re-enabling Kobo sync (which recreates
+    # the shelf under a new id) needs no change here.
+    #
+    # Eligibility mirrors KoboCompatibilityService.isBookSupportedForKobo for
+    # the formats actually present here: EPUB is syncable, MOBI is not. The app
+    # never converts on its own, so an ineligible book is left unmarked and
+    # picked up later if an EPUB replaces it.
+    set -u
+
+    DB_HOST="${DB_HOST:-127.0.0.1}"
+    DB_PORT="${DB_PORT:-3306}"
+    DB_NAME="${DATABASE_NAME:?DATABASE_NAME not set}"
+    DB_USER="${DATABASE_USERNAME:?DATABASE_USERNAME not set}"
+    DB_PASS="${DATABASE_PASSWORD:?DATABASE_PASSWORD not set}"
+    INTERVAL="${AUTOSHELF_INTERVAL:-60}"
+    MAP="${AUTOSHELF_MAP:?AUTOSHELF_MAP not set}"
+
+    # MYSQL_PWD instead of -p: keeps the password out of the process list and
+    # avoids the client's stderr warning. The client also emits a TLS note on
+    # every connect (no TLS inside the pod), which is filtered so the log keeps
+    # only real errors.
+    sql() {
+      _err="$(mktemp)" || return 1
+      MYSQL_PWD="$DB_PASS" mariadb \
+        --protocol=tcp -h "$DB_HOST" -P "$DB_PORT" -u "$DB_USER" \
+        --batch --skip-column-names --connect-timeout=10 \
+        "$DB_NAME" -e "$1" 2>"$_err"
+      _rc=$?
+      grep -v 'ssl-verify-server-cert' "$_err" >&2 || true
+      rm -f "$_err"
+      return $_rc
+    }
+
+    init() {
+      sql "create table if not exists kobo_autoshelf_applied (
+             book_id bigint not null primary key,
+             shelf_id bigint null,
+             applied_at timestamp not null default current_timestamp
+           ) engine=innodb default charset=utf8mb4" >/dev/null
+    }
+
+    baseline() {
+      sql "insert ignore into kobo_autoshelf_applied (book_id, shelf_id)
+           select id, null from book where coalesce(deleted, 0) = 0" >/dev/null
+    }
+
+    # Prints how many books this pass handed to the device.
+    assign() {
+      _lib="$1" _user="$2"
+      sql "insert ignore into book_shelf_mapping (book_id, shelf_id)
+             select b.id, s.id
+             from book b
+             join shelf s on s.user_id = ${_user} and s.name = 'Kobo'
+             left join kobo_autoshelf_applied a on a.book_id = b.id
+             where b.library_id = ${_lib}
+               and coalesce(b.deleted, 0) = 0
+               and a.book_id is null
+               and exists (select 1 from book_file f
+                           where f.book_id = b.id and f.book_type = 'EPUB');
+           set @assigned := row_count();
+           insert ignore into kobo_autoshelf_applied (book_id, shelf_id)
+             select b.id, s.id
+             from book b
+             join shelf s on s.user_id = ${_user} and s.name = 'Kobo'
+             where b.library_id = ${_lib}
+               and coalesce(b.deleted, 0) = 0
+               and exists (select 1 from book_file f
+                           where f.book_id = b.id and f.book_type = 'EPUB');
+           select @assigned;"
+    }
+
+    pass() {
+      init
+      if [ "$(sql 'select count(*) from kobo_autoshelf_applied')" = "0" ]; then
+        baseline
+        echo "[autoshelf] no state yet: baseline recorded for $(sql 'select count(*) from kobo_autoshelf_applied') books, nothing assigned"
+        return 0
+      fi
+      # A shelf that does not exist yet (Kobo sync off) resolves to no rows, so
+      # nothing is assigned and nothing is marked; the book is picked up later.
+      for pair in $(printf '%s' "$MAP" | tr ',' ' '); do
+        lib="${pair%%:*}"
+        user="${pair#*:}"
+        n="$(assign "$lib" "$user")" || { echo "[autoshelf] library ${lib}: pass failed"; continue; }
+        [ "${n:-0}" -gt 0 ] && echo "[autoshelf] library ${lib} -> user ${user}: assigned ${n} new book(s)"
+      done
+      return 0
+    }
+
+    if [ "${AUTOSHELF_ONCE:-0}" = "1" ]; then
+      pass
+      exit 0
+    fi
+
+    until sql 'select 1' >/dev/null 2>&1; do
+      echo "[autoshelf] waiting for the database at ${DB_HOST}:${DB_PORT}"
+      sleep 5
+    done
+
+    while :; do
+      pass || echo "[autoshelf] pass failed, retrying in ${INTERVAL}s"
+      sleep "$INTERVAL"
+    done
