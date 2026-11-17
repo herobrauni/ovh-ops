@@ -12,41 +12,39 @@ data:
     # in strict mode: a single dollar before a brace fails the build with
     # "variable not set", exactly like the mariadb password in the HelmRelease
     # probe. Two dollars render as one.
-    # Keeps each Kobo's library in step with the library it belongs to.
+    #
+    # Each Kobo's shelf mirrors the library that belongs to its owner.
     #
     # Why this exists: Grimmory's own "Auto-Add New Books to Kobo Shelf" is the
     # only hands-off path into a device, but its permission check
     # (KoboAutoShelfService.hasBookLibraryAccess) returns true for any user with
     # permission_admin before it looks at library membership. The admin account
     # here keeps access to every library on purpose (both users browse the whole
-    # catalogue in the UI), so native auto-add would push both libraries onto
-    # one device. Restricting library access is not an option either, because
-    # admins implicitly see all libraries anyway.
+    # catalogue in the UI), so native auto-add would push both libraries onto one
+    # device, and restricting library access is not an option because admins
+    # implicitly see all libraries anyway.
     #
-    # So this loop does what auto-add does, minus the "sees everything" part: a
-    # book that lands in a library is assigned once to that library owner's
-    # `Kobo` shelf. KoboLibrarySnapshotService.create() reads the shelf straight
-    # from the DB on every device sync (shelfRepository -> shelf.bookEntities),
-    # so the book is delivered on the next sync without anyone opening the UI.
+    # So the invariant is kept here instead: the Kobo shelf of a library's owner
+    # holds exactly that library's books. Each pass adds what is missing and
+    # removes what no longer belongs, which also backfills shelves that were
+    # curated by hand before. KoboLibrarySnapshotService.create() reads the shelf
+    # straight from the DB on every device sync, so the result reaches the device
+    # on the next sync without anyone opening the UI.
     #
-    # One-shot semantics matter. Books are recorded in kobo_autoshelf_applied
-    # once handed over, so a book removed from the Kobo shelf - in the UI or on
-    # the device - stays removed instead of being re-added on the next pass.
-    # The table is the only state; it lives next to the app's own tables and the
-    # app ignores it.
+    # Mirroring is deliberate, including what follows from it:
+    # - Removing a book on the Kobo, or from the Kobo shelf in the UI, is undone
+    #   on the next pass. To keep a book off a device, take it out of the library.
+    # - A book added to a library is on that owner's device within
+    #   AUTOSHELF_INTERVAL plus the next device sync.
     #
-    # The very first pass only records a baseline (every existing book is
-    # marked, nothing is assigned). Without it, the first run would assign every
-    # not-yet-curated book in the libraries and flood both devices.
-    #
-    # AUTOSHELF_MAP is "library_id:user_id,..." and the shelf is resolved by
-    # name on every pass, so disabling and re-enabling Kobo sync (which recreates
-    # the shelf under a new id) needs no change here.
-    #
-    # Eligibility mirrors KoboCompatibilityService.isBookSupportedForKobo for
-    # the formats actually present here: EPUB is syncable, MOBI is not. The app
-    # never converts on its own, so an ineligible book is left unmarked and
-    # picked up later if an EPUB replaces it.
+    # Only EPUB ever reaches a Kobo: KoboLibrarySnapshotService filters through
+    # KoboCompatibilityService (EPUB, or CBX with conversion enabled) and
+    # KoboEntitlementService filters on BookFileType.EPUB again, so a MOBI sitting
+    # on the shelf is dropped before the device sees it. The eligibility
+    # predicate is therefore "the primary file is an EPUB", primary meaning the
+    # lowest-id file - the same rule BookEntity.getPrimaryBookFile() applies while
+    # a library has no format priority set. Give a library a format priority and
+    # this predicate has to follow it.
     set -u
 
     DB_HOST="$${DB_HOST:-127.0.0.1}"
@@ -73,58 +71,38 @@ data:
       return $$_rc
     }
 
-    init() {
-      sql "create table if not exists kobo_autoshelf_applied (
-             book_id bigint not null primary key,
-             shelf_id bigint null,
-             applied_at timestamp not null default current_timestamp
-           ) engine=innodb default charset=utf8mb4" >/dev/null
-    }
-
-    baseline() {
-      sql "insert ignore into kobo_autoshelf_applied (book_id, shelf_id)
-           select id, null from book where coalesce(deleted, 0) = 0" >/dev/null
-    }
-
-    # Prints how many books this pass handed to the device.
-    assign() {
+    # Adds the library's missing books to the owner's shelf, then takes off it
+    # whatever does not belong there, and reports both counts.
+    mirror() {
       _lib="$$1" _user="$$2"
-      sql "insert ignore into book_shelf_mapping (book_id, shelf_id)
-             select b.id, s.id
-             from book b
-             join shelf s on s.user_id = $${_user} and s.name = 'Kobo'
-             left join kobo_autoshelf_applied a on a.book_id = b.id
-             where b.library_id = $${_lib}
-               and coalesce(b.deleted, 0) = 0
-               and a.book_id is null
-               and exists (select 1 from book_file f
-                           where f.book_id = b.id and f.book_type = 'EPUB');
-           set @assigned := row_count();
-           insert ignore into kobo_autoshelf_applied (book_id, shelf_id)
+      _added="$$(sql "insert ignore into book_shelf_mapping (book_id, shelf_id)
              select b.id, s.id
              from book b
              join shelf s on s.user_id = $${_user} and s.name = 'Kobo'
              where b.library_id = $${_lib}
                and coalesce(b.deleted, 0) = 0
-               and exists (select 1 from book_file f
-                           where f.book_id = b.id and f.book_type = 'EPUB');
-           select @assigned;"
+               and (select f.book_type from book_file f
+                    where f.book_id = b.id order by f.id limit 1) = 'EPUB';
+           select row_count();")" || { echo "[autoshelf] library $${_lib}: add failed"; return 1; }
+      _removed="$$(sql "delete m from book_shelf_mapping m
+             join shelf s on s.id = m.shelf_id
+             join book b on b.id = m.book_id
+             where s.user_id = $${_user} and s.name = 'Kobo'
+               and (b.library_id <> $${_lib}
+                    or coalesce(b.deleted, 0) <> 0
+                    or coalesce((select f.book_type from book_file f
+                                 where f.book_id = b.id order by f.id limit 1), '') <> 'EPUB');
+           select row_count();")" || { echo "[autoshelf] library $${_lib}: prune failed"; return 1; }
+      [ "$${_added:-0}" -gt 0 ] && echo "[autoshelf] library $${_lib} -> user $${_user}: +$${_added} book(s)"
+      [ "$${_removed:-0}" -gt 0 ] && echo "[autoshelf] library $${_lib} -> user $${_user}: -$${_removed} book(s)"
+      return 0
     }
 
     pass() {
-      init
-      if [ "$$(sql 'select count(*) from kobo_autoshelf_applied')" = "0" ]; then
-        baseline
-        echo "[autoshelf] no state yet: baseline recorded for $$(sql 'select count(*) from kobo_autoshelf_applied') books, nothing assigned"
-        return 0
-      fi
       # A shelf that does not exist yet (Kobo sync off) resolves to no rows, so
-      # nothing is assigned and nothing is marked; the book is picked up later.
+      # nothing is added or removed; the library is picked up once it exists.
       for pair in $$(printf '%s' "$$MAP" | tr ',' ' '); do
-        lib="$${pair%%:*}"
-        user="$${pair#*:}"
-        n="$$(assign "$$lib" "$$user")" || { echo "[autoshelf] library $${lib}: pass failed"; continue; }
-        [ "$${n:-0}" -gt 0 ] && echo "[autoshelf] library $${lib} -> user $${user}: assigned $${n} new book(s)"
+        mirror "$${pair%%:*}" "$${pair#*:}" || true
       done
       return 0
     }
