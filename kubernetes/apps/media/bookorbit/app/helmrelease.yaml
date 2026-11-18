@@ -1,0 +1,190 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: bookorbit
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  interval: 1h
+  timeout: "15m"
+  values:
+    controllers:
+      bookorbit:
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: bookorbit-secret,bookorbit-pguser-secret
+        initContainers:
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.6@sha256:87627baaddb0cabed4ebe033e75038e5c7b6b081c18e86514c99067179a90719
+            envFrom:
+              - secretRef:
+                  name: bookorbit-initdb-secret
+            # initContainers get no securityContext from app-template; without
+            # this every rollout logs a restricted-PodSecurity warning even
+            # though the pod runs.
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+        containers:
+          app:
+            image:
+              repository: ghcr.io/bookorbit/bookorbit
+              tag: 3.8.0@sha256:d318f7732f6f6330312e2c5f854f7899f858b54cc4b18a13cde1f43b5bea0515
+            env:
+              PORT: &port 3000
+              # Behind Envoy: without this the app sees scheme http and builds
+              # http:// redirect and OPDS/OIDC callback URLs.
+              TRUST_PROXY: "true"
+              APP_URL: https://bookorbit.brauni.dev
+              CLIENT_URL: https://bookorbit.brauni.dev
+              # Keep the library folder picker inside the mounted claim instead
+              # of exposing the whole container filesystem.
+              LIBRARY_BROWSE_ROOT: /data
+              BOOK_DOCK_PATH: /data/book-dock
+              # The entrypoint repairs /data ownership and then su-execs to
+              # 1000:1000; these must match the pod-level fsGroup.
+              PUID: "1000"
+              PGID: "1000"
+              # Shared postgres18 cluster, created by the cnpg component.
+              DATABASE_URL:
+                valueFrom:
+                  secretKeyRef:
+                    name: bookorbit-pguser-secret
+                    key: uri_no_ssl
+              JWT_SECRET:
+                valueFrom:
+                  secretKeyRef:
+                    name: bookorbit-secret
+                    key: JWT_SECRET
+              SETUP_BOOTSTRAP_TOKEN:
+                valueFrom:
+                  secretKeyRef:
+                    name: bookorbit-secret
+                    key: SETUP_BOOTSTRAP_TOKEN
+            probes:
+              # First boot runs the whole migration set as user 1000 after the
+              # entrypoint's ownership repair; the startup probe absorbs that.
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet: &httpGet
+                    path: /api/v1/health
+                    port: *port
+                  failureThreshold: 60
+                  periodSeconds: 10
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet: *httpGet
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet: *httpGet
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                # NODE_MAX_OLD_SPACE_SIZE defaults to `auto` = 75% of this cap.
+                # Library scans (hashing + metadata) are the memory peak.
+                memory: 2Gi
+            # The image has no USER: the entrypoint chowns /data, repairs
+            # ownership and su-execs to PUID/PGID. Dropping the root part would
+            # break the repair path, so root plus the narrowest working cap set
+            # is the trade-off (same shape as infinidysk / radarr here):
+            #   CHOWN/DAC_OVERRIDE/FOWNER - chown -R, mkdir and the writability
+            #                              probes on /data and /data/book-bucket.
+            #   SETUID/SETGID             - su-exec to 1000:1000 before node
+            #                              starts.
+            securityContext:
+              runAsNonRoot: false
+              runAsUser: 0
+              runAsGroup: 0
+              allowPrivilegeEscalation: false
+              # Upstream ships the container with a read-only rootfs and a tmpfs
+              # on /tmp, so everything writable lives on the claim.
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+                add:
+                  - CHOWN
+                  - DAC_OVERRIDE
+                  - FOWNER
+                  - SETGID
+                  - SETUID
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+    service:
+      app:
+        controller: bookorbit
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        annotations:
+          gatus.home-operations.com/endpoint: |-
+            url: https://bookorbit.brauni.dev/api/v1/health
+            conditions: ["[STATUS] == 200"]
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Media
+          gethomepage.dev/name: BookOrbit
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=bookorbit
+          gethomepage.dev/icon: mdi-bookshelf
+        hostnames:
+          - bookorbit.brauni.dev
+        parentRefs:
+          - name: envoy-brauni-dev-public
+            namespace: network
+            sectionName: https
+    persistence:
+      # kopiur-managed claim (`bookorbit`, ceph-block). BookOrbit documents
+      # network/distributed storage as unsupported, which rules out ceph-filesystem
+      # and any rclone mount: libraries, uploads, the drop folder and app data
+      # all live here. /books is not a separate mount; new libraries are created
+      # under /data/books from the UI (LIBRARY_BROWSE_ROOT above).
+      data:
+        existingClaim: "{{ .Release.Name }}"
+        globalMounts:
+          - path: /data
+      # Uploads and metadata work files; bounded so a runaway import cannot
+      # fill the node's ephemeral disk.
+      tmp:
+        type: emptyDir
+        sizeLimit: 10Gi
+        globalMounts:
+          - path: /tmp
+      initdb:
+        type: configMap
+        name: bookorbit-initdb
+        advancedMounts:
+          bookorbit:
+            01-init-db:
+              - path: /initdb
