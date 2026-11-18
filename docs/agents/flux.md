@@ -33,5 +33,7 @@ Kustomizations, debugging reconciliation, or working on PR-render tooling.
 
 ## Validation
 
-- `.github/workflows/flate.yaml` runs flate `test` (full-tree validation) and `diff` (rendered, GitHub-flavored PR comment) for PRs touching `kubernetes/**`; the local equivalent of the CI gate is `flate test all -p ./kubernetes/flux/cluster` (single static binary, renders the whole repo in seconds).
+- `.github/workflows/flate.yaml` runs flate `test` (full-tree validation) and `diff` (rendered, GitHub-flavored PR comment) for PRs touching `kubernetes/**`; the local equivalent of the CI gate is `flate test all -p ./kubernetes/flux/cluster --supply .github/flate/supply.yaml` (single static binary, renders the whole repo in seconds).
+- flate v0.7 treats SOPS-encrypted/in-cluster-only secrets as unreadable, so Kustomizations that `substituteFrom` a Secret rendered by an ExternalSecret report `blocked` and fail `test`; `.github/flate/supply.yaml` supplies stand-in objects for the three cloudflare-tunnel ID Secrets. Add any new cluster-only substitution Secret there.
+- The `diff` job's GitHub App token pins `permission-contents: read` + `permission-pull-requests: write` (zizmor `github-app` audit). Listing _any_ `permission-*` input limits the token to exactly those permissions, so dropping `pull-requests: write` makes the sticky-comment step fail with `Resource not accessible by integration` while the render itself stays green.
 - `bash util/check_drift_detection.sh` verifies the global `cluster-apps` drift detection patch and fails on per-app leftovers; run it when editing HelmRelease resources.

@@ -82,9 +82,12 @@ jobs:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
           # zizmor: the app token passes the installation permissions through by
-          # default; every step here only reads code (checkout) and pulls the
-          # flate release, so hold it to contents: read.
+          # default; hold it to what this job does — read the repo (checkout,
+          # flate release download) and write the sticky diff comment. Dropping
+          # pull-requests: write here fails the comment step with "Resource not
+          # accessible by integration".
           permission-contents: read
+          permission-pull-requests: write
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
