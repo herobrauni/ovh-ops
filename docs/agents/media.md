@@ -99,6 +99,36 @@ Watch statistics for Jellyfin (`ghcr.io/fredrikburmester/streamystats-nextjs` +
 7. Image bumps are one-way: migrations are not reversible, so a rollback means restoring the postgres18 backup, not pinning the old tag.
 8. No Authentik `SecurityPolicy` — the app brings its own login (any Jellyfin user can sign in; admins get the full view). Revisit if the per-user stats ever need to be hidden from non-admins.
 
+## BookOrbit (`media/bookorbit`)
+
+Book/e-book/audiobook library server (`ghcr.io/bookorbit/bookorbit`, Node + Postgres + pgvector).
+Deployed next to booklore on purpose with its **own** claim — nothing is shared with booklore's
+`booklore` PVC, so the two can be compared and books copied later without touching each other.
+
+1. Wiring is the Silo shape: `components/cnpg` (shared `postgres18`, DB/role `bookorbit`) plus
+   `components/kopiur` for `/data`, `components/dnsendpoint`, own accounts (no Authentik
+   `SecurityPolicy` — it ships OIDC for Authentik if that is ever wanted).
+2. Upstream needs four extensions (`uuid-ossp`, `pg_trgm`, `unaccent`, `vector`). Only `vector`
+   is untrusted, but `bookorbit-initdb` installs all four as the CNPG superuser at DB creation —
+   same trap as Silo/Streamystats: the app's own role cannot create `vector` and its boot
+   migrations fail.
+3. The image has no `USER`: the entrypoint chowns `/data`, repairs ownership and `su-exec`s to
+   `PUID`/`PGID` (1000:1000 here), then runs `dist/scripts/migrate.js` before node on port 3000.
+   So it runs as root with `CHOWN`/`DAC_OVERRIDE`/`FOWNER`/`SETUID`/`SETGID`; `readOnlyRootFilesystem`
+   works because everything writable is under `/data` and `/tmp` (upstream ships the same with a
+   tmpfs on `/tmp`). Verified in a scratch namespace: tini stays root, node runs as 1000, `/data`
+   subdirs (`book-bucket`, `book-dock`, `covers`, `read-aloud`, `upload-sessions`) are created
+   owned by 1000:1000.
+4. **Storage must be `ceph-block`, not `ceph-filesystem`/rclone**: upstream documents network and
+   distributed filesystems as unsupported (scans rename/move files and coordinate with the DB).
+   Libraries live under `/data/books` (`LIBRARY_BROWSE_ROOT=/data` keeps the UI folder picker
+   inside the claim); the drop folder stays `/data/book-dock`.
+5. Probes are anonymous `GET /api/v1/health` (3000) and it reports the DB state, so it also covers
+   the shared cluster. `TRUST_PROXY=true` is required behind Envoy or redirect/OPDS links are built
+   as `http://`.
+6. First-run needs `SETUP_BOOTSTRAP_TOKEN` from `/bookorbit/SETUP_BOOTSTRAP_TOKEN` in the wizard;
+   `JWT_SECRET` (`/bookorbit/JWT_SECRET`) rotating logs everyone out.
+
 ## WatchSync (HD↔4K watch-state mirroring) — our fork
 
 `WatchSync` mirrors watched state between the HD and 4K libraries. It is **our fork**, not upstream:

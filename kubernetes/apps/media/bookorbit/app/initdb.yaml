@@ -1,0 +1,20 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/configmap_v1.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bookorbit-initdb
+data:
+  # postgres-init executes /initdb/<dbname>.sql as the CNPG superuser, and only
+  # when it creates the database. BookOrbit requires four extensions; `vector`
+  # is the only one that is NOT trusted, so the app's own role gets
+  # "permission denied to create extension "vector"" during its boot migrations.
+  # The other three are trusted (uuid-ossp, pg_trgm, unaccent are all t) and are
+  # listed only so a hand-created database is complete. Checked against the live
+  # postgres18 cluster: vector 0.8.6 is available but untrusted, pg_trgm 1.6 /
+  # unaccent 1.1 / uuid-ossp 1.1 are both available and trusted.
+  bookorbit.sql: |
+    CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
+    CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
+    CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
