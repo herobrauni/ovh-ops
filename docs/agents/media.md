@@ -117,6 +117,10 @@ Synchronization` failed with status `Failed` from Nov 15 until the fork was inst
 3. **`meta.json` must be JSON.** JPRM's `build.yaml` is YAML; copying it verbatim makes Jellyfin reject the
    plugin. `tools/make-meta.py` generates the JSON from it, and the package ships only the plugin assembly
    (the server provides `Jellyfin.*` and its transitive deps).
+   **Set `<Version>` in the csproj too** — without it the assembly keeps `1.0.0.0` while `meta.json` says
+   `1.1.0.0`, `/Plugins` reports 1.0.0.0, and the plugin manager keeps offering the same update. Deleting the
+   plugin folder to force a reinstall also breaks `GET /Packages` until the folder exists again
+   (`DirectoryNotFoundException: …/WatchSync_<ver>/meta.json`).
 4. **The plugin repository list is server-side state, not GitOps.** Jellyfin's `POST /Repositories` now carries
    `herobrauni (WatchSync fork)` → `raw.githubusercontent.com/herobrauni/jellyfin-plugins/main/manifest.json`
    (replacing Atilili's manifest, which only offers the incompatible 1.0.0.0). A rebuild from a fresh PVC needs
