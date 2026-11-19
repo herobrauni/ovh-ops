@@ -116,19 +116,19 @@ spec:
                 memory: 64Mi
               limits:
                 memory: 512Mi
-            # FUSE mount: needs /dev/fuse and the privileges rclone asks for.
-            # No cache dir, because the mount is read-only and every epub is a
-            # few megabytes (allowlisted in util/check_security_invariants.sh).
+            # FUSE + Bidirectional mount propagation: privileged is required
+            # (mount propagation is refused to non-privileged containers), same
+            # as every other InfiniDysk consumer — see the privileged and FUSE
+            # allowlists in util/check_security_invariants.sh.
             securityContext:
               runAsUser: 0
               runAsGroup: 0
               runAsNonRoot: false
-              allowPrivilegeEscalation: false
+              privileged: true
+              readOnlyRootFilesystem: true
               capabilities:
                 drop:
                   - ALL
-                add:
-                  - SYS_ADMIN
           app:
             image:
               repository: ghcr.io/bookorbit/bookorbit
