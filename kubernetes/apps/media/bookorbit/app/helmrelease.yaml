@@ -129,6 +129,73 @@ spec:
               capabilities:
                 drop:
                   - ALL
+          # Turns `completed-symlinks/<category>/<release>` into a real-file copy
+          # under /staging/<category>/<release>, published atomically (hidden .tmp
+          # dir + rename), so the importer never reads a half-copied release and
+          # never sees a symlink it would skip. Mirrors are pruned as soon as
+          # InfiniDysk no longer has the release — BookOrbit clears the SAB
+          # history entry right after importing.
+          materialize:
+            image:
+              repository: ghcr.io/home-operations/busybox
+              tag: 1.38.0@sha256:ff88728f0d5fe50a9984f6cc04d7d1185590b628f29ef4e6a3ec8cae7169e0c8
+            command:
+              - /bin/sh
+              - -c
+              - |
+                set -u
+                SRC=/aio/remote/infinidysk/completed-symlinks/books
+                DEST=/staging/books
+                mkdir -p "$DEST" /staging/.tmp
+                while true; do
+                  for dir in "$SRC"/*; do
+                    [ -d "$dir" ] || continue
+                    name=$(basename "$dir")
+                    [ -d "$DEST/$name" ] && continue
+                    tmp=/staging/.tmp/$name
+                    rm -rf "$tmp"; mkdir -p "$tmp"
+                    cp -L "$dir"/* "$tmp"/ 2>/dev/null
+                    if ls "$tmp" | grep -qiE '\.(epub|kepub|pdf|mobi|azw3|azw|cbz|cbr|cb7|fb2|m4b|m4a|mp3|opus|ogg|flac)$'; then
+                      mv "$tmp" "$DEST/$name"
+                    else
+                      rm -rf "$tmp"
+                    fi
+                  done
+                  for kept in "$DEST"/*; do
+                    [ -d "$kept" ] || continue
+                    [ -d "$SRC/$(basename "$kept")" ] || rm -rf "$kept"
+                  done
+                  touch /tmp/heartbeat
+                  sleep 10
+                done
+            resources:
+              requests:
+                cpu: 5m
+                memory: 16Mi
+              limits:
+                memory: 128Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 1000
+              runAsGroup: 1000
+              capabilities:
+                drop:
+                  - ALL
+            probes:
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - test -f /tmp/heartbeat && test $(($(date +%s) - $(date -r /tmp/heartbeat +%s))) -lt 120
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  failureThreshold: 3
           app:
             image:
               repository: ghcr.io/bookorbit/bookorbit
@@ -311,10 +378,25 @@ spec:
         hostPathType: DirectoryOrCreate
         advancedMounts:
           bookorbit:
-            app:
-              - path: /infinidysk
+            materialize:
+              # Same absolute path InfiniDysk's symlinks carry into (`-> /aio/remote/
+              # infinidysk/.ids/...`), so the links resolve inside this container.
+              - path: /aio/remote/infinidysk
                 mountPropagation: HostToContainer
                 readOnly: true
+      # Real-file mirror of finished releases. BookOrbit's request importer skips
+      # symlinked files outright (`entry.isSymbolicLink()`), and every completed
+      # InfiniDysk release is nothing but symlinks, so the app reads what
+      # `materialize` copied here (cp -L) instead of the rclone tree itself.
+      staging:
+        type: emptyDir
+        sizeLimit: 5Gi
+        advancedMounts:
+          bookorbit:
+            app:
+              - path: /staging
+            materialize:
+              - path: /staging
       fuse:
         type: hostPath
         hostPath: /dev/fuse
