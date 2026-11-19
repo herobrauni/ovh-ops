@@ -128,6 +128,29 @@ Deployed next to booklore on purpose with its **own** claim — nothing is share
    as `http://`.
 6. First-run needs `SETUP_BOOTSTRAP_TOKEN` from `/bookorbit/SETUP_BOOTSTRAP_TOKEN` in the wizard;
    `JWT_SECRET` (`/bookorbit/JWT_SECRET`) rotating logs everyone out.
+7. Test data (one-off `kubectl exec` copy, not GitOps): libraries `Brauni` (1, `/data/books/brauni`)
+   and `Zeli` (2, `/data/books/zeli`) were seeded from the Grimmory (booklore) PVC, one library per
+   Grimmory `/libraries/<user>` root. **Grimmory files most books flat in the author folder**, so
+   with `organizationMode: book_per_folder` the tree must first be reshaped to
+   `<Author>/<Title>/<Title>.epub` — otherwise a whole author's catalogue becomes one book.
+   `book_per_file` scans the flat layout as-is and needs no reshaping. `POST /api/v1/libraries`
+   starts the scan itself; the 167 files landed as 165 books (two epub+mobi pairs merged as formats).
+8. Automation auth is an **API key** (`bok_…`, Settings → Account → API keys), stored in Infisical at
+   `/bookorbit/API_KEY`; sessions can't be forged (a token needs a live `auth_sessions` row), so never
+   bother minting a JWT from `JWT_SECRET`. `allow_registration=false`: extra users (e.g. a spouse)
+   are created by an admin under Settings → Users, then granted access with
+   `POST /api/v1/libraries/:id/access`. Bulk metadata backfill after an import is
+   `POST /api/v1/book-metadata-fetch/run/:libraryId`.
+9. **Directories created under `/data` with `kubectl exec` land `root:node`, and node (uid 1000) cannot
+   write them.** The pod starts as root but `su-exec`s the app to 1000, and BookOrbit checks folder
+   writability as that user — the symptom is duplicate-merge jobs failing every group with
+   `FOLDER_NOT_WRITABLE` (and dock filing/uploads failing later). Always
+   `chown -R 1000:1000 /data/books` (plus `chmod g+ws`) after mkdir/mv there.
+10. AI goes **direct to OpenCode Go**, no proxy (LiteLLM was removed in #1835): connection is an
+    `openai-chat` type at `https://opencode.ai/inference/go/openai/v1` with the `x-opencode-session`
+    header (same contract as HolmesGPT, see `docs/agents/holmesgpt.md`). `/admin/ai` is
+    `@InteractiveOnly`, so API keys cannot configure it. Details and the model/slot mapping:
+    `docs/bookorbit-feature-rollout.md`.
 
 ## WatchSync (HD↔4K watch-state mirroring) — our fork
 

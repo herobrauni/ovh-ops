@@ -69,6 +69,24 @@ spec:
                   secretKeyRef:
                     name: bookorbit-secret
                     key: SETUP_BOOTSTRAP_TOKEN
+              # At-rest keys for credentials stored encrypted in the app DB
+              # (AI provider keys, request credentials, SMTP). Must be 64-hex;
+              # see the ExternalSecret for the rotation consequence.
+              AI_ENCRYPTION_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: bookorbit-secret
+                    key: AI_ENCRYPTION_KEY
+              BOOK_REQUEST_ENCRYPTION_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: bookorbit-secret
+                    key: BOOK_REQUEST_ENCRYPTION_KEY
+              EMAIL_ENCRYPTION_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: bookorbit-secret
+                    key: EMAIL_ENCRYPTION_KEY
             probes:
               # First boot runs the whole migration set as user 1000 after the
               # entrypoint's ownership repair; the startup probe absorbs that.
