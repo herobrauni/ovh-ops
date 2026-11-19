@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
         - name: virt-operator
-          image: quay.io/kubevirt/virt-operator:v1.9.1@sha256:a8adf7b772e9ce0bf7e2ce889910fc41ebadf552c9dbe843e9b86641e34f5df9
+          image: quay.io/kubevirt/virt-operator:v1.10.0@sha256:37c1287ad094eed25c4c6cc78744c06dd9bf340f7301eb0d26bdf3c4c230b738
           env:
             - name: VIRT_OPERATOR_IMAGE
               value: quay.io/kubevirt/virt-operator:v1.10.0@sha256:37c1287ad094eed25c4c6cc78744c06dd9bf340f7301eb0d26bdf3c4c230b738
