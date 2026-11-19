@@ -161,6 +161,27 @@ Deployed next to booklore on purpose with its **own** claim — nothing is share
     library-linked on the Plex farm. Its consumer allowlist entry is in
     `media/infinidysk/app/ciliumnetworkpolicy.yaml`, and both `util/check_security_invariants.sh`
     lists (FUSE, privileged) must carry `bookorbit` with it.
+12. **BookOrbit cannot read InfiniDysk's completed releases directly** — two independent reasons, so a
+    `materialize` container exists between them. (a) With `import-strategy: symlinks` every file in
+    `completed-symlinks/<cat>/<release>` is a symlink whose target is **absolute**
+    (`-> /aio/remote/infinidysk/.ids/...`), so it only resolves in a pod that mounts the tree at that
+    exact path. (b) BookOrbit's request importer skips symlinked entries outright
+    (`entry.isSymbolicLink()`), so even a working link is ignored — the symptom is
+    _"The download contains no supported book file"_ on a release that plainly holds an epub. The
+    container `cp -L`s each release into an emptyDir mirror at `/staging/<cat>/<release>`, publishes it
+    with a hidden `.tmp` dir + `rename`, and prunes mirrors once InfiniDysk drops the release; the
+    client's path mapping is therefore `/aio/remote/infinidysk/completed-symlinks/books -> /staging/books`.
+13. Acquisition plumbing that bit us once each, all now configured: Prowlarr's **Service listens on
+    port 80**, not 9696 (`prowlarr.media.svc.cluster.local:80`); the indexer-manager DTO needs
+    `allowPrivateAddress: true`; the download client needs the same flag; and the SAB category must
+    already exist in InfiniDysk (`books` does, `bookorbit` does not). `autoGrabMinScore: 80` rejects
+    legitimate releases (a clean _The Martian_ epub scored **77**), 70 works and the dock's own
+    auto-file threshold is the real guard.
+14. Failed imports are **not** cleaned up by BookOrbit (only successful ones clear the SAB entry), so
+    InfiniDysk accumulates `completed-symlinks/books/bookorbit-*` dirs and their history slots — the
+    3-for-1 "Project Hail Mary" Swedish zip grabs left three. A clear-only mode for category `books`
+    in `infinidysk-sync-helper` is the natural fix if this keeps happening; it already holds
+    `SAB_URL` + `SAB_API_KEY`.
 
 ## WatchSync (HD↔4K watch-state mirroring) — our fork
 
