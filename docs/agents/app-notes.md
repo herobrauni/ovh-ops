@@ -1,6 +1,6 @@
 # Per-app & image notes — agent topic guide
 
-Part of the `AGENTS.md` topic guides (`docs/agents/`). Read when working on idlers, litellm,
+Part of the `AGENTS.md` topic guides (`docs/agents/`). Read when working on idlers,
 niks3, the descheduler, or when giving an s6-overlay image a security context.
 
 ## Image security-context rules
@@ -19,13 +19,6 @@ niks3, the descheduler, or when giving an s6-overlay image a security context.
 - The `chrome` controller runs Karakeep's own published browser image (`ghcr.io/karakeep-app/karakeep-chrome`), not a third-party headless-chrome image: those stopped shipping browser updates and Karakeep's docs call them unmaintained. The `release` tag follows the browser build promoted for stable Karakeep; pin a versioned tag + digest here and let Renovate move it.
 - Its entrypoint starts Chrome on an internal debugging port and forwards container port `9222` to it, and supplies `--no-sandbox` itself. So: pass extra flags as `args` only, never set `command`, and never re-add `--remote-debugging-port`/`--remote-debugging-address` — overriding the port fights the forwarding setup, and re-adding `--no-sandbox` is redundant. The sandbox genuinely cannot create its namespaces under this Talos profile, hence the Cilium policy isolating the container.
 - It runs unprivileged on the cluster-standard `1000:1000` with caps dropped (verified: Chrome answers `GET /json/version` on 9222 under that pod security context). Benign log noise to ignore: `Failed to adjust OOM score of renderer … Permission denied` and dbus connect errors.
-
-## `ai/litellm`
-
-- Hardened (non-root) deployments MUST use the `ghcr.io/berriai/litellm-non_root` image variant — the standard `litellm` image expects root and bakes no `PRISMA_*` env, so under `runAsNonRoot` + `readOnlyRootFilesystem` the python prisma client can't resolve its query engine and the proxy crash-loops with `NotConnectedError` (while `prisma migrate deploy` still succeeds, masking it). The `litellm-database` tag series is legacy.
-- Replicate upstream's hardened compose for the non_root variant: emptyDirs at `/app/cache` and `/app/migrations` plus `HOME=/tmp`, `XDG_CACHE_HOME=/app/cache`, `LITELLM_MIGRATION_DIR=/app/migrations`, `LITELLM_NON_ROOT=true`; prisma engines are baked readable at `/opt/prisma` with `PRISMA_OFFLINE_MODE=true`.
-- Probes: liveness `/health/liveliness`, readiness/startup `/health/readiness` (startup needs a generous failureThreshold — first boot runs prisma migrations). `STORE_MODEL_IN_DB=True` allows adding models via the UI while Git only holds a minimal `config.yaml` anchor.
-- Its Redis-compatible store comes from the shared `kubernetes/components/dragonfly` component (`litellm-dragonfly.ai.svc.cluster.local:6379`), wired through `litellm_settings.cache_params` in the embedded proxy `config.yaml` (`type: redis`, `namespace: litellm`, `ttl: 300`, `port` as quoted string) plus `enable_redis_auth_cache: true` so virtual-key auth lookups share the cache across workers/future replicas. Verify the live cache with an authenticated `GET /cache/ping` on port 4000.
 
 ## `niks3`
 
