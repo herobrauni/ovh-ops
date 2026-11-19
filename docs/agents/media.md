@@ -151,6 +151,16 @@ Deployed next to booklore on purpose with its **own** claim — nothing is share
     header (same contract as HolmesGPT, see `docs/agents/holmesgpt.md`). `/admin/ai` is
     `@InteractiveOnly`, so API keys cannot configure it. Details and the model/slot mapping:
     `docs/bookorbit-feature-rollout.md`.
+11. **Ebook acquisition rides the existing InfiniDysk stack**, no second download client and no RWX
+    volume: BookOrbit's client is InfiniDysk's SABnzbd API (`infinidysk:3000`, `/infinidysk/API_KEY`,
+    category `bookorbit`) and its pod runs one more `rclone-infinidysk` sidecar
+    (`--links --read-only`, `/infinidysk`, VFS cache off) so the importer can read
+    `completed-symlinks/<category>/<release>` and copy it into the block claim. `sabnzbd` is in
+    `DOWNLOAD_CLIENT_REMOVES_COMPLETED`, and the import calls `removeCompletedDownload()` right after
+    the copy, so **no ebook needs `infinidysk-sync-helper`** — that helper exists to keep releases
+    library-linked on the Plex farm. Its consumer allowlist entry is in
+    `media/infinidysk/app/ciliumnetworkpolicy.yaml`, and both `util/check_security_invariants.sh`
+    lists (FUSE, privileged) must carry `bookorbit` with it.
 
 ## WatchSync (HD↔4K watch-state mirroring) — our fork
 
