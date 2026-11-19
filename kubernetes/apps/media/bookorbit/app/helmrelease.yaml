@@ -84,6 +84,11 @@ spec:
                     name: infinidysk-secret
                     key: NZBDAV_CONFIG__WEBDAV__PASS
               RCLONE_CONFIG_INFINIDYSK_PACER_MIN_SLEEP: "0"
+            # Only the mount itself is asserted, never a read through it: unlike the
+            # *arrs, BookOrbit does not need InfiniDysk to serve books, so an
+            # InfiniDysk outage must not mark this pod unready and drop the app out
+            # of its Service. Readiness is deliberately absent for the same reason —
+            # acquisition breaks, reading does not.
             probes:
               liveness: &rclone-infinidysk-probes
                 enabled: true
@@ -93,23 +98,14 @@ spec:
                     command:
                       - /bin/sh
                       - -c
-                      - mountpoint -q /host-mount/rclone-bookorbit-infinidysk && ls /host-mount/rclone-bookorbit-infinidysk >/dev/null
+                      - mountpoint -q /host-mount/rclone-bookorbit-infinidysk
                   initialDelaySeconds: 10
                   periodSeconds: 30
                   timeoutSeconds: 10
                   failureThreshold: 6
-              readiness: *rclone-infinidysk-probes
-              startup:
-                enabled: true
-                custom: true
-                spec:
-                  exec:
-                    command:
-                      - /bin/sh
-                      - -c
-                      - mountpoint -q /host-mount/rclone-bookorbit-infinidysk && ls /host-mount/rclone-bookorbit-infinidysk >/dev/null
-                  failureThreshold: 30
-                  periodSeconds: 5
+              readiness:
+                enabled: false
+              startup: *rclone-infinidysk-probes
             resources:
               requests:
                 cpu: 10m
