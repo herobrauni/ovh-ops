@@ -34,6 +34,101 @@ spec:
                 drop:
                   - ALL
         containers:
+          # Read-only WebDAV view of InfiniDysk, where the SABnzbd/InfiniDysk
+          # download client leaves completed ebook releases
+          # (`completed-symlinks/<category>/<release>`). Same pattern as the
+          # *arr pods: rclone with `--links` turns the `.rclonelink` pointers into
+          # real symlinks into `.ids`, which is why the importer can read them.
+          # Nothing is written here — BookOrbit copies a finished file into its
+          # own block claim and deletes the client-side job through the SAB API.
+          rclone-infinidysk:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.76@sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-bookorbit-infinidysk 2>/dev/null || true
+                mkdir -p /host-mount/rclone-bookorbit-infinidysk
+                export RCLONE_CONFIG_INFINIDYSK_PASS="$(rclone obscure "$RCLONE_CONFIG_INFINIDYSK_PASS_RAW")"
+                unset RCLONE_CONFIG_INFINIDYSK_PASS_RAW
+                exec rclone mount infinidysk:/ /host-mount/rclone-bookorbit-infinidysk \
+                  --links \
+                  --read-only \
+                  --poll-interval=0 \
+                  --dir-cache-time=20s \
+                  --allow-non-empty \
+                  --vfs-cache-mode=off \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=32M \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --uid=1000 \
+                  --gid=1000
+            env:
+              RCLONE_CONFIG_INFINIDYSK_TYPE: webdav
+              # Backend (WebDAV) port, never the :3000 frontend proxy.
+              RCLONE_CONFIG_INFINIDYSK_URL: http://infinidysk.media.svc.cluster.local:8080/
+              RCLONE_CONFIG_INFINIDYSK_VENDOR: other
+              RCLONE_CONFIG_INFINIDYSK_USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-secret
+                    key: NZBDAV_CONFIG__WEBDAV__USER
+              RCLONE_CONFIG_INFINIDYSK_PASS_RAW:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-secret
+                    key: NZBDAV_CONFIG__WEBDAV__PASS
+              RCLONE_CONFIG_INFINIDYSK_PACER_MIN_SLEEP: "0"
+            probes:
+              liveness: &rclone-infinidysk-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-bookorbit-infinidysk && ls /host-mount/rclone-bookorbit-infinidysk >/dev/null
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              readiness: *rclone-infinidysk-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-bookorbit-infinidysk && ls /host-mount/rclone-bookorbit-infinidysk >/dev/null
+                  failureThreshold: 30
+                  periodSeconds: 5
+            resources:
+              requests:
+                cpu: 10m
+                memory: 64Mi
+              limits:
+                memory: 512Mi
+            # FUSE mount: needs /dev/fuse and the privileges rclone asks for.
+            # No cache dir, because the mount is read-only and every epub is a
+            # few megabytes (allowlisted in util/check_security_invariants.sh).
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                  - ALL
+                add:
+                  - SYS_ADMIN
           app:
             image:
               repository: ghcr.io/bookorbit/bookorbit
@@ -199,6 +294,35 @@ spec:
         sizeLimit: 10Gi
         globalMounts:
           - path: /tmp
+      # InfiniDysk source tree for the rclone sidecar (mount propagation, like
+      # every other consumer) and the read-only view the app picks up.
+      host-tmp:
+        type: hostPath
+        hostPath: /tmp
+        hostPathType: Directory
+        advancedMounts:
+          bookorbit:
+            rclone-infinidysk:
+              - path: /host-mount
+                mountPropagation: Bidirectional
+      infinidysk:
+        type: hostPath
+        hostPath: /tmp/rclone-bookorbit-infinidysk
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          bookorbit:
+            app:
+              - path: /infinidysk
+                mountPropagation: HostToContainer
+                readOnly: true
+      fuse:
+        type: hostPath
+        hostPath: /dev/fuse
+        hostPathType: CharDevice
+        advancedMounts:
+          bookorbit:
+            rclone-infinidysk:
+              - path: /dev/fuse
       initdb:
         type: configMap
         name: bookorbit-initdb

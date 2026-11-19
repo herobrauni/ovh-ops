@@ -67,16 +67,16 @@ in. Instance: `bookorbit.brauni.dev`, image `ghcr.io/bookorbit/bookorbit` (v3.9.
 
 ### AI
 
-| Feature                                | What it gives us                                | Needs                                                                                          | State |
-| -------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----- |
-| AI connections                         | Provider endpoints + keys, budgeted             | **OpenCode Go** as a direct `openai-chat` connection (no proxy — LiteLLM was removed in #1835) | todo  |
-| AI slots `fast` / `careful` / `vision` | Model assignment per role, effort per slot      | OpenCode Go model ids                                                                          | todo  |
-| Story guides                           | Per-book AI guides (spoiler-safe)               | Slot `fast`/`careful`, per-feature budget                                                      | todo  |
-| Vision scan                            | Identify books from photos of shelves           | Slot `vision` (needs a vision model)                                                           | todo  |
-| Reading help                           | In-reader AI assistance                         | Slot `careful`, per-reader caps                                                                | todo  |
-| TTS read-aloud                         | Generate narrated audio from epubs              | Separate OpenAI-compatible TTS provider (not the AI slot)                                      | todo  |
-| Recommendations (pgvector embeddings)  | "What to read next" from the local catalogue    | Embedding model + backfill job                                                                 | todo  |
-| Visual match                           | Cover-based matching against metadata providers | `vision` slot                                                                                  | todo  |
+| Feature                                | What it gives us                                | Needs                                                                                          | State                                            |
+| -------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| AI connections                         | Provider endpoints + keys, budgeted             | **OpenCode Go** as a direct `openai-chat` connection (no proxy — LiteLLM was removed in #1835) | todo                                             |
+| AI slots `fast` / `careful` / `vision` | Model assignment per role, effort per slot      | OpenCode Go model ids                                                                          | todo                                             |
+| Story guides                           | Per-book AI guides (spoiler-safe)               | Slot `fast`/`careful`, per-feature budget                                                      | todo                                             |
+| Vision scan                            | Identify books from photos of shelves           | Slot `vision` (needs a vision model)                                                           | todo                                             |
+| Reading help                           | In-reader AI assistance                         | Slot `careful`, per-reader caps                                                                | todo                                             |
+| TTS read-aloud                         | Generate narrated audio from epubs              | Separate OpenAI-compatible TTS provider (not the AI slot)                                      | **not planned** — see below                      |
+| Recommendations (pgvector)             | "What to read next" from the local catalogue    | **nothing** — embeddings are computed in-process                                               | live (142/142 books embedded, 25 items per book) |
+| Visual match                           | Cover-based matching against metadata providers | `vision` slot                                                                                  | todo                                             |
 
 ### Metadata
 
@@ -110,13 +110,26 @@ in. Instance: `bookorbit.brauni.dev`, image `ghcr.io/bookorbit/bookorbit` (v3.9.
 2. **Search & download (built-in sources)** — no infra, no client, fully legal sources first.
 3. **Book requests** — auto-approve, destination = dock, notifications; makes the dock earn its keep.
 4. **Hardcover** — per-user token, then turn on auto-sync for status/progress/rating.
-5. **Search & download (Prowlarr) + download client** — needs the path decision below.
-6. **AI via OpenCode Go** — connection → slots → story guides → reading help → vision/recommendations.
+5. **Search & download (Prowlarr) + InfiniDysk client** — decided: usenet via Prowlarr + InfiniDysk's
+   SABnzbd API, read through the rclone sidecar (see phase 3).
+6. **AI via OpenCode Go** — connection → slots → story guides → reading help → vision scan
+   (recommendations need none of this and are already live; read-aloud is not planned).
 7. **Devices**: Kobo (zeli has a Kobo), KOReader, then SMTP for delivery/notifications.
 8. **Metadata depth**: precedence, reminders, naming/write-back.
 9. **Insight**: Readwise/StoryGraph, collections/smart scopes, achievements, shared reading insights.
 10. **Access & ops**: Authentik OIDC, restrictions, backup verification, audit review.
 11. **Long tail**: migration importer, visual match, custom icons/fonts, chapter editor.
+
+## Not planned
+
+- **Read-aloud / TTS** — decided against, not deferred. If it is ever revisited, the only option worth
+  building is in-cluster `ghcr.io/remsky/kokoro-fastapi-cpu` (OpenAI-compatible, ~2 GB RAM, `$0`, and
+  the only one that gives BookOrbit word-level captions via `/dev/captioned_speech`), wired as
+  Settings → Admin → TTS → `http://kokoro.media.svc.cluster.local:8880`, voice e.g. `af_bella`.
+  Rejected alternatives (Groq Orpheus, OpenAI `tts-1`, `openai-edge-tts`) are recorded in the AI
+  section above.
+- **Send-to-device** — dropped with TTS; `EMAIL_ENCRYPTION_KEY` is in place regardless, so SMTP-only
+  notifications stay cheap to add later if wanted.
 
 ## Phase detail
 
@@ -158,13 +171,48 @@ involved: `project-gutenberg`, `internet-archive`, `librivox`, plus `libgen`/`an
   destination (`Brauni` for you, `Zeli` for her — requests carry the requester's library).
 - Keep the grey sources off until we decide about them explicitly.
 
-### 3. Book requests
+### 3. Book requests → library → Kobo (the pipeline we actually want)
 
-- Permissions: `book_request_access` for `zeli`, `book_request_auto_approve` for you.
-- Automation: auto-search on request, dedupe against the library ("already in library" check),
-  notification on completion, destination folder = library root.
-- Decisions: human approval vs auto-approve, request rate limits, what happens when the match is bad
-  (park in dock vs discard).
+Target UX: either of us searches in BookOrbit, clicks **Request** once, and the book turns up in our
+own library and on our own Kobo at the next sync. No approval step, no manual filing.
+
+```
+request  →  auto-approve  →  auto-search/auto-grab (score ≥ 80)  →  download (HTTP-direct)
+        →  /data/book-dock/_libraries/<dock>  →  dock auto-file (threshold 85, safe merge)
+        →  library scan  →  Kobo sync offers the new book to that user's device
+```
+
+Knobs (all live in the DB, all settable through the admin API):
+
+| Step                | Setting                                                                                                         | Where                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Request             | `book_request_access` (both users), `book_request_auto_approve` (both users)                                    | Settings → Users → permissions             |
+| Auto-approve + grab | `autoSearchEnabled`, `autoGrabEnabled`, `autoGrabMinScore: 80`, `verificationEnabled`, `maxAutoGrabAttempts: 3` | `admin/book-request-automation`            |
+| Destination         | `book_requests.targetLibraryId` — **per request**, so each of us files into our own library                     | request dialog / automation `destinations` |
+| Filing              | per-library docks + `autoFinalizeEnabled`, `autoFinalizeThreshold: 85`, `safe_merge`                            | Settings → Server → Library Dock           |
+| Device              | register each Kobo once (device token); sync then _offers_ every book the user can see                          | Settings → Kobo                            |
+
+**Decided: Prowlarr + InfiniDysk as the download client, no RWX, no download-client plugin.**
+
+- BookOrbit's only indexer-manager type is `prowlarr`, so it imports the four enabled usenet indexers
+  from the existing Prowlarr (`http://prowlarr.media.svc.cluster.local:9696`, credential
+  `/servarr/API_KEY`). Torrents are deliberately out of scope — the stack has no torrent client.
+- The download client is **InfiniDysk's SABnzbd API** (`http://infinidysk.media.svc.cluster.local:3000`,
+  key `/infinidysk/API_KEY`, category `bookorbit`), not a separate SABnzbd.
+- **A `ceph-filesystem` RWX volume does not help here.** The client is InfiniDysk, which writes into
+  its own WebDAV tree; BookOrbit therefore reads the completed release through the same rclone sidecar
+  the *arrs use (`--links --read-only` at `/infinidysk`) and **copies** the file into its block claim
+  (`request-import.service.ts` uses `copyFile`/`link`, never a move). `/data` stays `ceph-block`.
+  Path mapping: `/aio/remote/infinidysk/completed-symlinks` → `/infinidysk/completed-symlinks`.
+- **Cleanup needs no new helper.** `DOWNLOAD_CLIENT_REMOVES_COMPLETED` allows `sabnzbd`, and the import
+  calls `removeCompletedDownload()` right after the copy, so the history entry (and with it
+  `completed-symlinks/bookorbit/<release>`) is cleared by BookOrbit itself. `infinidysk-sync-helper`
+  stays out of the ebook path: it exists to keep releases library-linked on the Plex farm, which ebooks
+  do not need. If entries ever do pile up (failed import, failed removal), the cheap fix is a
+  clear-only mode for category `bookorbit` in that helper — it already holds `SAB_URL` + `SAB_API_KEY`.
+
+Kobo needs no per-book action either: the sync service offers a book to a device when the user can see
+its library.
 
 ### 4. Hardcover
 
@@ -175,25 +223,20 @@ involved: `project-gutenberg`, `internet-archive`, `librivox`, plus `libgen`/`an
 - Decisions: sync both users or just you; whether BookOrbit is the source of truth for progress or
   Hardcover is.
 
-### 5. Search & download with Prowlarr + a download client (`blocked`)
+### 5. Search & download with Prowlarr + InfiniDysk (`decided` in phase 3)
 
-The hard constraint: **BookOrbit's `/data` is a `ceph-block` RWO claim**. A download client that runs
-outside that pod (our SABnzbd/qBittorrent "aio" stack on the host) cannot write into it, and BookOrbit
-needs the finished file _inside_ its own tree to import it. Options:
+Settled design, no RWX volume and no extra download client:
 
-- **(a) Direct HTTP only** — built-in sources download into the dock themselves. No client, no path
-  mapping, no egress to the aio host. Loses torrent/usenet breadth.
-- **(b) hostPath mount** — pin the bookorbit pod to the aio node and mount the completed-downloads
-  directory (like `media/shelfmark` mounts `/aio/remote/infinidysk`), then use BookOrbit's
-  path-mapping to translate client paths → `/data/book-dock/…`. Works, but couples the pod to one node
-  and puts unwritable-by-1000:1000 host paths in the way.
-- **(c) RWX staging volume** — a `ceph-filesystem` PVC the client can also reach; BookOrbit imports
-  from it. Needs the client to be a cluster workload (it isn't today).
-
-Recommendation: ship (a) first, decide on (b) vs (c) only if the request flow proves useful.
-
-Also needed for (b)/(c): `/qbittorrent/USERNAME|PASSWORD` or `/sabnzbd/API_KEY` in Infisical, plus a
-Cilium egress rule if we start restricting egress.
+- Prowlarr is attached as BookOrbit's indexer manager; the four enabled usenet indexers are imported.
+  Torrents are out of scope (no torrent client in the stack).
+- The client is InfiniDysk's own SABnzbd API, category `bookorbit`, with
+  `removeCompletedDownloads: true` so BookOrbit clears the history entry after its copy.
+- The completed release reaches BookOrbit through the `rclone-infinidysk` sidecar in its pod
+  (`--links --read-only`, `/infinidysk`), and path mapping translates
+  `/aio/remote/infinidysk/completed-symlinks` → `/infinidysk/completed-symlinks`. BookOrbit copies into
+  `/data/book-dock`, so the block claim stays the only writable library storage.
+- Consumer allowlist: `bookorbit` is in `media/infinidysk/app/ciliumnetworkpolicy.yaml` and both
+  `util/check_security_invariants.sh` lists (FUSE + privileged), same commit as the sidecar.
 
 ### 6. AI (OpenCode Go, direct)
 
@@ -233,9 +276,20 @@ budgets, the privacy confirmation on first enable, and the per-reader caps for `
 The Go quota is shared with HolmesGPT — story guides are long generations, so keep the per-reader caps
 tight at first.
 
-Remaining AI pieces are separate from the connection: **TTS read-aloud** is its own OpenAI-compatible
-TTS endpoint (BookOrbit does not route TTS through an AI slot), and **recommendations** need an
-embedding model plus a catalogue backfill.
+Remaining AI pieces are separate from the connection:
+
+- **Recommendations need no provider at all.** `book-embedding-vectorizer.service.ts` hashes
+  title/author/genres/tags locally (FNV-32 → 256-dim vector in pgvector), so `GET
+  /books/:id/recommendations` is free and offline. Every book is embedded during the metadata fetch —
+  the whole catalogue was already done — and Settings → Maintenance → _Refresh recommendation index_
+  re-runs it after a big import. **No embedding provider exists in this app**, so neither OpenCode Go
+  nor a DeepSeek/OpenRouter key can or needs to serve this.
+- **TTS read-aloud is not planned.** One provider type only (OpenAI-compatible URL + model + voices), and
+  it gets word-level captions solely from Kokoro-FastAPI's `/dev/captioned_speech`. Planned answer is
+  in-cluster `ghcr.io/remsky/kokoro-fastapi-cpu` (≈2 GB RAM, $0, captions work). Rejected after
+  checking: Groq Orpheus ($22/M chars, **200-char request cap** — BookOrbit does not chunk server-side,
+  no timings), OpenAI `tts-1` ($15/M ≈ $7.50 per 500k-char novel), `openai-edge-tts` (free but no
+  captions). DeepSeek and OpenRouter are chat-only: no `/audio/speech`, no `/embeddings`.
 
 Egress: `bookorbit` → `opencode.ai` over TLS; the Cilium policy is ingress-only, so no rule to add.
 
