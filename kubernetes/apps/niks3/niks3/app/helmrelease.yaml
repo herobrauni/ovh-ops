@@ -29,7 +29,7 @@ spec:
           app:
             image:
               repository: ghcr.io/mic92/niks3
-              tag: v1.17.1@sha256:8c78347d3ed0abab966ebb295769b954caa36f75037ef88c07752d6936c42425
+              tag: v1.18.0@sha256:3bf5bb7b26f2af6f778408e2b4a14581f1ea5e3935526b5c4705fa56372d1c77
             env:
               NIKS3_DB:
                 valueFrom:
