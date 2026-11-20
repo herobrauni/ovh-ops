@@ -17,7 +17,7 @@ releases:
   - name: cloudflare-dns
     namespace: network
     chart: oci://ghcr.io/home-operations/charts-mirror/external-dns
-    version: 1.23.0
+    version: 1.24.0
     # Only this layer's CRDs are consumed (the release itself is managed by the
     # external-dns HelmRelease), but the chart's values schema makes `policy`
     # mandatory, so template fails without it. Mirror the live release.
