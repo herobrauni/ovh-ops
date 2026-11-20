@@ -29,6 +29,12 @@ spec:
       namespace: dbms
   interval: 1h
   path: ./kubernetes/apps/media/infinidysk-v2/app
+  # `${CNPG_NAME}` in the ExternalSecret template is Flux substitution, not an
+  # ESO/container expansion: without it the import receives a literal
+  # `${CNPG_NAME:=postgres18}-rw.…` host and refuses the connection string.
+  postBuild:
+    substitute:
+      CNPG_NAME: postgres18
   # The first start imports the 1.x install out of the cloned /config, so the
   # pod is NotReady for minutes before it serves.
   timeout: 30m
