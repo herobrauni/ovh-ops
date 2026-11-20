@@ -166,7 +166,10 @@ spec:
             env:
               RCLONE_CONFIG_INFINIDYSK_TYPE: webdav
               # Backend (WebDAV) port, never the :3000 frontend proxy.
-              RCLONE_CONFIG_INFINIDYSK_URL: http://infinidysk.media.svc.cluster.local:8080/
+              # Switched to the 2.x instance (docs/infinidysk-v2-cutover.md): the
+              # download client AND this mount must point at the same backend — a
+              # release imported by one is invisible to the other's tree.
+              RCLONE_CONFIG_INFINIDYSK_URL: http://infinidysk-v2.media.svc.cluster.local:3000/
               RCLONE_CONFIG_INFINIDYSK_VENDOR: other
               RCLONE_CONFIG_INFINIDYSK_USER:
                 valueFrom:
