@@ -53,6 +53,12 @@ stanzas, manifest diffs, curl verification and rollback:
 
 - See `docs/agents/gatus.md` — an unauthenticated probe of `/` now gets a 302 instead of 200, so each endpoint needs a liveness path (`skip_path_regex` on the provider + a `gatus.home-operations.com/endpoint` URL override), or its own auth challenge/not-found assertion (vaultwarden asserts `[STATUS] == 302` with `client.ignore-redirect: true`).
 
+- **InfiniDysk 2.x** (`infinidysk-v2-oidc.yaml`) has its own provider/application, bound to group
+  `Platform` and _not_ `Media`: 2.x dropped `OIDC_ADMIN_CLAIM`, so every SSO user is an admin and
+  binding the media group would hand backend mutations to everyone who can open the *arrs. The 1.x
+  application stays on `Media` for the rollback window. Both providers need `signing_key` (RS256),
+  otherwise authentik signs HS256 and the app rejects the ID token.
+
 ## OIDC client apps (not proxy providers)
 
 Pattern: `kubernetes/apps/authentik/authentik/app/blueprints/silo-oidc.yaml` (and `infinidysk-oidc.yaml`). These are OAuth2 providers, so nothing is added to the outpost's provider list and the app's HTTPRoutes get **no** `SecurityPolicy` — the app validates the ID token itself. 2026.8 traps:
