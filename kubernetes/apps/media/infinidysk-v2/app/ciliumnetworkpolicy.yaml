@@ -64,6 +64,12 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: shelfmark
+        # Prometheus scrapes /metrics on the single port (ServiceMonitor
+        # infinidysk-v2, Bearer = the admin API key). Without this the scrape
+        # hangs until the deadline instead of failing fast.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: observability
+            app.kubernetes.io/name: prometheus
       toPorts:
         - ports:
             - port: "3000"
