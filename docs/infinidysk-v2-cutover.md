@@ -211,6 +211,48 @@ quiet window. `NZBDAV_CONFIG__*` is import-only for 2.x, which is why the 20 % s
    instance never writes to the live farm or the live database, so 1.x state is
    untouched (a `--force` reconcile of the affected HelmReleases is all it takes).
 
+## Re-import recipe (the 1.x-shaped block)
+
+2.x reads `NZBDAV_CONFIG__*` **once**, during the import, and ignores it afterwards. That block was
+removed from `externalsecret.yaml` / `helmrelease.yaml` once the import finished (the whole config
+now uses the durable `INFINIDYSK__*` surface), so a re-import needs it back for the first start:
+
+1. Re-clone `/config` (fresh snapshot, or bump the snapshot names in `app/volumesnapshot.yaml`) and
+   re-create the reader database: `create database infinidysk_v1clone owner infinidysk`, then
+   `pg_dump … infinidysk | psql … infinidysk_v1clone`.
+2. Drop and re-create the empty store (`drop database infinidysk_v2` + `create database …`).
+3. Add `DATABASE_PROVIDER: postgres` + `DATABASE_CONNECTION_STRING` (Database=`infinidysk_v1clone`)
+   and the 1.x-shaped settings below — the values are the _import_ inputs, not the live ones; the
+   `INFINIDYSK__*` overlay still wins for everything it sets.
+4. After the import reports `upgrade.state = "done"`, remove the reader variables and the 1.x block
+   again (git history: commit `821d1471` has the full manifest as it was).
+
+The two structured values (PascalCase, unknown properties abort the import):
+
+```yaml
+NZBDAV_CONFIG__USENET__PROVIDERS: |
+    {"Providers":[
+      {"Type":1,"Host":"news.eweka.nl","Port":563,"UseSsl":true,"User":"…","Pass":"…","MaxConnections":10,"Nickname":"eweka","StorageGroup":"omicron"},
+      {"Type":1,"Host":"eunews.frugalusenet.com","Port":563,"UseSsl":true,"User":"…","Pass":"…","MaxConnections":15,"Nickname":"frugal-eu","StorageGroup":"frugal"},
+      {"Type":1,"Host":"news.frugalusenet.com","Port":563,"UseSsl":true,"User":"…","Pass":"…","MaxConnections":5,"Nickname":"frugal-us","StorageGroup":"frugal"},
+      {"Type":3,"Host":"bonus.frugalusenet.com","Port":563,"UseSsl":true,"User":"…","Pass":"…","MaxConnections":10,"Nickname":"frugal-bonus"},
+      {"Type":3,"Host":"eunews.blocknews.net","Port":563,"UseSsl":true,"User":"…","Pass":"…","MaxConnections":20,"Nickname":"blocknews","StorageGroup":"netnews"}
+    ]}
+NZBDAV_CONFIG__ARR__INSTANCES: |
+    {"SonarrInstances":[{"Name":"Sonarr","Host":"http://sonarr.media.svc.cluster.local:80","ApiKey":"…","Enabled":true}, …],
+     "RadarrInstances":[{"Name":"Radarr","Host":"http://radarr.media.svc.cluster.local:80","ApiKey":"…","Enabled":true}, …]}
+```
+
+plus the scalar inputs that have no `INFINIDYSK__*` counterpart (they describe 1.x behaviour the
+import needs to see): `NZBDAV_CONFIG__API__KEY`, `NZBDAV_CONFIG__WEBDAV__{USER,PASS}`,
+`NZBDAV_CONFIG__RCLONE__MOUNT_DIR`, `NZBDAV_CONFIG__MEDIA__LIBRARY_DIR`,
+`NZBDAV_CONFIG__API__{CATEGORIES,MANUAL_CATEGORY,IMPORT_STRATEGY,ADDURL_TRUSTED_HOSTS}`,
+`NZBDAV_CONFIG__API__{ENSURE_ARTICLE_EXISTENCE_CATEGORIES,ARTICLE_EXISTENCE_CHECK_MODE,ENSURE_IMPORTABLE_VIDEO}`,
+`NZBDAV_CONFIG__API__NZB_BACKUP_{ENABLED,RETENTION_DAYS}`,
+`NZBDAV_CONFIG__USENET__{SEGMENT_CACHE__ENABLED,CASCADE__ENABLED,CASCADE__RETRY_PRIMARY_ON_MISS,CIRCUIT_BREAKER__INITIAL_COOLDOWN_SECONDS}`,
+`NZBDAV_CONFIG__ARR__HEALTH_ENABLED`, `NZBDAV_CONFIG__QUEUE__WORKER_COUNT`,
+`NZBDAV_CONFIG__REPAIR__ENABLE`.
+
 ## Known gaps to keep in view (upstream, not ours to fix)
 
 | Gap                                                         | Impact here                                                                                                      |

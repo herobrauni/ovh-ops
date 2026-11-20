@@ -44,67 +44,74 @@ spec:
               repository: ghcr.io/infinidysk/infinidysk-next
               tag: v2.0.0-beta.10@sha256:253ef9fa807f389f4058e2ec16342bc7be426d42570accf4afb68b2c01d9d059
             env:
-              # --- 2.x-only process wiring -----------------------------------
-              # The built-in mount is off: consumers keep their rclone sidecars
-              # (see the header). Read at startup only.
+              # --- Settings: the durable 2.x surface (`INFINIDYSK__*`) --------
+              # 2.x settings live in the database with this env overlay on top
+              # (env > database > defaults), so everything user-visible is forced
+              # from Git here and marked "Set by environment" in the UI.
+              # Credential-bearing settings live in infinidysk-v2-secret instead
+              # (providers, arr instances, SAB key, WebDAV user/password, the
+              # store URL) and arrive through `envFrom` below, where the Secret's
+              # key names are the variable names. The WebDAV pair is forced that
+              # way on purpose: beta.10 does not adopt the 1.x password on first
+              # Basic auth (it stores `upgrade.webdav` as `$csharp$$<plaintext>`,
+              # which `verify_legacy` always rejects), so every sidecar would 401.
+              #
+              # `NZBDAV_CONFIG__*` (the 1.x overlay) is NOT a config surface in
+              # 2.x: the import read it once, and it is ignored afterwards. The
+              # full 1.x-shaped block a re-import needs is in
+              # docs/infinidysk-v2-cutover.md, "Re-import recipe".
+              #
+              # The mount dir must stay identical to 1.x: generated symlink
+              # targets embed it, and imported `completed-symlinks` entries point
+              # into <mount-dir>/.ids.
+              INFINIDYSK__MOUNT__DIR: /aio/remote/infinidysk
+              # Built-in FUSE mount off: consumers keep per-pod rclone sidecars
+              # (see the header). Read at startup.
               INFINIDYSK__MOUNT__FUSE: "false"
-              # WebDAV credentials are forced from the same 1.x secret the
-              # sidecars use. beta.10 does NOT adopt the 1.x WebDAV password on
-              # first Basic auth: the import stores `upgrade.webdav` as
-              # `$csharp$$<the plaintext>`, which `verify_legacy` parses as an
-              # empty salt plus a v3 blob and always rejects, so every client
-              # gets 401 while `webdav.password` stays the generated one.
-              # (docs/infinidysk-v2-cutover.md, Phase B findings.)
-              INFINIDYSK__WEBDAV__USER:
-                valueFrom:
-                  secretKeyRef:
-                    name: infinidysk-v2-secret
-                    key: NZBDAV_CONFIG__WEBDAV__USER
-              INFINIDYSK__WEBDAV__PASSWORD:
-                valueFrom:
-                  secretKeyRef:
-                    name: infinidysk-v2-secret
-                    key: NZBDAV_CONFIG__WEBDAV__PASS
-              # Settings below are 1.x-shaped on purpose: they are read ONCE by
-              # the import of the cloned /config on the first start, and ignored
-              # afterwards. The durable, Git-managed 2.x surface is
-              # INFINIDYSK__*/snake_case JSON and gets added once the import has
-              # been verified (docs/infinidysk-v2-cutover.md, Phase C).
-              #
-              # The store is PostgreSQL (`INFINIDYSK_DATABASE_URL`, from the
-              # secret), which is also what the import wrote into: it targets
-              # whichever database is current, so the empty PostgreSQL store was
-              # filled directly and no in-app move was needed.
-              #
-              # The import is DONE (`upgrade.state = "done"`), so the 1.x reader
-              # variables are gone — the cloned 1.x database has been dropped and
-              # the 1.x leftovers in /config deleted. Re-running the import on
-              # this instance therefore needs a fresh config snapshot/re-clone plus
-              # `DATABASE_PROVIDER`/`DATABASE_CONNECTION_STRING` pointing at a new
-              # clone (docs/infinidysk-v2-cutover.md, Phase A).
-              # Symlink imports stay the strategy (IDENTICAL mount dir as 1.x:
-              # generated symlink targets embed it, so it must not change).
-              NZBDAV_CONFIG__RCLONE__MOUNT_DIR: /aio/remote/infinidysk
-              NZBDAV_CONFIG__MEDIA__LIBRARY_DIR: /aio/symlinks
-              NZBDAV_CONFIG__API__CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex,books"
-              NZBDAV_CONFIG__API__MANUAL_CATEGORY: "other"
-              NZBDAV_CONFIG__API__IMPORT_STRATEGY: symlinks
-              NZBDAV_CONFIG__API__ADDURL_TRUSTED_HOSTS: "prowlarr,prowlarr.media.svc.cluster.local"
-              # Same battery as the live backend so the A/B is apples to apples;
-              # 2.x re-derives its own knobs from these (import-check percent,
-              # health percent, queue concurrency).
-              NZBDAV_CONFIG__API__ENSURE_ARTICLE_EXISTENCE_CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex,books"
-              NZBDAV_CONFIG__API__ARTICLE_EXISTENCE_CHECK_MODE: sampled
-              NZBDAV_CONFIG__API__ENSURE_IMPORTABLE_VIDEO: "false"
-              NZBDAV_CONFIG__API__NZB_BACKUP_ENABLED: "true"
-              NZBDAV_CONFIG__API__NZB_BACKUP_RETENTION_DAYS: "0"
-              NZBDAV_CONFIG__USENET__SEGMENT_CACHE__ENABLED: "false"
-              NZBDAV_CONFIG__ARR__HEALTH_ENABLED: "true"
-              NZBDAV_CONFIG__QUEUE__WORKER_COUNT: "3"
-              NZBDAV_CONFIG__USENET__CIRCUIT_BREAKER__INITIAL_COOLDOWN_SECONDS: "20"
-              NZBDAV_CONFIG__USENET__CASCADE__ENABLED: "true"
-              NZBDAV_CONFIG__USENET__CASCADE__RETRY_PRIMARY_ON_MISS: "true"
-              NZBDAV_CONFIG__REPAIR__ENABLE: "true"
+              # Symlinks, one library folder: the *arrs write farm links into the
+              # same path they see, so no `arr_path` mapping is needed.
+              INFINIDYSK__IMPORTS__STRATEGY: symlinks
+              INFINIDYSK__IMPORTS__LIBRARY_DIRS: '[{"path":"/aio/symlinks"}]'
+              # The 1.x list, minus `other`: 2.x models the manual category
+              # separately (`sab.manual_category`), and a `cat=other` submission
+              # is still accepted (verified against the manual-NZB flow).
+              INFINIDYSK__SAB__CATEGORIES: '["radarr","radarr4k","sonarr","sonarr4k","nonplex","books"]'
+              INFINIDYSK__SAB__MANUAL_CATEGORY: other
+              # Stuck-import clearing in the arrs (2.x's replacement for the 1.x
+              # QueueRules, which are fixed policy now).
+              INFINIDYSK__ARR__QUEUE_MANAGEMENT: "true"
+              # Imports at once, from 1.x's queue.worker-count.
+              INFINIDYSK__QUEUE__CONCURRENCY: "3"
+              # 1.x kept the NZB corpus forever (`nzb_backup_retention_days: 0`
+              # meant "never delete"). In 2.x `0` means "delete immediately", so
+              # ~10 years is the equivalent: the NZBs are the only copy of every
+              # release's identity and are what a mount is rebuilt from.
+              INFINIDYSK__QUEUE__NZB_RETENTION_DAYS: "3650"
+              # Health checks on, and let 2.x ask the Arr for a replacement. There
+              # is no PAR2 gap repair in 2.x: `auto_repair` = recheck + Arr search,
+              # which is why the re-grab rate is a Phase C metric.
+              # `unowned_action: action_needed` instead of 2.x's `delete` default —
+              # files no Arr owns (manual NZBs) must never be deleted silently.
+              INFINIDYSK__HEALTH__ENABLED: "true"
+              INFINIDYSK__HEALTH__AUTO_REPAIR: "true"
+              INFINIDYSK__HEALTH__DEGRADED_TOLERANCE: "true"
+              INFINIDYSK__HEALTH__UNOWNED_ACTION: action_needed
+              # 1.x sampled each file's head and tail per category
+              # (`article-existence-check-mode: sampled`); 2.x has one global
+              # percentage, 5 % by default and applied to imports and checks.
+              INFINIDYSK__HEALTH__CHECK_PERCENT: "5"
+              INFINIDYSK__HEALTH__IMPORT_CHECK_PERCENT: "5"
+              # Segment/disk cache off, as in 1.x: the rclone sidecars' VFS cache
+              # is the read-ahead layer for playback.
+              INFINIDYSK__PERFORMANCE__PRESET: balanced
+              INFINIDYSK__PERFORMANCE__DISK_CACHE_ENABLED: "false"
+              # Dead library links are pruned in the maintenance window; the
+              # destructive sweeps must stay Git-owned.
+              INFINIDYSK__MAINTENANCE__SCHEDULED: '["remove-dead-links"]'
+              # An SSO-less test instance: local sign-in stays available as
+              # break-glass (2.x dropped OIDC_ADMIN_CLAIM and makes every SSO user
+              # an admin, so SSO waits for the role-model decision).
+              INFINIDYSK__AUTH__LOCAL_LOGIN: "true"
             envFrom:
               - secretRef:
                   name: infinidysk-v2-secret
@@ -206,12 +213,12 @@ spec:
                 valueFrom:
                   secretKeyRef:
                     name: infinidysk-v2-secret
-                    key: NZBDAV_CONFIG__WEBDAV__USER
+                    key: INFINIDYSK__WEBDAV__USER
               RCLONE_CONFIG_INFINIDYSK_PASS_RAW:
                 valueFrom:
                   secretKeyRef:
                     name: infinidysk-v2-secret
-                    key: NZBDAV_CONFIG__WEBDAV__PASS
+                    key: INFINIDYSK__WEBDAV__PASSWORD
               RCLONE_CONFIG_INFINIDYSK_PACER_MIN_SLEEP: "0"
             probes:
               liveness: &rclone-probes
