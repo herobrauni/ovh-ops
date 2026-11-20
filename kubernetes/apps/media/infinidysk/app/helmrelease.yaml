@@ -176,6 +176,16 @@ spec:
               # wobble should spend as few backup bytes as possible. Applies on
               # the next provider-pool rebuild / restart; max stays at 300s.
               NZBDAV_CONFIG__USENET__CIRCUIT_BREAKER__INITIAL_COOLDOWN_SECONDS: "20"
+              # Providers cascade in drag order, i.e. the order of
+              # usenet.providers, so the account listed first serves every article
+              # it can and the second one is asked only for what it lacks. Before
+              # this, all providers shared work in the pool, which made the second
+              # account's real contribution unobservable. retry-primary tries the
+              # primary once more after a clean 430/451 because its spool is
+              # multi-node; the 300s article-miss cache suppresses that retry when
+              # the primary is already known to be missing the article.
+              NZBDAV_CONFIG__USENET__CASCADE__ENABLED: "true"
+              NZBDAV_CONFIG__USENET__CASCADE__RETRY_PRIMARY_ON_MISS: "true"
               NZBDAV_CONFIG__REPAIR__ENABLE: "true"
             envFrom:
               - secretRef:
