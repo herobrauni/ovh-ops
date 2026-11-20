@@ -48,6 +48,23 @@ spec:
               # The built-in mount is off: consumers keep their rclone sidecars
               # (see the header). Read at startup only.
               INFINIDYSK__MOUNT__FUSE: "false"
+              # WebDAV credentials are forced from the same 1.x secret the
+              # sidecars use. beta.10 does NOT adopt the 1.x WebDAV password on
+              # first Basic auth: the import stores `upgrade.webdav` as
+              # `$csharp$$<the plaintext>`, which `verify_legacy` parses as an
+              # empty salt plus a v3 blob and always rejects, so every client
+              # gets 401 while `webdav.password` stays the generated one.
+              # (docs/infinidysk-v2-cutover.md, Phase B findings.)
+              INFINIDYSK__WEBDAV__USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-v2-secret
+                    key: NZBDAV_CONFIG__WEBDAV__USER
+              INFINIDYSK__WEBDAV__PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-v2-secret
+                    key: NZBDAV_CONFIG__WEBDAV__PASS
               # Settings below are 1.x-shaped on purpose: they are read ONCE by
               # the import of the cloned /config on the first start, and ignored
               # afterwards. The durable, Git-managed 2.x surface is

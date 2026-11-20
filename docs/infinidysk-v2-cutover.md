@@ -57,6 +57,43 @@ library dir and would prune the production farm.
 
 ## Phase B — grade the import
 
+**Result of the 2026-11-20 rehearsal (beta.10):** import completed in ~7 min for 7281
+directories / 7738 files / 5687 NZBs (the 53 MB PG database is staged into
+`/config/infinidysk.sqlite` first), 14 files skipped (`/api/v1/upgrade/report` has the per-file
+reasons). Carried over correctly:
+
+- providers, mapped onto 2.x's **catalog profiles + backbones + priority** (`frugal-bonus` and
+  `blocknews` became level 1, i.e. asked only after level 0 misses) with our connection counts;
+- all four arr instances, with `profile` (`sonarr`/`radarr`) **derived** from the 1.x instance type,
+  confirmed reachable by `/api/v1/arr/status` (each shows the `InfiniDysk` download client);
+- `mount.dir` = `/aio/remote/infinidysk`, `imports.library_dirs` = `/aio/symlinks`, symlink strategy,
+  SAB API key, WebDAV user, `queue.concurrency` = 3 (from `queue.worker-count`), STRM key;
+- library health after import: **7579 healthy / 3 degraded / 156 ignored** (`/api/v1/health/summary`).
+
+Not carried over (the report lists them verbatim): `api.addurl-trusted-hosts`,
+`api.article-existence-check-mode`, `api.ensure-article-existence-categories`,
+`api.ensure-importable-video`, `api.nzb-backup-enabled`, `api.nzb-backup-retention-days`,
+`arr.health-enabled`, `backup.*`, `rclone.*`, `repair.healthcheck-concurrency`,
+`repair.par2-fetch-concurrency`, `repair.par2-max-memory-mb`, `usenet.cascade.*`,
+`usenet.circuit-breaker.initial-cooldown-seconds`, `usenet.segment-cache.enabled`.
+
+Two findings that need action on a 2.x instance:
+
+1. **The 1.x WebDAV password is not adopted** (beta.10): the import stores `upgrade.webdav` as
+   `$csharp$$<the plaintext>`, `verify_legacy` parses that as an empty salt plus a v3 blob and
+   rejects every attempt, so Basic auth 401s while `webdav.password` stays the generated value —
+   every rclone sidecar fails until the password is forced with `INFINIDYSK__WEBDAV__PASSWORD`
+   (the report still claims "password accepted from C# at the first sign-in"). The admin login goes
+   through the same adoption path, so verify it separately.
+2. **`other` is only a _manual_ category in 2.x**: `sab.categories` =
+   `radarr,radarr4k,sonarr,sonarr4k,nonplex,books` plus `sab.manual_category: other`. Confirm a
+   `cat=other` submission (sync-helper, shelfmark) is still accepted before relying on it.
+
+Grading access: the admin API key is generated and stored in the settings row `auth.api_key`
+(`sqlite3 -readonly /config/infinidysk.sqlite "select value from config where key='auth'"`), the API
+is `/api/v1/…` with `X-Api-Key` (plain `/api/…` 401s), and the import report is
+`/api/v1/upgrade/report`. `sqlite3 -readonly` on the live file is safe (WAL, one writer).
+
 ```sh
 kubectl -n media port-forward pod/infinidysk-v2-<hash> 3000:3000
 ```
@@ -129,3 +166,4 @@ Checklist, compared against the 1.x backend:
 | Indexers/search/Warden/Preflight/Watchtower                 | Not planned in 2.x — unused here (no `indexers.*`, `IndexerApiHits` = 0, `warden_entries` = 0)                   |
 | Env prefix + JSON shape change                              | The durable surface becomes `INFINIDYSK__*` with snake_case JSON; `NZBDAV_CONFIG__*` is ignored after the import |
 | Settings `id` fields                                        | 2.x wants fixed UUIDs for providers/arrs, or stats and quota usage reset every restart                           |
+| 1.x WebDAV/admin password adoption                          | Basic auth 401s on beta.10 until the password is forced                                                          |

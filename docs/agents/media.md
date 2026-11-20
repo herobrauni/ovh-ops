@@ -63,6 +63,12 @@ the upstream gap list: `docs/infinidysk-v2-cutover.md`.
    per-category article/importable-media switch, and `OIDC_ADMIN_CLAIM` (**every** SSO user is an
    admin). Indexers/search/Warden/Preflight/Watchtower are "not planned" — unused here.
 6. **`/metrics` sits behind the admin API key** in 2.x, unlike 1.x's unauthenticated backend port.
+7. **The admin API is `/api/v1/…` with `X-Api-Key`** (plain `/api/…` 401s); the key is the settings
+   row `auth.api_key` in `/config/infinidysk.sqlite`, and `sqlite3 -readonly` against that file works
+   while the app runs (WAL, one writer). The 1.x WebDAV **and** admin password do not survive the
+   import in beta.10 despite the report claiming otherwise — force the WebDAV one with
+   `INFINIDYSK__WEBDAV__PASSWORD` or every rclone sidecar 401s. `other` is a _manual_ category in
+   2.x, not an entry in `sab.categories`.
 
 ## `media/infinidysk-sync-helper` (manual NZBs)
 
