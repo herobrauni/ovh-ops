@@ -59,6 +59,11 @@ store) and re-create it empty, then re-dump into the clone — **not** the other
 
 `INFINIDYSK_DATABASE_URL` (PostgreSQL, from the secret) is the durable switch, so the app never
 manages its own database: no `/config/database.toml`, no Settings > System > Database migration.
+**It has ONE underscore** — the `INFINIDYSK__*` (double) namespace is the _settings_ overlay, so
+`INFINIDYSK__DATABASE_URL` is read as the settings path `database.url`, found unknown, and silently
+ignored: the app then falls back to `/config/database.toml` → default SQLite and tries to re-import
+the 1.x install (which fails loudly on `/config/db-contract.json`). Every other variable in this app
+is double-underscore, so this one is the trap.
 The import writes into whichever store is current, which is why the empty PostgreSQL store is
 filled directly (no in-app SQLite → PostgreSQL move). Expect ~15–30 min for that import instead of
 ~7 min, because ~2 GB of NZB blobs go through the target's WAL.
