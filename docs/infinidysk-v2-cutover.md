@@ -1,26 +1,41 @@
-# InfiniDysk 2.x test instance and cutover runbook
+# InfiniDysk 2.x — backend and cutover runbook
 
-> **Status 2026-11-20: CUT OVER.** `media/infinidysk-v2` is the serving backend
-> (2.0.0-beta.10, Rust, PostgreSQL store, real `symlinks` farm); `media/infinidysk`
-> (1.x) stays deployed but frozen at `replicas: 0` with its PVC and database
-> untouched, so a rollback is two edits (see "Rollback").
+> **Status 2026-11-20: CUTOVER COMPLETE.** `media/infinidysk-v2` serves the canonical
+> `https://infinidysk.480p.com` (2.0.0-beta.10, Rust, PostgreSQL store `infinidysk_v2`, real
+> `symlinks` farm, full provider allowances, OIDC via authentik, `/metrics` scraped with its admin
+> key). The 1.x app is **disabled**: its Kustomization is commented out of
+> `media/kustomization.yaml` and Flux garbage-collected it — the data a rollback needs lives in the
+> VolumeSnapshot `media/infinidysk-v1-final`, the PostgreSQL database `infinidysk` and the kopiur
+> repository. Read "Rollback" before touching provider connections.
 
 Working record for evaluating **InfiniDysk 2.x** (`ghcr.io/infinidysk/infinidysk-next`,
-Rust rewrite, 2.0.0-beta.N) as a replacement for the 1.x backend in
-`media/infinidysk`. Manifests live in `kubernetes/apps/media/infinidysk-v2/`;
-durable behavioural findings belong in `docs/agents/media.md`, not here.
+Rust rewrite, 2.0.0-beta.N) as a replacement for the 1.x backend. Manifests live in
+`kubernetes/apps/media/infinidysk-v2/`; durable behavioural findings belong in
+`docs/agents/media.md`, not here.
 
-1. `media/infinidysk/app/helmrelease.yaml`: `replicas: 0` → remove (or `1`).
-2. Revert the consumer commit (all `RCLONE_CONFIG_INFINIDYSK_URL` back to
-   `http://infinidysk.media.svc.cluster.local:8080/`, and the sync-helper's
-   `SAB_URL` back to `:3000`), `flux reconcile kustomization cluster-apps --with-source`.
-3. Repoint the four *arr download clients to `infinidysk.media.svc.cluster.local:3000`
-   (runtime state, not Git — Radarr's `PUT /api/v3/downloadclient/{id}` etc.).
-4. `flux reconcile helmrelease -n media <app> --force` for any consumer whose
-   HelmRelease rolled back (see below).
+## Rollback (1.x is disabled, its data kept)
 
-Nothing 2.x wrote is needed for that: it only ever adds `.ids` blobs and
-`completed-symlinks` entries, which 1.x simply ignores.
+1. **Free provider connections first.** v2 holds the FULL plan now, so v1 must not come up at 80 %
+   next to it (eweka would be 90/50). Scale `infinidysk-v2` to 0 — or cut its providers back to the
+   20 % numbers — before starting v1.
+2. **Restore v1's config volume** from `VolumeSnapshot media/infinidysk-v1-final` (taken at the
+   cutover; it holds `blobs/`, which a re-import needs) into a PVC named `infinidysk`
+   (`dataSourceRef` → VolumeSnapshot, 30Gi, `ceph-block`). Its PostgreSQL database `infinidysk` was
+   never Flux-managed and is untouched; the kopiur repository holds older snapshots of the same
+   volume.
+3. **Re-enable the app**: uncomment `./infinidysk/ks.yaml` in `media/kustomization.yaml` and re-add
+   the `components/dnsendpoint` line to that `ks.yaml` (the canonical host now belongs to the v2
+   manifest — either drop v2's `httproute.yaml`/`dnsendpoint.yaml` or keep v1 on a different host).
+4. **Revert the consumer commit**: every `RCLONE_CONFIG_INFINIDYSK_URL` back to
+   `http://infinidysk.media.svc.cluster.local:8080/` and the sync-helper's `SAB_URL` back to
+   `:3000`, then `flux reconcile kustomization cluster-apps --with-source`.
+5. **Repoint the four \*arr download clients** to `infinidysk.media.svc.cluster.local:3000`
+   (runtime state, not Git — `PUT /api/v3/downloadclient/{id}`).
+6. `flux reconcile helmrelease -n media <app> --force` for any consumer whose HelmRelease had rolled
+   back earlier.
+
+Nothing 2.x wrote is needed for that: it only ever adds `.ids` blobs and `completed-symlinks`
+entries, which 1.x simply ignores. Its store database (`infinidysk_v2`) can be dropped.
 
 ## Cutover postmortem — what broke and why
 
@@ -42,6 +57,19 @@ Nothing 2.x wrote is needed for that: it only ever adds `.ids` blobs and
 4. **Prometheus needs an ingress rule per backend.** The v2 CNP allowlist had to
    list the Prometheus pod again, or the scrape hangs until the deadline
    (`context deadline exceeded`) instead of failing fast.
+5. **The 1.x leftovers return with every re-clone of `/config`** (they live in the 1.x volume):
+   after an import, delete `blobs/`, `db.sqlite*`, `repair-segments/`, `warden.db`,
+   `usenet-migration.db`, `data-protection/`, `session.key`, `rclone/`, `backups/` — `/config` goes
+   from 7.6 GB back to ~400 MB (metrics only). `/api/v1/upgrade/leftovers/scan` then reports every
+   item `missing` and the "1.x data" panel disappears.
+6. **A blueprint edit is not applied by merging it.** The ConfigMap reached the worker's mounted
+   files, but the watcher did not re-apply it: force it with
+   `apply_blueprint.send_with_options(args=(b.pk,), rel_obj=b)` and verify the _effect_ (application
+   and provider lists, redirect URIs), not just `status: successful`. A mismatch here only shows up
+   at the `/authorize` step, i.e. as `invalid redirect_uri` for the user.
+7. **`components/dnsendpoint` derives the host from `${APP}`**, so publishing the canonical
+   `infinidysk.480p.com` from an app still named `infinidysk-v2` needs an explicit DNSEndpoint — keep
+   the `dns.scope` label _and_ annotation pair (external-dns filters on the label).
 
 ## Decisions
 

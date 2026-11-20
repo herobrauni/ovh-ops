@@ -45,8 +45,8 @@ PostgreSQL store `infinidysk_v2`) serves the media stack. The 1.x app (`media/in
 **frozen at `replicas: 0`** with its PVC and database intact — rollback recipe, postmortem and the
 upstream gap list: `docs/infinidysk-v2-cutover.md`.
 
-Sign-in is **native OIDC** against authentik at `https://infinidysk-v2.480p.com`
-(provider/app `infinidysk-v2`, bound to group **`Platform`** — 2.x makes every SSO user an admin,
+Sign-in is **native OIDC** against authentik at `https://infinidysk.480p.com`
+(provider/app `infinidysk-v2`, canonical host `infinidysk.480p.com`, bound to group **`Platform`** — 2.x makes every SSO user an admin,
 so `Media` must not be bound; local login is forced on as break-glass). The route carries no
 `components/authentik` SecurityPolicy and is absent from `outpost-routes.yaml`, same reasoning as
 1.x's host. Everything below in this section still applies to 2.x except where noted; the deltas are:
