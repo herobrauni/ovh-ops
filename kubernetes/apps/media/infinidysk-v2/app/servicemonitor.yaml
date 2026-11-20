@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/monitoring.coreos.com/servicemonitor_v1.json
+# 2.x serves Prometheus metrics at `/metrics` on its single port (3000, next to
+# the UI and the SAB API) and — unlike 1.x, whose backend port was
+# unauthenticated — puts them BEHIND the admin API key. The key is forced from
+# Infisical (`/infinidysk-v2/ADMIN_API_KEY`, variable `INFINIDYSK__AUTH__API_KEY`),
+# so this scrape needs no side-channel: it reads that key straight out of the
+# app's Secret.
+#
+# The metrics that matter for the 2.x grading: `infinidysk_provider_bytes_total`
+# split by `workload` (stream/queue/health — i.e. what re-grabs and health checks
+# cost), `infinidysk_open_reads` and the per-provider pool state.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: infinidysk-v2
+spec:
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      honorLabels: true
+      authorization:
+        type: Bearer
+        credentials:
+          name: infinidysk-v2-secret
+          key: INFINIDYSK__AUTH__API_KEY
+  namespaceSelector:
+    matchNames:
+      - media
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: infinidysk-v2

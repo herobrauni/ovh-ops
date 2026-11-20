@@ -11,4 +11,5 @@ resources:
   # VolumeSnapshot is Ready (and the pod stays Pending until its claim binds,
   # so the 1.x import can never start against an empty /config).
   - ./pvc.yaml
+  - ./servicemonitor.yaml
   - ./volumesnapshot.yaml
