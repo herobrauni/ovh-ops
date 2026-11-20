@@ -1,0 +1,76 @@
+---
+# yayamlls-disable-file (embedded blueprint ConfigMap; the goauthentik.io schema now mismatches the ConfigMap wrapper)
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# OIDC sign-in for `media/infinidysk-v2` (the 2.x backend that replaced 1.x).
+#
+# A provider of its own rather than a second redirect URI on the 1.x one, because
+# the *authorization* model has to differ: 2.x dropped `OIDC_ADMIN_CLAIM` and makes
+# **every** SSO user an admin, so its Application is bound to group `Platform`
+# instead of `Media` — otherwise any media user could change providers, queue and
+# settings. The 1.x application stays bound to `Media` (its `groups` claim keeps
+# mutations with Platform) until 1.x is retired; after that, delete this file or
+# point `InfiniDysk` at this provider and drop `/infinidysk/OIDC_CLIENT_SECRET`.
+#
+# `client_id` is pinned so it matches `INFINIDYSK__AUTH__OIDC__CLIENT_ID`.
+# `client_secret` is left to authentik (generated on create) and never enters Git:
+# it is read once from the provider and stored in Infisical as
+# /infinidysk-v2/OIDC_CLIENT_SECRET.
+#
+# `signing_key` is required for the same reason as in infinidysk-oidc.yaml:
+# authentik otherwise signs HS256 and 2.x (which discovers
+# `client_secret_basic` from the metadata) rejects the ID token.
+version: 1
+metadata:
+  name: ovh-ops - InfiniDysk 2.x OIDC
+  labels:
+    blueprints.goauthentik.io/description: OIDC provider and application for the InfiniDysk 2.x usenet media backend.
+entries:
+  - id: provider-infinidysk-v2-oidc
+    model: authentik_providers_oauth2.oauth2provider
+    identifiers:
+      name: InfiniDysk 2.x OIDC
+    attrs:
+      client_id: infinidysk-v2
+      client_type: confidential
+      grant_types:
+        - authorization_code
+        - refresh_token
+      authorization_flow:
+        !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+      invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+      signing_key:
+        !Find [authentik_crypto.certificatekeypair, [name, authentik Self-signed Certificate]]
+      property_mappings:
+        - !Find [
+            authentik_providers_oauth2.scopemapping,
+            [name, "authentik default OAuth Mapping: OpenID 'openid'"],
+          ]
+        - !Find [
+            authentik_providers_oauth2.scopemapping,
+            [name, "authentik default OAuth Mapping: OpenID 'email'"],
+          ]
+        - !Find [
+            authentik_providers_oauth2.scopemapping,
+            [name, "authentik default OAuth Mapping: OpenID 'profile'"],
+          ]
+      # Strict match: 2.x sends exactly `INFINIDYSK__AUTH__OIDC__REDIRECT_URI`.
+      redirect_uris:
+        - matching_mode: strict
+          url: https://infinidysk-v2.480p.com/auth/oidc/callback
+
+  - id: app-infinidysk-v2
+    model: authentik_core.application
+    identifiers:
+      slug: infinidysk-v2
+    attrs:
+      name: InfiniDysk 2.x
+      provider: !KeyOf provider-infinidysk-v2-oidc
+      meta_launch_url: https://infinidysk-v2.480p.com
+      meta_description: Usenet WebDAV media backend (2.x)
+
+  # Platform-only: see the header — 2.x has no read-only role.
+  - model: authentik_policies.policybinding
+    identifiers:
+      target: !KeyOf app-infinidysk-v2
+      group: !Find [authentik_core.group, [name, Platform]]
+      order: 0
