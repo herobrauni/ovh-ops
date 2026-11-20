@@ -13,7 +13,6 @@ resources:
   - ./namespace.yaml
   - ./common/servarr-secret.yaml
   - ./booklore/ks.yaml
-  - ./bookorbit/ks.yaml
   - ./bazarr/ks.yaml
   - ./bazarr4k/ks.yaml
   - ./infinidysk/ks.yaml

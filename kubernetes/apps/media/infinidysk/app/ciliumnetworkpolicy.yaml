@@ -73,9 +73,6 @@ spec:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media
             app.kubernetes.io/name: shelfmark
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: media
-            app.kubernetes.io/name: bookorbit
       toPorts:
         - ports:
             - port: "3000"

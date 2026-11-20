@@ -30,6 +30,13 @@ Two processes: frontend `:3000` (admin UI, SABnzbd API, `/api`, `/ws` — the on
 13. Probes: frontend has `/api` health endpoints; `media/media-debug` is the canonical consumer (busybox + `rclone-infinidysk` sidecar + `symlinks` PVC at `/aio/symlinks` — one shell shows source tree and consumer view; it's the canary where sidecar flag changes land first).
 14. Sign-in is **native OIDC** (frontend ≥0.10.0, PKCE authorization-code), not forward auth: `OIDC_ISSUER`/`_CLIENT_ID`/`_REDIRECT_URI`/`_SCOPES`/`_USERNAME_CLAIM`/`_ADMIN_CLAIM{,_VALUE}` are plain **frontend process** env vars (not `NZBDAV_CONFIG__*`), the client secret comes from `/infinidysk/OIDC_CLIENT_SECRET` through `envFrom`, and the host has no `components/authentik` SecurityPolicy, no `outpost-routes.yaml` entry and no proxy provider (retired by `blueprints/infinidysk-oidc.yaml`). Consequences: a partial config disables OIDC instead of failing the pod (local admin login is the break-glass), the **whole frontend including the SABnzbd API is internet-reachable up to app auth** (API key / session — the extAuth hop used to hide it), and role mapping is `groups` `Platform` = admin vs read-only for everyone else, which the docs call a UI role and explicitly _not_ a security boundary.
 15. The OIDC redirect URI is **pinned** to `https://infinidysk.480p.com/auth/oidc/callback` in both the app env and the provider (`matching_mode: strict`); the route is fixed in the frontend (`frontend/server/oidc-routes.ts`), and leaving it to `general.base-url` only adds a proxy-header dependency. `OIDC_ISSUER` needs the trailing slash — authentik's discovery document hangs off `…/application/o/infinidysk/`.
+16. **Completed releases are symlinks with absolute targets** (`-> /aio/remote/infinidysk/.ids/…`),
+    so they only resolve in a pod mounting the tree at that exact path — every consumer mounts
+    `/aio/remote/infinidysk`, and an rclone `--links` mount elsewhere yields dangling links. Any
+    consumer that _copies_ a finished release must also dereference (`cp -L`) and must tolerate the
+    files being links: importers that skip symlinked entries see an empty release. Archived payloads
+    are decompressed only when the members are **stored** (`-m0`); compression is rejected on import
+    (`/v1/features/archives`), which is why RAR-packed ebook releases fail while scene video works.
 
 ## `media/infinidysk-sync-helper` (manual NZBs)
 
@@ -98,90 +105,6 @@ Watch statistics for Jellyfin (`ghcr.io/fredrikburmester/streamystats-nextjs` +
 6. Both containers run as 1000:1000 with `readOnlyRootFilesystem`; the only writable paths are the two emptyDirs (`/tmp` and `/app/apps/nextjs-app/.next/cache`). The job-server's startup probe carries a 10-minute budget because it runs `./migrate-bin && exec ./server`.
 7. Image bumps are one-way: migrations are not reversible, so a rollback means restoring the postgres18 backup, not pinning the old tag.
 8. No Authentik `SecurityPolicy` — the app brings its own login (any Jellyfin user can sign in; admins get the full view). Revisit if the per-user stats ever need to be hidden from non-admins.
-
-## BookOrbit (`media/bookorbit`)
-
-Book/e-book/audiobook library server (`ghcr.io/bookorbit/bookorbit`, Node + Postgres + pgvector).
-Deployed next to booklore on purpose with its **own** claim — nothing is shared with booklore's
-`booklore` PVC, so the two can be compared and books copied later without touching each other.
-
-1. Wiring is the Silo shape: `components/cnpg` (shared `postgres18`, DB/role `bookorbit`) plus
-   `components/kopiur` for `/data`, `components/dnsendpoint`, own accounts (no Authentik
-   `SecurityPolicy` — it ships OIDC for Authentik if that is ever wanted).
-2. Upstream needs four extensions (`uuid-ossp`, `pg_trgm`, `unaccent`, `vector`). Only `vector`
-   is untrusted, but `bookorbit-initdb` installs all four as the CNPG superuser at DB creation —
-   same trap as Silo/Streamystats: the app's own role cannot create `vector` and its boot
-   migrations fail.
-3. The image has no `USER`: the entrypoint chowns `/data`, repairs ownership and `su-exec`s to
-   `PUID`/`PGID` (1000:1000 here), then runs `dist/scripts/migrate.js` before node on port 3000.
-   So it runs as root with `CHOWN`/`DAC_OVERRIDE`/`FOWNER`/`SETUID`/`SETGID`; `readOnlyRootFilesystem`
-   works because everything writable is under `/data` and `/tmp` (upstream ships the same with a
-   tmpfs on `/tmp`). Verified in a scratch namespace: tini stays root, node runs as 1000, `/data`
-   subdirs (`book-bucket`, `book-dock`, `covers`, `read-aloud`, `upload-sessions`) are created
-   owned by 1000:1000.
-4. **Storage must be `ceph-block`, not `ceph-filesystem`/rclone**: upstream documents network and
-   distributed filesystems as unsupported (scans rename/move files and coordinate with the DB).
-   Libraries live under `/data/books` (`LIBRARY_BROWSE_ROOT=/data` keeps the UI folder picker
-   inside the claim); the drop folder stays `/data/book-dock`.
-5. Probes are anonymous `GET /api/v1/health` (3000) and it reports the DB state, so it also covers
-   the shared cluster. `TRUST_PROXY=true` is required behind Envoy or redirect/OPDS links are built
-   as `http://`.
-6. First-run needs `SETUP_BOOTSTRAP_TOKEN` from `/bookorbit/SETUP_BOOTSTRAP_TOKEN` in the wizard;
-   `JWT_SECRET` (`/bookorbit/JWT_SECRET`) rotating logs everyone out.
-7. Test data (one-off `kubectl exec` copy, not GitOps): libraries `Brauni` (1, `/data/books/brauni`)
-   and `Zeli` (2, `/data/books/zeli`) were seeded from the Grimmory (booklore) PVC, one library per
-   Grimmory `/libraries/<user>` root. **Grimmory files most books flat in the author folder**, so
-   with `organizationMode: book_per_folder` the tree must first be reshaped to
-   `<Author>/<Title>/<Title>.epub` — otherwise a whole author's catalogue becomes one book.
-   `book_per_file` scans the flat layout as-is and needs no reshaping. `POST /api/v1/libraries`
-   starts the scan itself; the 167 files landed as 165 books (two epub+mobi pairs merged as formats).
-8. Automation auth is an **API key** (`bok_…`, Settings → Account → API keys), stored in Infisical at
-   `/bookorbit/API_KEY`; sessions can't be forged (a token needs a live `auth_sessions` row), so never
-   bother minting a JWT from `JWT_SECRET`. `allow_registration=false`: extra users (e.g. a spouse)
-   are created by an admin under Settings → Users, then granted access with
-   `POST /api/v1/libraries/:id/access`. Bulk metadata backfill after an import is
-   `POST /api/v1/book-metadata-fetch/run/:libraryId`.
-9. **Directories created under `/data` with `kubectl exec` land `root:node`, and node (uid 1000) cannot
-   write them.** The pod starts as root but `su-exec`s the app to 1000, and BookOrbit checks folder
-   writability as that user — the symptom is duplicate-merge jobs failing every group with
-   `FOLDER_NOT_WRITABLE` (and dock filing/uploads failing later). Always
-   `chown -R 1000:1000 /data/books` (plus `chmod g+ws`) after mkdir/mv there.
-10. AI goes **direct to OpenCode Go**, no proxy (LiteLLM was removed in #1835): connection is an
-    `openai-chat` type at `https://opencode.ai/inference/go/openai/v1` with the `x-opencode-session`
-    header (same contract as HolmesGPT, see `docs/agents/holmesgpt.md`). `/admin/ai` is
-    `@InteractiveOnly`, so API keys cannot configure it. Details and the model/slot mapping:
-    `docs/bookorbit-feature-rollout.md`.
-11. **Ebook acquisition rides the existing InfiniDysk stack**, no second download client and no RWX
-    volume: BookOrbit's client is InfiniDysk's SABnzbd API (`infinidysk:3000`, `/infinidysk/API_KEY`,
-    category `bookorbit`) and its pod runs one more `rclone-infinidysk` sidecar
-    (`--links --read-only`, `/infinidysk`, VFS cache off) so the importer can read
-    `completed-symlinks/<category>/<release>` and copy it into the block claim. `sabnzbd` is in
-    `DOWNLOAD_CLIENT_REMOVES_COMPLETED`, and the import calls `removeCompletedDownload()` right after
-    the copy, so **no ebook needs `infinidysk-sync-helper`** — that helper exists to keep releases
-    library-linked on the Plex farm. Its consumer allowlist entry is in
-    `media/infinidysk/app/ciliumnetworkpolicy.yaml`, and both `util/check_security_invariants.sh`
-    lists (FUSE, privileged) must carry `bookorbit` with it.
-12. **BookOrbit cannot read InfiniDysk's completed releases directly** — two independent reasons, so a
-    `materialize` container exists between them. (a) With `import-strategy: symlinks` every file in
-    `completed-symlinks/<cat>/<release>` is a symlink whose target is **absolute**
-    (`-> /aio/remote/infinidysk/.ids/...`), so it only resolves in a pod that mounts the tree at that
-    exact path. (b) BookOrbit's request importer skips symlinked entries outright
-    (`entry.isSymbolicLink()`), so even a working link is ignored — the symptom is
-    _"The download contains no supported book file"_ on a release that plainly holds an epub. The
-    container `cp -L`s each release into an emptyDir mirror at `/staging/<cat>/<release>`, publishes it
-    with a hidden `.tmp` dir + `rename`, and prunes mirrors once InfiniDysk drops the release; the
-    client's path mapping is therefore `/aio/remote/infinidysk/completed-symlinks/books -> /staging/books`.
-13. Acquisition plumbing that bit us once each, all now configured: Prowlarr's **Service listens on
-    port 80**, not 9696 (`prowlarr.media.svc.cluster.local:80`); the indexer-manager DTO needs
-    `allowPrivateAddress: true`; the download client needs the same flag; and the SAB category must
-    already exist in InfiniDysk (`books` does, `bookorbit` does not). `autoGrabMinScore: 80` rejects
-    legitimate releases (a clean _The Martian_ epub scored **77**), 70 works and the dock's own
-    auto-file threshold is the real guard.
-14. Failed imports are **not** cleaned up by BookOrbit (only successful ones clear the SAB entry), so
-    InfiniDysk accumulates `completed-symlinks/books/bookorbit-*` dirs and their history slots — the
-    3-for-1 "Project Hail Mary" Swedish zip grabs left three. A clear-only mode for category `books`
-    in `infinidysk-sync-helper` is the natural fix if this keeps happening; it already holds
-    `SAB_URL` + `SAB_API_KEY`.
 
 ## WatchSync (HD↔4K watch-state mirroring) — our fork
 
