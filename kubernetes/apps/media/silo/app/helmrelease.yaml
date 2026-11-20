@@ -164,7 +164,7 @@ spec:
             env:
               RCLONE_CONFIG_INFINIDYSK_TYPE: webdav
               # Backend (WebDAV) port, never the :3000 frontend proxy.
-              RCLONE_CONFIG_INFINIDYSK_URL: http://infinidysk.media.svc.cluster.local:8080/
+              RCLONE_CONFIG_INFINIDYSK_URL: http://infinidysk-v2.media.svc.cluster.local:3000/
               RCLONE_CONFIG_INFINIDYSK_VENDOR: other
               RCLONE_CONFIG_INFINIDYSK_USER:
                 valueFrom:

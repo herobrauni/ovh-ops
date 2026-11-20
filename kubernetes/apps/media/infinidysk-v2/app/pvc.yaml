@@ -1,6 +1,8 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/persistentvolumeclaim_v1.json
-# One-time CSI clones of the live 1.x backend's data. `dataSource` is immutable
+# One-time CSI clone of the live 1.x backend's config volume (needed for the
+# import: it holds the 1.x NZB blobs). The farm it serves is the REAL `symlinks`
+# claim, mounted straight into the pod — no copy, see the HelmRelease. `dataSource` is immutable
 # on a bound PVC, so both claims are applied IfNotPresent: re-applying the app
 # must never re-clone (and never fail because the snapshot content is gone).
 #
@@ -24,26 +26,3 @@ spec:
     requests:
       storage: 30Gi
   storageClassName: ceph-block
----
-# The farm the 2.x backend reads as its library dir. A copy, not the live
-# `symlinks` claim: 2.x runs "remove dead library links" / "remove unlinked
-# files" maintenance against this path, and a test instance must not prune the
-# production farm. Consumers keep using the real farm — the *arr writes import
-# targets into its own mount, the backend only reads this one for health.
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: symlinks-v2
-  labels:
-    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
-spec:
-  accessModes:
-    - ReadWriteMany
-  dataSourceRef:
-    apiGroup: snapshot.storage.k8s.io
-    kind: VolumeSnapshot
-    name: infinidysk-symlinks-v2
-  resources:
-    requests:
-      storage: 10Gi
-  storageClassName: ceph-filesystem

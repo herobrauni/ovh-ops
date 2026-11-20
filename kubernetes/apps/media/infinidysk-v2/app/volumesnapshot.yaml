@@ -14,12 +14,3 @@ spec:
   volumeSnapshotClassName: csi-ceph-blockpool
   source:
     persistentVolumeClaimName: infinidysk
----
-apiVersion: snapshot.storage.k8s.io/v1
-kind: VolumeSnapshot
-metadata:
-  name: infinidysk-symlinks-v2
-spec:
-  volumeSnapshotClassName: csi-ceph-filesystem
-  source:
-    persistentVolumeClaimName: symlinks

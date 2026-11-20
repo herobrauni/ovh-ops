@@ -35,10 +35,6 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     controllers:
       infinidysk:
-        # FROZEN for the 2.x cutover (docs/infinidysk-v2-cutover.md): the v2
-        # backend writes nothing while its data is snapshotted and imported.
-        # Rollback is this line back to 1 (plus reverting the consumer URLs).
-        replicas: 0
         annotations:
           reloader.stakater.com/auto: "true"
           secret.reloader.stakater.com/reload: infinidysk-v2-secret
@@ -123,6 +119,19 @@ spec:
               # from Infisical (`/infinidysk-v2/ADMIN_API_KEY`, `auth.api_key`),
               # which is why the value is still store-owned here.
               INFINIDYSK__METRICS__PROMETHEUS: "true"
+              # CUTOVER IMPORT ONLY: the 1.x reader, pointing at the clone taken
+              # from the frozen 1.x database. Remove both once the import reports
+              # `upgrade.state = "done"` (docs/infinidysk-v2-cutover.md, Phase A).
+              DATABASE_PROVIDER:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-v2-secret
+                    key: DATABASE_PROVIDER
+              DATABASE_CONNECTION_STRING:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-v2-secret
+                    key: DATABASE_CONNECTION_STRING
             envFrom:
               - secretRef:
                   name: infinidysk-v2-secret
@@ -278,9 +287,11 @@ spec:
         existingClaim: infinidysk-v2
         globalMounts:
           - path: /config
-      # Library dir the 2.x backend reads (a copy of the live farm, see pvc.yaml).
+      # THE live farm now that 2.x is the serving backend. The clone
+      # (`symlinks-v2`) is gone: 2.x runs maintenance against this path
+      # ("remove dead library links"), so it must be the farm the *arrs write.
       symlinks:
-        existingClaim: symlinks-v2
+        existingClaim: symlinks
         globalMounts:
           - path: /aio/symlinks
       tmp:

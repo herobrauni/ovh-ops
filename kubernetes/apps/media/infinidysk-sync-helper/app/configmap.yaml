@@ -46,7 +46,7 @@ data:
     #   after placement" the old `altmount-sync-helper` did against Plex.
     set -u
 
-    SAB_URL="${SAB_URL:-http://infinidysk.media.svc.cluster.local:3000}"
+    SAB_URL="${SAB_URL:-http://infinidysk-v2.media.svc.cluster.local:3000}"
     SAB_KEY="${SAB_API_KEY:?SAB_API_KEY not set}"
     CATEGORY="${CATEGORY:-other}"
     MOUNT_DIR="${MOUNT_DIR:-/aio/remote/infinidysk}"
