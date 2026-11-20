@@ -183,6 +183,24 @@ Dropping the test instance means restoring the full allowances (100 %) in
 quiet window. `NZBDAV_CONFIG__*` is import-only for 2.x, which is why the 20 % share also lives in
 `INFINIDYSK__PROVIDERS` (forcing a setting needs a restart, not a UI edit).
 
+## Phase C — results so far
+
+| #   | Test                                     | Result                                                                                                                                                                                                                                                                                             |
+| --- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Consumer mount (`media-debug` → v2:3000) | **pass** — its sidecar mounts v2's WebDAV, the farm's absolute `.ids` symlinks resolve through the mount, a 3.26 GB release streams                                                                                                                                                                |
+| 2   | *arr SAB integration                     | **connectivity pass** — Radarr's and Sonarr's `downloadclient/test` against `infinidysk-v2:3000` both return 200 (version/category negotiation included). A real grab is still open, see below                                                                                                     |
+| 3   | Health check                             | **pass** — `POST /api/v1/files/{id}/check` → 202, then `degraded` with `1 of 8115 segments missing or corrupt`; `repair: none`, and `degraded_tolerance` keeps serving it. That is the shape of the PAR2 gap: 2.x _locates_ the gap precisely but cannot patch it                                  |
+| 7   | Prometheus export                        | **pass** — `INFINIDYSK__METRICS__PROMETHEUS` + `/metrics`: 401 without credentials, 200 with `X-Api-Key` **or** `Authorization: Bearer`, 586 `infinidysk_*` series (incl. `provider_bytes_total{workload="stream                                                                                   | queue | health"}`, which is what a re-grab-rate measurement needs) |
+| 8   | Throughput A/B                           | **2.1x in 2.x's favour** — same file, same node (`w-ovhsbg3`), 400 MB cold ranges via each consumer's rclone sidecar: v2 **90 MB/s** twice (89.8 / 90.1, offsets 1 GB and 2.4 GB) vs v1 **42 MB/s** twice (42.1 / 42.8, offsets 2 GB and 1.4 GB). Offset-independent, so not a read-ahead artefact |
+
+Open, needing a decision or a real download:
+
+- **Real arr grab** (the last unproven link: grab → v2 SAB → `completed-symlinks` → Arr import scan → `removeCompletedDownloads` → v2 history delete). Proposal: a throwaway Radarr root folder (`/aio/symlinks/v2test/movies`) on the real farm, one small monitored movie, v2 as the only enabled client, then remove the movie, the root folder and the client. Isolated from the existing library.
+- **RAR class**: 2.x's queue policy is hardcoded (`crates/arr/src/queue.rs`). Covered by it: "found archive file, might need to be extracted" (our rule 4), sample detection, unsupported extension, no audio tracks, unparseable names, "no files found are eligible for import in". **Not covered:** our rules 1–3 (`Compressed RAR archives are intentionally unsupported`, `Failed to parse RAR volume headers`, `No importable media files found`) and rule 5 (`matched to series by ID`, which 1.x removed _without_ searching). Those entries will wait for a human instead of being blocklisted — needs one real RAR-packed grab to confirm what the Arr actually reports.
+- **`infinidysk-sync-helper` against v2**: only meaningful once a grab produced a history row; then it is a one-line URL change plus a `mode=history` pass.
+- **Admin login adoption** in the browser (same adoption path that is broken for WebDAV, so worth checking before a cutover).
+- **ServiceMonitor**: needs the admin API key in a Secret ⇒ `/infinidysk-v2/ADMIN_API_KEY` in Infisical, then a ServiceMonitor with `authorization.credentials`.
+
 ## Phase C — functional tests (1.x untouched)
 
 1. **Mount + playback through v2**: point `media-debug`'s
