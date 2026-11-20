@@ -30,6 +30,10 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
     controllers:
       infinidysk:
+        # FROZEN for the 2.x cutover (docs/infinidysk-v2-cutover.md): the v1
+        # backend writes nothing while its data is snapshotted and imported.
+        # Rollback is this line back to 1 (plus reverting the consumer URLs).
+        replicas: 0
         annotations:
           reloader.stakater.com/auto: "true"
           secret.reloader.stakater.com/reload: infinidysk-secret,infinidysk-initdb-secret
