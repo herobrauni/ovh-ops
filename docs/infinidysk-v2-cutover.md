@@ -1,13 +1,47 @@
 # InfiniDysk 2.x test instance and cutover runbook
 
-> **Status 2026-11-20: Phase A applied** (clone PVCs, cloned DB, v2 app deployed
-> as `media/infinidysk-v2` next to the live 1.x backend). Phase B/C are the
-> grading steps; the 1.x backend stays authoritative until they pass.
+> **Status 2026-11-20: CUT OVER.** `media/infinidysk-v2` is the serving backend
+> (2.0.0-beta.10, Rust, PostgreSQL store, real `symlinks` farm); `media/infinidysk`
+> (1.x) stays deployed but frozen at `replicas: 0` with its PVC and database
+> untouched, so a rollback is two edits (see "Rollback").
 
 Working record for evaluating **InfiniDysk 2.x** (`ghcr.io/infinidysk/infinidysk-next`,
 Rust rewrite, 2.0.0-beta.N) as a replacement for the 1.x backend in
 `media/infinidysk`. Manifests live in `kubernetes/apps/media/infinidysk-v2/`;
 durable behavioural findings belong in `docs/agents/media.md`, not here.
+
+1. `media/infinidysk/app/helmrelease.yaml`: `replicas: 0` → remove (or `1`).
+2. Revert the consumer commit (all `RCLONE_CONFIG_INFINIDYSK_URL` back to
+   `http://infinidysk.media.svc.cluster.local:8080/`, and the sync-helper's
+   `SAB_URL` back to `:3000`), `flux reconcile kustomization cluster-apps --with-source`.
+3. Repoint the four *arr download clients to `infinidysk.media.svc.cluster.local:3000`
+   (runtime state, not Git — Radarr's `PUT /api/v3/downloadclient/{id}` etc.).
+4. `flux reconcile helmrelease -n media <app> --force` for any consumer whose
+   HelmRelease rolled back (see below).
+
+Nothing 2.x wrote is needed for that: it only ever adds `.ids` blobs and
+`completed-symlinks` entries, which 1.x simply ignores.
+
+## Cutover postmortem — what broke and why
+
+1. **The import needs its own provider list.** The import builds a _separate_
+   provider client from the 1.x settings, so with the `NZBDAV_CONFIG__*` block
+   already removed it had **no providers** and skipped 2081 files with
+   `segment sizes unknown: provider unavailable`. The recipe block in
+   "Re-import recipe" must be present for the whole import, not just for the
+   reader database.
+2. **Flip consumers only after the import finishes.** 2.x answers WebDAV with
+   `503` while importing, so sidecar probes fail; two HelmReleases
+   (`infinidysk-sync-helper`, `silo`) exhausted their progress deadline and
+   rolled back to the old values — the pods kept mounting the 1.x backend
+   (dead) while Git said v2. `flux reconcile helmrelease … --force` recovers.
+3. **The download client and the rclone mount must move together.** A release
+   imported by 2.x lives only in 2.x's `.ids` tree; an Arr still mounting the
+   1.x tree sees `completed-symlinks/<category>/<release>` as missing and never
+   imports.
+4. **Prometheus needs an ingress rule per backend.** The v2 CNP allowlist had to
+   list the Prometheus pod again, or the scrape hangs until the deadline
+   (`context deadline exceeded`) instead of failing fast.
 
 ## Decisions
 

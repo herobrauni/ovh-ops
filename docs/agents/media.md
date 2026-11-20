@@ -38,11 +38,14 @@ Two processes: frontend `:3000` (admin UI, SABnzbd API, `/api`, `/ws` — the on
     are decompressed only when the members are **stored** (`-m0`); compression is rejected on import
     (`/v1/features/archives`), which is why RAR-packed ebook releases fail while scene video works.
 
-## InfiniDysk 2.x test instance (`media/infinidysk-v2`)
+## InfiniDysk 2.x — the serving backend since 2026-11-20
 
-2.x (`ghcr.io/infinidysk/infinidysk-next`, Rust rewrite, `v2.0.0-beta.N`) runs **beside** the
-1.x backend, never instead of it, until the cutover is decided. Runbook with phases, commands and
-the upstream gap list: `docs/infinidysk-v2-cutover.md`.
+`media/infinidysk-v2` (`ghcr.io/infinidysk/infinidysk-next`, Rust, `v2.0.0-beta.N`,
+PostgreSQL store `infinidysk_v2`) serves the media stack. The 1.x app (`media/infinidysk`) is
+**frozen at `replicas: 0`** with its PVC and database intact — rollback recipe, postmortem and the
+upstream gap list: `docs/infinidysk-v2-cutover.md`.
+
+Everything below in this section still applies to 2.x except where noted; the deltas are:
 
 1. **Consumers keep their rclone sidecars and the built-in FUSE mount stays off**
    (`INFINIDYSK__MOUNT__FUSE=false`): a FUSE mount lives in one pod's host namespace, so ten
