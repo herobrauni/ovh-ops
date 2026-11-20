@@ -13,7 +13,6 @@ report_failure() {
 }
 
 declare -A privileged_allowlist=(
-    [kubernetes/apps/media/bookorbit/app/helmrelease.yaml]=1
     [kubernetes/apps/media/bazarr/app/helmrelease.yaml]=1
     [kubernetes/apps/media/bazarr4k/app/helmrelease.yaml]=1
     [kubernetes/apps/media/infinidysk/app/helmrelease.yaml]=1
@@ -30,7 +29,6 @@ declare -A privileged_allowlist=(
 )
 
 declare -A fuse_allowlist=(
-    [kubernetes/apps/media/bookorbit/app/helmrelease.yaml]=1
     [kubernetes/apps/media/bazarr/app/helmrelease.yaml]=1
     [kubernetes/apps/media/bazarr4k/app/helmrelease.yaml]=1
     [kubernetes/apps/media/infinidysk/app/helmrelease.yaml]=1
