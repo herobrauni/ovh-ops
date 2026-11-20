@@ -112,6 +112,13 @@ spec:
               # break-glass (2.x dropped OIDC_ADMIN_CLAIM and makes every SSO user
               # an admin, so SSO waits for the role-model decision).
               INFINIDYSK__AUTH__LOCAL_LOGIN: "true"
+              # Prometheus export on `/metrics`. 2.x serves it BEHIND the admin API
+              # key (`X-Api-Key` or `Authorization: Bearer`), unlike 1.x's
+              # unauthenticated backend port, so a ServiceMonitor needs
+              # `authorization.credentials` from a Secret — that Secret has to come
+              # from Infisical (`/infinidysk-v2/ADMIN_API_KEY`, `auth.api_key`),
+              # which is why the value is still store-owned here.
+              INFINIDYSK__METRICS__PROMETHEUS: "true"
             envFrom:
               - secretRef:
                   name: infinidysk-v2-secret
