@@ -1,0 +1,40 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+# InfiniDysk 2.x (Rust rewrite, `ghcr.io/infinidysk/infinidysk-next`) as a
+# parallel test instance next to the live 1.x backend (`media/infinidysk`).
+# Runbook + phases: docs/infinidysk-v2-cutover.md.
+#
+# Deliberately NOT a kopiur/volsync app: its two PVCs are one-time CSI clones
+# of the live backend's data (see app/volumesnapshot.yaml), because this
+# instance is disposable — if the tests fail it is deleted and the 1.x app
+# stays authoritative.
+#
+# No DNS/hostname either: the UI is reached with a port-forward. Grading v2
+# needs its own window, not a public URL, and a public route would drag in the
+# authentik/OIDC role-model question (2.x dropped OIDC_ADMIN_CLAIM) before the
+# backend itself is validated.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app infinidysk-v2
+spec:
+  targetNamespace: media
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  dependsOn:
+    - name: infisical
+      namespace: external-secrets
+    - name: cloudnative-pg-cluster
+      namespace: dbms
+  interval: 1h
+  path: ./kubernetes/apps/media/infinidysk-v2/app
+  # The first start imports the 1.x install out of the cloned /config, so the
+  # pod is NotReady for minutes before it serves.
+  timeout: 30m
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false

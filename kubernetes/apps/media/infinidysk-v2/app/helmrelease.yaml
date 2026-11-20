@@ -1,0 +1,290 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+# InfiniDysk 2.x test instance (Rust rewrite). Runbook: docs/infinidysk-v2-cutover.md.
+#
+# Two things differ from the 1.x app on purpose:
+#
+#   1. No built-in FUSE mount (`INFINIDYSK__MOUNT__FUSE=false`). A FUSE mount
+#      lives in one pod's host namespace, so every consumer pod would have to
+#      read a hostPath that only exists on this pod's node — node pinning for
+#      ten pods plus a single mount provider as a shared failure domain. The
+#      established pattern here (rclone sidecar per consumer over WebDAV) is
+#      kept instead, which also means consumers only change their URL once the
+#      cutover is decided.
+#   2. WebDAV is on 3000 with the UI and the SABnzbd API (2.x has one port;
+#      1.x's separate backend on 8080 is gone).
+#
+# The container runs as 1000:1000 (no entrypoint user/ownership fixing in the
+# 2.x image, and PUID/PGID only label files on the FUSE mount we do not use).
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: infinidysk-v2
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  interval: 1h
+  timeout: 30m
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+    controllers:
+      infinidysk:
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: infinidysk-v2-secret
+        containers:
+          app:
+            image:
+              repository: ghcr.io/infinidysk/infinidysk-next
+              tag: v2.0.0-beta.10@sha256:253ef9fa807f389f4058e2ec16342bc7be426d42570accf4afb68b2c01d9d059
+            env:
+              # --- 2.x-only process wiring -----------------------------------
+              # The built-in mount is off: consumers keep their rclone sidecars
+              # (see the header). Read at startup only.
+              INFINIDYSK__MOUNT__FUSE: "false"
+              # Settings below are 1.x-shaped on purpose: they are read ONCE by
+              # the import of the cloned /config on the first start, and ignored
+              # afterwards. The durable, Git-managed 2.x surface is
+              # INFINIDYSK__*/snake_case JSON and gets added once the import has
+              # been verified (docs/infinidysk-v2-cutover.md, Phase C).
+              #
+              # Import-only PostgreSQL source: the *clone* of the 1.x database
+              # (docs/infinidysk-v2-cutover.md, Phase A). The 2.x store itself is
+              # SQLite in /config — moving it to PostgreSQL is a later, optional
+              # step (`INFINIDYSK_DATABASE_URL`).
+              DATABASE_PROVIDER: postgres
+              DATABASE_CONNECTION_STRING:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-v2-secret
+                    key: DATABASE_CONNECTION_STRING
+              # Symlink imports stay the strategy (IDENTICAL mount dir as 1.x:
+              # generated symlink targets embed it, so it must not change).
+              NZBDAV_CONFIG__RCLONE__MOUNT_DIR: /aio/remote/infinidysk
+              NZBDAV_CONFIG__MEDIA__LIBRARY_DIR: /aio/symlinks
+              NZBDAV_CONFIG__API__CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex,books"
+              NZBDAV_CONFIG__API__MANUAL_CATEGORY: "other"
+              NZBDAV_CONFIG__API__IMPORT_STRATEGY: symlinks
+              NZBDAV_CONFIG__API__ADDURL_TRUSTED_HOSTS: "prowlarr,prowlarr.media.svc.cluster.local"
+              # Same battery as the live backend so the A/B is apples to apples;
+              # 2.x re-derives its own knobs from these (import-check percent,
+              # health percent, queue concurrency).
+              NZBDAV_CONFIG__API__ENSURE_ARTICLE_EXISTENCE_CATEGORIES: "other,radarr,radarr4k,sonarr,sonarr4k,nonplex,books"
+              NZBDAV_CONFIG__API__ARTICLE_EXISTENCE_CHECK_MODE: sampled
+              NZBDAV_CONFIG__API__ENSURE_IMPORTABLE_VIDEO: "false"
+              NZBDAV_CONFIG__API__NZB_BACKUP_ENABLED: "true"
+              NZBDAV_CONFIG__API__NZB_BACKUP_RETENTION_DAYS: "0"
+              NZBDAV_CONFIG__USENET__SEGMENT_CACHE__ENABLED: "false"
+              NZBDAV_CONFIG__ARR__HEALTH_ENABLED: "true"
+              NZBDAV_CONFIG__QUEUE__WORKER_COUNT: "3"
+              NZBDAV_CONFIG__USENET__CIRCUIT_BREAKER__INITIAL_COOLDOWN_SECONDS: "20"
+              NZBDAV_CONFIG__USENET__CASCADE__ENABLED: "true"
+              NZBDAV_CONFIG__USENET__CASCADE__RETRY_PRIMARY_ON_MISS: "true"
+              NZBDAV_CONFIG__REPAIR__ENABLE: "true"
+            envFrom:
+              - secretRef:
+                  name: infinidysk-v2-secret
+            probes:
+              # /healthz answers 503 with an `import` check while the 1.x import
+              # runs, so the startup budget has to cover that (30 x 60s).
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 3000
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 180
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 3000
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 3
+              liveness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /healthz
+                    port: 3000
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                # 2.x idles near 70 MB; the headroom covers the one-time import
+                # plus ffprobe/archive work during test grabs.
+                memory: 4Gi
+            securityContext:
+              runAsUser: 1000
+              runAsGroup: 1000
+              runAsNonRoot: true
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+          # Loopback WebDAV mount at the exact path 1.x uses, so the library's
+          # symlinks (absolute targets under <mount-dir>/.ids) resolve for the
+          # app's own health/repair checks. 2.x needs this for the same reason
+          # 1.x does: it inspects the library it wrote.
+          rclone-infinidysk:
+            image:
+              repository: docker.io/rclone/rclone
+              tag: 1.76@sha256:7cbeec24a44f206067597c0368be4de90ae19a64d5113c7d1938bd737a81e466
+            command:
+              - /bin/sh
+              - -c
+              - |
+                umount -l /host-mount/rclone-infinidysk-v2-self 2>/dev/null || true
+                mkdir -p /host-mount/rclone-infinidysk-v2-self
+                export RCLONE_CONFIG_INFINIDYSK_PASS="$(rclone obscure "$RCLONE_CONFIG_INFINIDYSK_PASS_RAW")"
+                unset RCLONE_CONFIG_INFINIDYSK_PASS_RAW
+                exec rclone mount infinidysk:/ /host-mount/rclone-infinidysk-v2-self \
+                  --links \
+                  --read-only \
+                  --poll-interval=0 \
+                  --dir-cache-time=20s \
+                  --allow-non-empty \
+                  --vfs-cache-mode=full \
+                  --vfs-cache-max-age=24h \
+                  --vfs-cache-max-size=5G \
+                  --vfs-cache-poll-interval=30s \
+                  --buffer-size=0M \
+                  --vfs-read-ahead=512M \
+                  --vfs-fast-fingerprint \
+                  --vfs-handle-caching=0 \
+                  --use-cookies \
+                  --no-modtime \
+                  --no-checksum \
+                  --allow-other \
+                  --uid=1000 \
+                  --gid=1000 \
+                  --cache-dir=/cache
+            env:
+              RCLONE_CONFIG_INFINIDYSK_TYPE: webdav
+              # 2.x serves WebDAV on the same port as the UI and the SAB API.
+              RCLONE_CONFIG_INFINIDYSK_URL: http://127.0.0.1:3000/
+              RCLONE_CONFIG_INFINIDYSK_VENDOR: other
+              RCLONE_CONFIG_INFINIDYSK_USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-v2-secret
+                    key: NZBDAV_CONFIG__WEBDAV__USER
+              RCLONE_CONFIG_INFINIDYSK_PASS_RAW:
+                valueFrom:
+                  secretKeyRef:
+                    name: infinidysk-v2-secret
+                    key: NZBDAV_CONFIG__WEBDAV__PASS
+              RCLONE_CONFIG_INFINIDYSK_PACER_MIN_SLEEP: "0"
+            probes:
+              liveness: &rclone-probes
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-infinidysk-v2-self && ls /host-mount/rclone-infinidysk-v2-self >/dev/null
+                  initialDelaySeconds: 10
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              readiness: *rclone-probes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  exec:
+                    command:
+                      - /bin/sh
+                      - -c
+                      - mountpoint -q /host-mount/rclone-infinidysk-v2-self && ls /host-mount/rclone-infinidysk-v2-self >/dev/null
+                  failureThreshold: 30
+                  periodSeconds: 5
+            securityContext:
+              runAsUser: 0
+              runAsGroup: 0
+              runAsNonRoot: false
+              privileged: true
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    service:
+      app:
+        controller: infinidysk
+        ports:
+          # UI + SABnzbd API + WebDAV in one.
+          http:
+            port: 3000
+    persistence:
+      config:
+        existingClaim: infinidysk-v2
+        globalMounts:
+          - path: /config
+      # Library dir the 2.x backend reads (a copy of the live farm, see pvc.yaml).
+      symlinks:
+        existingClaim: symlinks-v2
+        globalMounts:
+          - path: /aio/symlinks
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
+      var-tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /var/tmp
+      fuse:
+        type: hostPath
+        hostPath: /dev/fuse
+        hostPathType: CharDevice
+        advancedMounts:
+          infinidysk:
+            rclone-infinidysk:
+              - path: /dev/fuse
+      rclone-cache:
+        type: emptyDir
+        sizeLimit: 6Gi
+        advancedMounts:
+          infinidysk:
+            rclone-infinidysk:
+              - path: /cache
+      host-tmp:
+        type: hostPath
+        hostPath: /tmp
+        hostPathType: Directory
+        advancedMounts:
+          infinidysk:
+            rclone-infinidysk:
+              - path: /host-mount
+                mountPropagation: Bidirectional
+      # Kept out of the 1.x path (/tmp/rclone-infinidysk-self) so both backends
+      # can mount at the same in-pod path without sharing a FUSE mount.
+      rclone-self:
+        type: hostPath
+        hostPath: /tmp/rclone-infinidysk-v2-self
+        hostPathType: DirectoryOrCreate
+        advancedMounts:
+          infinidysk:
+            app:
+              - path: /aio/remote/infinidysk
+                mountPropagation: HostToContainer

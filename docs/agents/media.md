@@ -38,6 +38,32 @@ Two processes: frontend `:3000` (admin UI, SABnzbd API, `/api`, `/ws` — the on
     are decompressed only when the members are **stored** (`-m0`); compression is rejected on import
     (`/v1/features/archives`), which is why RAR-packed ebook releases fail while scene video works.
 
+## InfiniDysk 2.x test instance (`media/infinidysk-v2`)
+
+2.x (`ghcr.io/infinidysk/infinidysk-next`, Rust rewrite, `v2.0.0-beta.N`) runs **beside** the
+1.x backend, never instead of it, until the cutover is decided. Runbook with phases, commands and
+the upstream gap list: `docs/infinidysk-v2-cutover.md`.
+
+1. **Consumers keep their rclone sidecars and the built-in FUSE mount stays off**
+   (`INFINIDYSK__MOUNT__FUSE=false`): a FUSE mount lives in one pod's host namespace, so ten
+   consumer pods would need node pinning and share one mount provider as a failure domain.
+2. **2.x serves UI + SABnzbd API + WebDAV on 3000** (1.x's backend port 8080 is gone), so a
+   consumer swap is one `RCLONE_CONFIG_INFINIDYSK_URL` line. The SAB/API key is imported, so the
+   *arr download-client credentials do not change either.
+3. **Both PVCs are one-time CSI clones** (`app/pvc.yaml` + `app/volumesnapshot.yaml`, RBD/CephFS
+   `VolumeSnapshot` → `dataSourceRef`, same shape as `media/firefly3`), and the DB is a manual
+   `pg_dump` clone `infinidysk_v2`. Never point it at the live `symlinks` claim — 2.x prunes dead
+   library links, which would hit the production farm.
+4. **`NZBDAV_CONFIG__*` is import-only in 2.x.** The first start reads the 1.x overlay (env, not
+   the DB — none of our settings live in `ConfigItems`) plus the `DATABASE_PROVIDER` clone to stage
+   the 1.x install; afterwards those variables are ignored and the durable surface is `INFINIDYSK__*`
+   with **snake_case** JSON.
+5. **What 2.x does not have:** PAR2 gap repair (its "repair" = recheck + Arr replacement, so the
+   103 MB `repair-segments` patch store has no successor), configurable `QueueRules` (hardcoded), a
+   per-category article/importable-media switch, and `OIDC_ADMIN_CLAIM` (**every** SSO user is an
+   admin). Indexers/search/Warden/Preflight/Watchtower are "not planned" — unused here.
+6. **`/metrics` sits behind the admin API key** in 2.x, unlike 1.x's unauthenticated backend port.
+
 ## `media/infinidysk-sync-helper` (manual NZBs)
 
 A busybox poller with a **read-only** `rclone-infinidysk` sidecar (`--links`, `--read-only`, VFS cache off) and the `symlinks` PVC: for every SAB history slot with `status: Completed` (category `other`) it recreates the release's symlinks under `/aio/symlinks/other/` and clears the job with `del_files=0`. Replaces `zurg-sync-helper` + `altmount-sync-helper`. Traps:

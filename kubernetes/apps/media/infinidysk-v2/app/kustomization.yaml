@@ -1,0 +1,14 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ./ciliumnetworkpolicy.yaml
+  - ./externalsecret.yaml
+  - ./helmrelease.yaml
+  # Snapshots first, then the clones that consume them: kustomize has no
+  # ordering, but the PVC controller retries provisioning until the
+  # VolumeSnapshot is Ready (and the pod stays Pending until its claim binds,
+  # so the 1.x import can never start against an empty /config).
+  - ./pvc.yaml
+  - ./volumesnapshot.yaml

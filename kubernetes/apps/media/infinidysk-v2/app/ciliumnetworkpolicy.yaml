@@ -1,0 +1,70 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/cilium.io/ciliumnetworkpolicy_v2.json
+# Same consumer allowlist as the 1.x backend, one port: 2.x serves the UI, the
+# SABnzbd API and WebDAV on 3000 (the 1.x backend port 8080 does not exist).
+#
+# The consumers are listed up-front so grading v2 is a one-line URL change in a
+# consumer manifest (`RCLONE_CONFIG_INFINIDYSK_URL` -> this Service:3000) and
+# not a CNP edit in the same window. A pod that reads WebDAV without being
+# listed here gets an empty tree and blocks every lookup — see the long comment
+# in media/infinidysk/app/ciliumnetworkpolicy.yaml.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: infinidysk-v2
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: infinidysk-v2
+      app.kubernetes.io/instance: infinidysk-v2
+  ingress:
+    - fromEndpoints:
+        # *arrs: SABnzbd client + rclone WebDAV reads.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: sonarr
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: sonarr4k
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: radarr
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: radarr4k
+        # Media servers: read-only WebDAV mounts.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: plex
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: jellyfin
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: silo
+        # Subtitle grabbers: WebDAV reads for ffprobe.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: bazarr
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: bazarr4k
+        # addurl allowlist target for manual grabs (same as 1.x).
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: prowlarr
+        # Verification pod + manual-NZB helper.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: media-debug
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: infinidysk-sync-helper
+        # Books: SAB client + read-only WebDAV read of the completed release.
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: media
+            app.kubernetes.io/name: shelfmark
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP

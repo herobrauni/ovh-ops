@@ -1,0 +1,25 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/snapshot.storage.k8s.io/volumesnapshot_v1.json
+# Snapshots of the live backend's data, taken from the running pods (both
+# classes are supported by the Rook CSI drivers and demonstrated in this repo
+# by the kopiur snapshot schedules). The RBD snapshot of `infinidysk` is
+# crash-consistent, which is acceptable here: the main store is PostgreSQL
+# (`/config/db-contract.json` says `postgres`), and the SQLite leftovers in
+# /config are stale since the 1.2 move — the import reads the PG clone.
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: infinidysk-config-v2
+spec:
+  volumeSnapshotClassName: csi-ceph-blockpool
+  source:
+    persistentVolumeClaimName: infinidysk
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshot
+metadata:
+  name: infinidysk-symlinks-v2
+spec:
+  volumeSnapshotClassName: csi-ceph-filesystem
+  source:
+    persistentVolumeClaimName: symlinks
