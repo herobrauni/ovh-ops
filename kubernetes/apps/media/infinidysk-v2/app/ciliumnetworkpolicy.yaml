@@ -19,6 +19,10 @@ spec:
       app.kubernetes.io/instance: infinidysk-v2
   ingress:
     - fromEndpoints:
+        # Public UI + SABnzbd API through Envoy (HTTPRoute infinidysk-v2-480p-com).
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: network
+            gateway.networking.k8s.io/gateway-name: envoy-480p-com-public
         # *arrs: SABnzbd client + rclone WebDAV reads.
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: media

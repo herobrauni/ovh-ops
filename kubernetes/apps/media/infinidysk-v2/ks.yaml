@@ -22,6 +22,8 @@ spec:
   commonMetadata:
     labels:
       app.kubernetes.io/name: *app
+  components:
+    - ../../../../components/dnsendpoint
   dependsOn:
     - name: infisical
       namespace: external-secrets
@@ -34,7 +36,9 @@ spec:
   # `${CNPG_NAME:=postgres18}-rw.…` host and refuses the connection string.
   postBuild:
     substitute:
+      APP: infinidysk-v2
       CNPG_NAME: postgres18
+      DOMAIN: 480p.com
   # The first start imports the 1.x install out of the cloned /config, so the
   # pod is NotReady for minutes before it serves.
   timeout: 30m

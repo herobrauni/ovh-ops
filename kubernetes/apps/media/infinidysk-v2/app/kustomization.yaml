@@ -6,6 +6,7 @@ resources:
   - ./ciliumnetworkpolicy.yaml
   - ./externalsecret.yaml
   - ./helmrelease.yaml
+  - ./httproute.yaml
   # Snapshots first, then the clones that consume them: kustomize has no
   # ordering, but the PVC controller retries provisioning until the
   # VolumeSnapshot is Ready (and the pod stays Pending until its claim binds,

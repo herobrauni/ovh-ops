@@ -1,0 +1,36 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/httproute_v1.json
+# Public UI + SABnzbd API. 2.x authenticates itself against authentik over OIDC
+# (`INFINIDYSK__AUTH__OIDC__*`, blueprint `authentik/blueprints/infinidysk-v2-oidc.yaml`),
+# so this route carries NO `components/authentik` SecurityPolicy and the host is
+# absent from `outpost-routes.yaml` — an extAuth hop in front of a native OIDC
+# client only adds a second login.
+#
+# Consequence, same as the 1.x host: everything the frontend serves is public up
+# to 2.x's own auth, the SABnzbd API on this port included (API-key protected).
+# The *arrs use the in-cluster Service, never this host.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: infinidysk-v2-480p-com
+  annotations:
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/group: Media
+    gethomepage.dev/name: InfiniDysk 2.x
+    gethomepage.dev/pod-selector: app.kubernetes.io/name=infinidysk-v2
+    gethomepage.dev/icon: mdi-harddisk-plus
+    # /healthz answers without a session (same as 1.x), so the probe needs no
+    # auth path exemption.
+    gatus.home-operations.com/endpoint: |-
+      url: https://infinidysk-v2.480p.com/healthz
+spec:
+  hostnames:
+    - infinidysk-v2.480p.com
+  parentRefs:
+    - name: envoy-480p-com-public
+      namespace: network
+      sectionName: https
+  rules:
+    - backendRefs:
+        - name: infinidysk-v2
+          port: 3000
