@@ -122,6 +122,27 @@ Checklist, compared against the 1.x backend:
       HelmRelease and replace the 1.x overlay with the durable `INFINIDYSK__*`
       (snake_case) settings surface.
 
+## Provider connection split
+
+Both instances run on the same provider accounts, so **every allowance is divided 80 / 20** in the
+1.x backend's favour (it serves the library; v2 only needs enough for a stream plus health checks).
+Both manifests carry the split, and `NZBDAV_CONFIG__USENET__PROVIDERS` in the v2 file uses the same
+20 % numbers, so even a re-import cannot oversubscribe an account. Every allowance divides evenly by
+5, so the split is exact — keep it that way.
+
+| Account                                  | Plan | 1.x (`media/infinidysk`) | 2.x (`media/infinidysk-v2`) |
+| ---------------------------------------- | ---- | ------------------------ | --------------------------- |
+| primary A (spool group A)                | 50   | 40                       | 10                          |
+| primary B (spool group B, first server)  | 75   | 60                       | 15                          |
+| primary C (spool group B, second server) | 25   | 20                       | 5                           |
+| metered fill (spool group B, bonus)      | 50   | 40                       | 10                          |
+| metered block (block account)            | 100  | 80                       | 20                          |
+
+Dropping the test instance means restoring the full allowances (100 %) in
+`media/infinidysk/app/externalsecret.yaml` — that is a pod restart of the live backend, so do it in a
+quiet window. `NZBDAV_CONFIG__*` is import-only for 2.x, which is why the 20 % share also lives in
+`INFINIDYSK__PROVIDERS` (forcing a setting needs a restart, not a UI edit).
+
 ## Phase C — functional tests (1.x untouched)
 
 1. **Mount + playback through v2**: point `media-debug`'s
