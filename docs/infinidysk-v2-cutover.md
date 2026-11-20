@@ -103,6 +103,27 @@ Two findings that need action on a 2.x instance:
    `radarr,radarr4k,sonarr,sonarr4k,nonplex,books` plus `sab.manual_category: other`. Confirm a
    `cat=other` submission (sync-helper, shelfmark) is still accepted before relying on it.
 
+**After the move to PostgreSQL** (the shape a cutover would use, see Phase A): the store
+`infinidysk_v2` holds 15027 items / 13430 NZB blobs in **3.6 GB**, the import took ~13 min, and
+`/api/v1/health/summary` reported 7584 healthy / 3 degraded / 156 ignored — the same library as the
+SQLite rehearsal. Two consequences that are easy to miss:
+
+- 2.x keeps the **NZB blobs inside its database** (the 7.2 GB `/config/blobs` came over as ~3.6 GB of
+  PG data), so `pg_dumpall` grew from 8.9 GiB to ~13 GiB (4.1 GiB of it from this store alone) and
+  the dump policy's deep-verification scratch claim went from 12Gi to 20Gi.
+- the **admin API key is generated per store**, so the key in the SQLite store is not the key of the
+  PostgreSQL store (read `auth` from the config table of the store in use).
+
+**Cleanup after the import** (all verified on the clone, 1.x untouched): `/config` went from 11 GB to
+220 KB — `blobs/` (7.2 GB), the stale 2.x SQLite store `infinidysk.sqlite*` (3.5 GB), `db.sqlite*`,
+`repair-segments/` (103 MB, the 1.x PAR2 patch store), `metrics.sqlite*`, `warden.db`,
+`usenet-migration.db`, `data-protection/` (ASP.NET keys), `session.key`, `rclone/` and `backups/` are
+gone; `db-contract.json` and `logs/` stay. `/api/v1/upgrade/leftovers/scan` then reports every item
+`missing` (`present: false`), which is what removes the "infinidysk 1.x data" panel from the UI. The
+`infinidysk_v1clone` database was dropped; only `infinidysk` (1.x) and `infinidysk_v2` (2.x) remain.
+There is no delete endpoint for the leftovers — only `GET`, `scan` and `dismiss` — so the files are
+removed by hand and the panel disappears once the scan sees them missing.
+
 Grading access: the admin API key is generated and stored in the settings row `auth.api_key`
 (`sqlite3 -readonly /config/infinidysk.sqlite "select value from config where key='auth'"`), the API
 is `/api/v1/…` with `X-Api-Key` (plain `/api/…` 401s), and the import report is

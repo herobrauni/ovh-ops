@@ -143,7 +143,11 @@ spec:
       schedule:
         cron: "H 5 1 * *"
         jitter: 12h
-      capacity: 12Gi
+      # The scratch claim must hold the whole restored snapshot. The dump grew
+      # from 8.9 GiB to ~13 GiB when InfiniDysk 2.x moved onto this cluster with
+      # its NZB blobs inside the database (4.1 GiB gzipped on their own), so 12Gi
+      # no longer fits — anything smaller than the snapshot fails the restore.
+      capacity: 20Gi
       storageClassName: ceph-block
       parallel: 2
     successExpr: "tier == 'deep' ? stats.files > 0 : stats.errors == 0"

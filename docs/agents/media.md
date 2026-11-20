@@ -69,6 +69,11 @@ the upstream gap list: `docs/infinidysk-v2-cutover.md`.
    import in beta.10 despite the report claiming otherwise — force the WebDAV one with
    `INFINIDYSK__WEBDAV__PASSWORD` or every rclone sidecar 401s. `other` is a _manual_ category in
    2.x, not an entry in `sab.categories`.
+8. **2.x keeps the NZB blobs inside its database** (SQLite or PostgreSQL), not in `/config/blobs`:
+   the 7.2 GB 1.x blob folder becomes ~3.6 GB of PG data, the nightly `pg_dumpall` grows by 4.1 GiB
+   gzipped, and after a cutover the 1.x leftovers in `/config` (blobs, `db.sqlite*`,
+   `repair-segments/`, `metrics.sqlite*`, `data-protection/`) are dead weight — the UI's "1.x data"
+   panel lists only `db.sqlite*` + `blobs` and has no delete endpoint, so they go by hand.
 
 ## `media/infinidysk-sync-helper` (manual NZBs)
 
