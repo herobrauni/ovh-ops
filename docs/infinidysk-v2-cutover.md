@@ -33,21 +33,35 @@ Applied by Flux from `app/pvc.yaml` + `app/volumesnapshot.yaml`
 (RBD snapshot of `infinidysk`, CephFS snapshot of `symlinks`; both CSI clone
 paths verified on this cluster).
 
-The **database** clone is a manual one-off, because it is data, not a resource:
+Databases (two, both owned by the `infinidysk` role, `LC_COLLATE 'C'` like the rest of the
+cluster) are a manual one-off, because they are data, not resources:
+
+| Database             | Role                                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| `infinidysk_v1clone` | read-only **import source**: a `pg_dump` copy of the 1.x `infinidysk`                    |
+| `infinidysk_v2`      | the 2.x **store**, created EMPTY (2.x has its own schema and refuses a non-empty target) |
 
 ```sh
-# superuser creates the DB owned by the app role…
+# superuser creates both, owned by the app role…
+kubectl exec -n dbms postgres18-1 -c postgres -- sh -c \
+  "PGPASSWORD='<super>' psql -h 127.0.0.1 -U postgres -c 'create database infinidysk_v1clone owner infinidysk'"
 kubectl exec -n dbms postgres18-1 -c postgres -- sh -c \
   "PGPASSWORD='<super>' psql -h 127.0.0.1 -U postgres -c 'create database infinidysk_v2 owner infinidysk'"
-# …and the app role copies the schema + data into it.
+# …and the app role copies the schema + data into the clone.
 kubectl exec -n dbms postgres18-1 -c postgres -- sh -c \
   "PGPASSWORD='<infinidysk>' pg_dump -h 127.0.0.1 -U infinidysk -d infinidysk \
-   | PGPASSWORD='<infinidysk>' psql -q -h 127.0.0.1 -U infinidysk -d infinidysk_v2"
+   | PGPASSWORD='<infinidysk>' psql -q -h 127.0.0.1 -U infinidysk -d infinidysk_v1clone"
 ```
 
 Credentials: `INIT_POSTGRES_SUPER_PASS` / `INIT_POSTGRES_PASS` in
-`media/infinidysk-initdb-secret`. Refresh the clone (e.g. before the real
-cutover) with `drop database infinidysk_v2` + the two commands above.
+`media/infinidysk-initdb-secret`. Refresh before a rehearsal: `drop database infinidysk_v2` (the
+store) and re-create it empty, then re-dump into the clone — **not** the other way round.
+
+`INFINIDYSK_DATABASE_URL` (PostgreSQL, from the secret) is the durable switch, so the app never
+manages its own database: no `/config/database.toml`, no Settings > System > Database migration.
+The import writes into whichever store is current, which is why the empty PostgreSQL store is
+filled directly (no in-app SQLite → PostgreSQL move). Expect ~15–30 min for that import instead of
+~7 min, because ~2 GB of NZB blobs go through the target's WAL.
 
 Re-cloning the volumes: bump the snapshot names in `app/volumesnapshot.yaml`,
 delete both claims, reconcile — the next pod start re-runs the 1.x import.
