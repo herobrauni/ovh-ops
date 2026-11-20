@@ -1,0 +1,24 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/externaldns.k8s.io/dnsendpoint_v1alpha1.json
+# Explicit instead of `components/dnsendpoint`, because the app is still named
+# `infinidysk-v2` while the public host is the canonical `infinidysk.480p.com`
+# (the 1.x hostname, taken over at the cutover). The component derives the name
+# from ${APP}, which would publish `infinidysk-v2.480p.com`.
+#
+# The `dns.scope` label is load-bearing: external-dns v0.22+ is configured with
+# --label-filter=dns.scope in (...), NOT --annotation-filter (which silently
+# matches nothing). The annotation is kept for visibility — do not drop either.
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
+  name: infinidysk
+  labels:
+    dns.scope: all
+  annotations:
+    dns.scope: all
+spec:
+  endpoints:
+    - dnsName: infinidysk.480p.com
+      recordType: CNAME
+      targets:
+        - public.480p.com

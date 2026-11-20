@@ -15,9 +15,17 @@ resources:
   - ./booklore/ks.yaml
   - ./bazarr/ks.yaml
   - ./bazarr4k/ks.yaml
-  - ./infinidysk/ks.yaml
-  # InfiniDysk 2.x test instance (parallel to the live 1.x backend, own cloned
-  # PVCs, no public route). Runbook: docs/infinidysk-v2-cutover.md.
+  # 1.x backend: DISABLED after the 2026-11-20 cutover (docs/infinidysk-v2-cutover.md).
+  # Commenting the Kustomization out makes Flux garbage-collect everything it
+  # owned (HelmRelease, Service, CNP, ServiceMonitor, HTTPRoute, DNSEndpoint and
+  # the kopiur-backed PVC). The data needed for a rollback outlives it:
+  #   * VolumeSnapshot media/infinidysk-v1-final (its config volume: blobs + db.sqlite)
+  #   * PostgreSQL database `infinidysk` on postgres18 (never Flux-managed)
+  #   * the kopiur repository's own snapshots of that volume
+  # Rollback: uncomment below, restore the PVC from that snapshot, scale to 1, and
+  # re-split the provider connections (v2 holds the full plan now).
+  # - ./infinidysk/ks.yaml
+  # 2.x backend: the serving instance. Runbook: docs/infinidysk-v2-cutover.md.
   - ./infinidysk-v2/ks.yaml
   # Polls InfiniDysk's SAB history for category `other` and symlinks manual
   # NZBs into /aio/symlinks/other (the manual-NZB import step an *arr does for

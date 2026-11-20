@@ -1,6 +1,8 @@
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/gateway.networking.k8s.io/httproute_v1.json
-# Public UI + SABnzbd API. 2.x authenticates itself against authentik over OIDC
+# Public UI + SABnzbd API on the canonical `infinidysk.480p.com` (the hostname
+# the 1.x backend used — taken over at the cutover while the app keeps its
+# `infinidysk-v2` name). 2.x authenticates itself against authentik over OIDC
 # (`INFINIDYSK__AUTH__OIDC__*`, blueprint `authentik/blueprints/infinidysk-v2-oidc.yaml`),
 # so this route carries NO `components/authentik` SecurityPolicy and the host is
 # absent from `outpost-routes.yaml` — an extAuth hop in front of a native OIDC
@@ -16,16 +18,16 @@ metadata:
   annotations:
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: Media
-    gethomepage.dev/name: InfiniDysk 2.x
+    gethomepage.dev/name: InfiniDysk
     gethomepage.dev/pod-selector: app.kubernetes.io/name=infinidysk-v2
     gethomepage.dev/icon: mdi-harddisk-plus
     # /healthz answers without a session (same as 1.x), so the probe needs no
     # auth path exemption.
     gatus.home-operations.com/endpoint: |-
-      url: https://infinidysk-v2.480p.com/healthz
+      url: https://infinidysk.480p.com/healthz
 spec:
   hostnames:
-    - infinidysk-v2.480p.com
+    - infinidysk.480p.com
   parentRefs:
     - name: envoy-480p-com-public
       namespace: network

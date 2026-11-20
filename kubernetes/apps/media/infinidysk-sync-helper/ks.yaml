@@ -12,7 +12,8 @@ spec:
   dependsOn:
     - name: infisical
       namespace: external-secrets
-    - name: infinidysk
+    # The 2.x backend since the 2026-11-20 cutover (the 1.x app is disabled).
+    - name: infinidysk-v2
       namespace: media
     - name: symlinks
       namespace: media

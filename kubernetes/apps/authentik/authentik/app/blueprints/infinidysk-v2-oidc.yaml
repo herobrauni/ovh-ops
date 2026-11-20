@@ -2,6 +2,8 @@
 # yayamlls-disable-file (embedded blueprint ConfigMap; the goauthentik.io schema now mismatches the ConfigMap wrapper)
 # yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
 # OIDC sign-in for `media/infinidysk-v2` (the 2.x backend that replaced 1.x).
+# It serves the canonical `infinidysk.480p.com` host since the cutover, so this
+# provider owns that redirect URI now — the 1.x provider is retired below.
 #
 # A provider of its own rather than a second redirect URI on the 1.x one, because
 # the *authorization* model has to differ: 2.x dropped `OIDC_ADMIN_CLAIM` and makes
@@ -56,7 +58,7 @@ entries:
       # Strict match: 2.x sends exactly `INFINIDYSK__AUTH__OIDC__REDIRECT_URI`.
       redirect_uris:
         - matching_mode: strict
-          url: https://infinidysk-v2.480p.com/auth/oidc/callback
+          url: https://infinidysk.480p.com/auth/oidc/callback
 
   - id: app-infinidysk-v2
     model: authentik_core.application
@@ -65,7 +67,7 @@ entries:
     attrs:
       name: InfiniDysk 2.x
       provider: !KeyOf provider-infinidysk-v2-oidc
-      meta_launch_url: https://infinidysk-v2.480p.com
+      meta_launch_url: https://infinidysk.480p.com
       meta_description: Usenet WebDAV media backend (2.x)
 
   # Platform-only: see the header — 2.x has no read-only role.

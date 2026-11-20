@@ -130,11 +130,11 @@ spec:
               # break-glass if the IdP is down.
               INFINIDYSK__AUTH__OIDC__ISSUER: https://sso.brauni.dev/application/o/infinidysk-v2/
               INFINIDYSK__AUTH__OIDC__CLIENT_ID: infinidysk-v2
-              INFINIDYSK__AUTH__OIDC__REDIRECT_URI: https://infinidysk-v2.480p.com/auth/oidc/callback
+              INFINIDYSK__AUTH__OIDC__REDIRECT_URI: https://infinidysk.480p.com/auth/oidc/callback
               INFINIDYSK__AUTH__OIDC__SCOPES: openid profile email
               INFINIDYSK__AUTH__OIDC__USERNAME_CLAIM: preferred_username
               # Used for STRM links and as the OIDC redirect fallback.
-              INFINIDYSK__NETWORK__PUBLIC_URL: https://infinidysk-v2.480p.com
+              INFINIDYSK__NETWORK__PUBLIC_URL: https://infinidysk.480p.com
               # Prometheus export on `/metrics`. 2.x serves it BEHIND the admin API
               # key (`X-Api-Key` or `Authorization: Bearer`), unlike 1.x's
               # unauthenticated backend port, so a ServiceMonitor needs

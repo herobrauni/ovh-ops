@@ -25,9 +25,12 @@
 # `client_secret_basic` (what `openid-client` discovers from authentik metadata)
 # needs RS256 ID tokens, hence the explicit `signing_key`; without one authentik
 # signs HS256 and InfiniDysk would reject the token.
+# NOTE: the provider/application entries below still declare the 1.x objects so a
+# blueprint re-apply does not resurrect them by omission — they are deleted after
+# the application block at the bottom of the file.
 version: 1
 metadata:
-  name: ovh-ops - InfiniDysk OIDC
+  name: ovh-ops - InfiniDysk OIDC (retired)
   labels:
     blueprints.goauthentik.io/description: OIDC provider and application for the InfiniDysk usenet media backend.
 entries:
@@ -102,8 +105,16 @@ entries:
     identifiers:
       name: InfiniDysk
 
-  - model: authentik_policies.policybinding
+  # RETIRED at the 2.x cutover (2026-11-20): the 1.x backend no longer serves
+  # `infinidysk.480p.com` — that host belongs to `infinidysk-v2-oidc.yaml` now.
+  # The application is removed first (deleting the provider it references would
+  # cascade into it anyway), then the provider. Both are no-ops once gone.
+  - model: authentik_core.application
+    state: absent
     identifiers:
-      target: !KeyOf app-infinidysk
-      group: !Find [authentik_core.group, [name, Media]]
-      order: 0
+      slug: infinidysk
+
+  - model: authentik_providers_oauth2.oauth2provider
+    state: absent
+    identifiers:
+      name: InfiniDysk OIDC
