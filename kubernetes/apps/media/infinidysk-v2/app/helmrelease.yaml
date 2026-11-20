@@ -119,19 +119,10 @@ spec:
               # from Infisical (`/infinidysk-v2/ADMIN_API_KEY`, `auth.api_key`),
               # which is why the value is still store-owned here.
               INFINIDYSK__METRICS__PROMETHEUS: "true"
-              # CUTOVER IMPORT ONLY: the 1.x reader, pointing at the clone taken
-              # from the frozen 1.x database. Remove both once the import reports
-              # `upgrade.state = "done"` (docs/infinidysk-v2-cutover.md, Phase A).
-              DATABASE_PROVIDER:
-                valueFrom:
-                  secretKeyRef:
-                    name: infinidysk-v2-secret
-                    key: DATABASE_PROVIDER
-              DATABASE_CONNECTION_STRING:
-                valueFrom:
-                  secretKeyRef:
-                    name: infinidysk-v2-secret
-                    key: DATABASE_CONNECTION_STRING
+              # The cutover import is done (`upgrade.state = "done"`), so the 1.x
+              # reader variables are gone again: they and the 1.x-shaped inputs live
+              # in docs/infinidysk-v2-cutover.md, "Re-import recipe", for the next
+              # rehearsal or rollback.
             envFrom:
               - secretRef:
                   name: infinidysk-v2-secret
