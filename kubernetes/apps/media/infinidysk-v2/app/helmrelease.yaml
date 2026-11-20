@@ -71,23 +71,17 @@ spec:
               # INFINIDYSK__*/snake_case JSON and gets added once the import has
               # been verified (docs/infinidysk-v2-cutover.md, Phase C).
               #
-              # The store itself is PostgreSQL (`INFINIDYSK_DATABASE_URL`, from
-              # the secret), which is also what the import writes into: it
-              # targets whichever database is current, so an empty PostgreSQL
-              # store is filled directly and no in-app move is needed.
-              # DATABASE_PROVIDER/DATABASE_CONNECTION_STRING (import-only, from
-              # the secret too) are only the *reader* for the cloned 1.x
-              # database.
-              DATABASE_PROVIDER:
-                valueFrom:
-                  secretKeyRef:
-                    name: infinidysk-v2-secret
-                    key: DATABASE_PROVIDER
-              DATABASE_CONNECTION_STRING:
-                valueFrom:
-                  secretKeyRef:
-                    name: infinidysk-v2-secret
-                    key: DATABASE_CONNECTION_STRING
+              # The store is PostgreSQL (`INFINIDYSK_DATABASE_URL`, from the
+              # secret), which is also what the import wrote into: it targets
+              # whichever database is current, so the empty PostgreSQL store was
+              # filled directly and no in-app move was needed.
+              #
+              # The import is DONE (`upgrade.state = "done"`), so the 1.x reader
+              # variables are gone — the cloned 1.x database has been dropped and
+              # the 1.x leftovers in /config deleted. Re-running the import on
+              # this instance therefore needs a fresh config snapshot/re-clone plus
+              # `DATABASE_PROVIDER`/`DATABASE_CONNECTION_STRING` pointing at a new
+              # clone (docs/infinidysk-v2-cutover.md, Phase A).
               # Symlink imports stay the strategy (IDENTICAL mount dir as 1.x:
               # generated symlink targets embed it, so it must not change).
               NZBDAV_CONFIG__RCLONE__MOUNT_DIR: /aio/remote/infinidysk
