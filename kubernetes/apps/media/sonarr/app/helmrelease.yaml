@@ -177,15 +177,15 @@ spec:
               RCLONE_CONFIG_INFINIDYSK_USER:
                 valueFrom:
                   secretKeyRef:
-                    name: infinidysk-secret
-                    key: NZBDAV_CONFIG__WEBDAV__USER
+                    name: infinidysk-v2-secret
+                    key: INFINIDYSK__WEBDAV__USER
               # Raw value; rclone's obfuscation is not deterministic, so the
               # sidecar obscures it at start instead of storing a second copy.
               RCLONE_CONFIG_INFINIDYSK_PASS_RAW:
                 valueFrom:
                   secretKeyRef:
-                    name: infinidysk-secret
-                    key: NZBDAV_CONFIG__WEBDAV__PASS
+                    name: infinidysk-v2-secret
+                    key: INFINIDYSK__WEBDAV__PASSWORD
               RCLONE_CONFIG_INFINIDYSK_PACER_MIN_SLEEP: "0"
             probes:
               liveness: &rclone-infinidysk-probes

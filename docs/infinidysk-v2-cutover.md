@@ -27,7 +27,9 @@ Rust rewrite, 2.0.0-beta.N) as a replacement for the 1.x backend. Manifests live
    the `components/dnsendpoint` line to that `ks.yaml` (the canonical host now belongs to the v2
    manifest — either drop v2's `httproute.yaml`/`dnsendpoint.yaml` or keep v1 on a different host).
 4. **Revert the consumer commit**: every `RCLONE_CONFIG_INFINIDYSK_URL` back to
-   `http://infinidysk.media.svc.cluster.local:8080/` and the sync-helper's `SAB_URL` back to
+   `http://infinidysk.media.svc.cluster.local:8080/`, both `secretKeyRef`s of each sidecar back to
+   `infinidysk-secret` / `NZBDAV_CONFIG__WEBDAV__{USER,PASS}` (the v1 ExternalSecret comes back with
+   step 3, so both name and keys matter), and the sync-helper's `SAB_URL` back to
    `:3000`, then `flux reconcile kustomization cluster-apps --with-source`.
 5. **Repoint the four \*arr download clients** to `infinidysk.media.svc.cluster.local:3000`
    (runtime state, not Git — `PUT /api/v3/downloadclient/{id}`).
