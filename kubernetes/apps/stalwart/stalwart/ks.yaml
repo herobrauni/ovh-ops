@@ -11,24 +11,37 @@ spec:
       app.kubernetes.io/name: *app
   components:
     # Shared postgres18 cluster: ${APP}-initdb-secret bootstraps DB+role and
-    # ${APP}-pguser-secret carries the credentials the server needs. The
-    # component also wires the nightly pg_dumpall -> kopia backup, which for
-    # mail is not optional: the data store holds accounts, config and metadata.
+    # ${APP}-pguser-secret carries the credentials the server needs.
+    # NOTE: the component's pgdump/VolSync objects (components/cnpg/pgdump.yaml)
+    # are referenced by no app today, so this PR ships no database backup for
+    # Stalwart. Wire one before real mail lands - see docs/agents/stalwart.md.
     - ../../../../components/cnpg
+    # In-memory store + coordinator: a Redis-protocol instance from the operator
+    # the cluster already runs (${APP}-dragonfly, its snapshot PVC, PodMonitor
+    # and CiliumNetworkPolicy). docs/agents/stalwart.md covers why this is
+    # Dragonfly instead of Keep/Valkey, and what to watch for.
+    - ../../../../components/dragonfly
   dependsOn:
     - name: infisical
       namespace: external-secrets
     - name: cloudnative-pg-cluster
       namespace: dbms
+    - name: dragonfly
+      namespace: dbms
     - name: rook-ceph-cluster
       namespace: rook-ceph
-    - name: keep
-      namespace: stalwart
   interval: 1h
   path: ./kubernetes/apps/stalwart/stalwart/app
   postBuild:
     substitute:
       APP: *app
+      # 2 gives the operator a master/replica pair with automatic promotion and a
+      # Service that selects whichever pod currently carries `role: master`. Not
+      # a quorum: during promotion the store is briefly unavailable, and Stalwart
+      # responds to a gap in the event stream by discarding caches and
+      # re-checking its queues, so the failure mode is delay rather than loss.
+      DRAGONFLY_REPLICAS: "2"
+      DRAGONFLY_SNAPSHOT_CAPACITY: 256Mi
   prune: true
   sourceRef:
     kind: GitRepository

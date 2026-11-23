@@ -65,6 +65,10 @@ spec:
               # alphabetically and $(VAR) expansion only sees variables defined
               # earlier, so the composed value has to sort last.
               STALWART_S3_URL: "http://$(STALWART_S3_HOST):$(STALWART_S3_PORT)"
+              # In-memory store + coordinator (Dragonfly, master-selected
+              # Service in this namespace). Referenced from the store config with
+              # an EnvironmentVariable so the endpoint is not retyped in the WebUI.
+              STALWART_REDIS_URL: redis://stalwart-dragonfly.stalwart.svc.cluster.local:6379
             envFrom:
               - secretRef:
                   name: stalwart-secrets
@@ -152,12 +156,6 @@ spec:
         name: stalwart-config
         globalMounts:
           - path: /etc/stalwart
-            readOnly: true
-      keep-client:
-        type: secret
-        name: keep-client
-        globalMounts:
-          - path: /etc/keep-client
             readOnly: true
       # No PVC anywhere: mail bodies live in S3 and everything else in Postgres.
       data:
