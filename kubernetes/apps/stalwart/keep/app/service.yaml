@@ -1,0 +1,19 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/service_v1.json
+apiVersion: v1
+kind: Service
+metadata:
+  name: keep
+spec:
+  # Governing service for the StatefulSet only. Members address each other by
+  # node IP (hostNetwork), and Stalwart is configured with those same IPs, so
+  # nothing resolves this name at runtime.
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: keep
+  ports:
+    - name: client
+      port: 7000
+      targetPort: 7000
+      protocol: TCP

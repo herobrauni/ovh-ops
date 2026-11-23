@@ -1,0 +1,84 @@
+---
+# Pinning the three ordinals to the three workers.
+#
+# Keep's `members` holds IP literals, so keep-<i> must always come back on the
+# node whose IP is entry <i>. nodeAffinity alone cannot pin per ordinal from a
+# single template, so each ordinal binds a 1Mi volume that carries the affinity
+# (this is the arrangement from the upstream Keep-on-Kubernetes guide).
+#
+# hostPath rather than a `local` volume only because Talos has no writable
+# scratch outside /var and the kubelet has to create the directory itself.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: keep-pin-0
+spec:
+  capacity:
+    storage: 1Mi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: keep-pin
+  volumeMode: Filesystem
+  hostPath:
+    path: /var/lib/keep-pin-0
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [w-ovhsbg1]
+  claimRef:
+    namespace: stalwart
+    name: pin-keep-0
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: keep-pin-1
+spec:
+  capacity:
+    storage: 1Mi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: keep-pin
+  volumeMode: Filesystem
+  hostPath:
+    path: /var/lib/keep-pin-1
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [w-ovhsbg2]
+  claimRef:
+    namespace: stalwart
+    name: pin-keep-1
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: keep-pin-2
+spec:
+  capacity:
+    storage: 1Mi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: keep-pin
+  volumeMode: Filesystem
+  hostPath:
+    path: /var/lib/keep-pin-2
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values: [w-ovhsbg3]
+  claimRef:
+    namespace: stalwart
+    name: pin-keep-2

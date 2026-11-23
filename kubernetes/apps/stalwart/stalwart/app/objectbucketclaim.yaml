@@ -1,0 +1,12 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/objectbucket.io/objectbucketclaim_v1alpha1.json
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: stalwart-blobs
+spec:
+  # Mail and attachment bodies live here. Rook creates the bucket and a Secret of
+  # the same name with BUCKET_HOST/BUCKET_NAME/AWS_ACCESS_KEY_ID/... which the
+  # StatefulSet mounts as environment variables (see helmrelease.yaml).
+  bucketName: stalwart-blobs
+  storageClassName: ceph-bucket

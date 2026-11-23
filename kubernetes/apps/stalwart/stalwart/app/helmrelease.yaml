@@ -1,0 +1,175 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app stalwart
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  interval: 30m
+  values:
+    controllers:
+      stalwart:
+        type: statefulset
+        # BOOTSTRAP: stay at 1 until the shared stores and the coordinator are
+        # configured (docs/agents/stalwart.md). Raising replicas alone does not
+        # create a cluster: the pods would share the database but have no
+        # coordinator, so caches would never be invalidated across nodes.
+        replicas: 1
+        annotations:
+          reloader.stakater.com/auto: "true"
+        containers:
+          app:
+            image:
+              repository: docker.io/stalwartlabs/stalwart
+              tag: v1.1.1@sha256:5ebdf474b237161742fe4309396af4ae8797c938e8e6eb7e2d4837332c4f9851
+            args:
+              - --config
+              - /etc/stalwart/config.json
+            env:
+              STALWART_DB_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: stalwart-pguser-secret
+                    key: password
+              # Blob store wiring, so the S3 backend can be configured in the
+              # WebUI with EnvironmentVariable references instead of pasted keys.
+              STALWART_S3_HOST:
+                valueFrom:
+                  secretKeyRef:
+                    name: stalwart-blobs
+                    key: BUCKET_HOST
+              STALWART_S3_PORT:
+                valueFrom:
+                  secretKeyRef:
+                    name: stalwart-blobs
+                    key: BUCKET_PORT
+              STALWART_S3_BUCKET:
+                valueFrom:
+                  secretKeyRef:
+                    name: stalwart-blobs
+                    key: BUCKET_NAME
+              STALWART_S3_ACCESS_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: stalwart-blobs
+                    key: AWS_ACCESS_KEY_ID
+              STALWART_S3_SECRET_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: stalwart-blobs
+                    key: AWS_SECRET_ACCESS_KEY
+              # Named *_URL rather than *_ENDPOINT on purpose: app-template sorts env
+              # alphabetically and $(VAR) expansion only sees variables defined
+              # earlier, so the composed value has to sort last.
+              STALWART_S3_URL: "http://$(STALWART_S3_HOST):$(STALWART_S3_PORT)"
+            envFrom:
+              - secretRef:
+                  name: stalwart-secrets
+            probes:
+              liveness:
+                enabled: true
+                type: HTTP
+                path: /healthz/live
+                port: 8080
+              readiness:
+                # 503 until a data store is open, which is what we want here.
+                enabled: true
+                type: HTTP
+                path: /healthz/ready
+                port: 8080
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              # Not for binding: every listener is high-numbered by design. The
+              # image ships `setcap cap_net_bind_service=+ep` on the binary, and
+              # exec of a file-capability binary requires that capability to
+              # remain in the bounding set even when nothing privileged is
+              # bound. Dropping it yields
+              # `exec /usr/local/bin/stalwart: operation not permitted`.
+              capabilities:
+                drop: [ALL]
+                add: [NET_BIND_SERVICE]
+            resources:
+              requests:
+                cpu: 100m
+                memory: 768Mi
+              limits:
+                memory: 3Gi
+
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2000
+        runAsGroup: 2000
+        fsGroup: 2000
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+
+    service:
+      # DNATed 1:1 from the three Proxmox hosts (docs/agents/stalwart.md).
+      # localOnly so Cilium never forwards a connection to another node: the
+      # public IP that accepted it must own the return path.
+      mail:
+        controller: stalwart
+        type: NodePort
+        externalTrafficPolicy: Local
+        ports:
+          smtp:
+            port: 25
+            nodePort: 30025
+          submission:
+            port: 587
+            nodePort: 30587
+          smtps:
+            port: 465
+            nodePort: 30465
+          imaps:
+            port: 993
+            nodePort: 30993
+          sieve:
+            port: 4190
+            nodePort: 30419
+          https:
+            port: 8443
+            nodePort: 30443
+      mgmt:
+        controller: stalwart
+        type: ClusterIP
+        primary: true
+        ports:
+          http:
+            port: 8080
+
+    persistence:
+      config:
+        type: configMap
+        name: stalwart-config
+        globalMounts:
+          - path: /etc/stalwart
+            readOnly: true
+      keep-client:
+        type: secret
+        name: keep-client
+        globalMounts:
+          - path: /etc/keep-client
+            readOnly: true
+      # No PVC anywhere: mail bodies live in S3 and everything else in Postgres.
+      data:
+        type: emptyDir
+        globalMounts:
+          - path: /var/lib/stalwart
+      logs:
+        # the default file tracer writes here; readOnlyRootFilesystem needs a mount
+        type: emptyDir
+        globalMounts:
+          - path: /var/log/stalwart
+      tmp:
+        type: emptyDir
+        globalMounts:
+          - path: /tmp
