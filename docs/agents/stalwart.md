@@ -93,8 +93,14 @@ nodes after a settings change.
 
 | Key | What |
 | --- | --- |
-| `STALWART_RECOVERY_ADMIN_USER` / `_PASSWORD` | bootstrap administrator - delete after first login |
-| `/cloudnative-pg/stalwart_postgres_{username,password}` | created by hand, consumed by `components/cnpg` |
+| `STALWART_RECOVERY_ADMIN_USER` / `_PASSWORD` | bootstrap administrator (`admin`) - delete after first login |
+| `/cloudnative-pg/stalwart_postgres_username` / `_password` | DB role, already created: username must be `stalwart` because it is hardcoded as `authUsername` in `config.json` |
+
+All four exist in Infisical (`prod`, project `ovh-ops-u1ua`). The database and role themselves are created
+by the `01-init-db` init container on first start - `components/cnpg` ships only the credential
+ExternalSecrets, so an app that forgets the init container fails readiness against a missing database.
+Writes to the Infisical API need `projectSlug`; reads need `workspaceSlug`, and a new secret path needs a
+folder first (`POST /api/v1/folders` with `workspaceId`).
 
 S3 credentials come from the `ObjectBucketClaim` (`stalwart-blobs`), not from Infisical: Rook writes
 `BUCKET_HOST`, `BUCKET_PORT`, `BUCKET_NAME`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` into a Secret of
@@ -106,8 +112,8 @@ the same name, and the StatefulSet exposes them as env vars so the blob store ca
 Ordering is enforced by the server: store/coordinator settings live in Postgres, and a coordinator is
 rejected while the in-memory store is still the local default.
 
-1. Create the Infisical secrets above, plus `/cloudnative-pg/stalwart_postgres_username` (`stalwart`)
-   and `_password`. Without them the ExternalSecrets sit in `SecretSyncedError` and nothing starts.
+1. Secrets already exist (see table). If they are rotated, the ExternalSecrets pick the change up within
+   their 12h refresh; a missing key leaves them in `SecretSyncedError` and nothing starts.
 2. Let Flux apply. `stalwart-0` starts (`replicas: 1`) with `STALWART_RECOVERY_ADMIN` set; confirm
    `/healthz/ready` is 200 and the two `stalwart-dragonfly` pods are Running.
 3. `kubectl -n stalwart port-forward svc/stalwart-mgmt 8080:8080`, sign in as the recovery admin.
