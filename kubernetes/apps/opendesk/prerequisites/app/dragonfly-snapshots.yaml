@@ -1,0 +1,13 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/persistentvolumeclaim_v1.json
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opendesk-dragonfly-snapshots
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      # one snapshot set; the fixed --dbfilename overwrites, so usage stays flat
+      storage: 512Mi
+  storageClassName: ceph-block

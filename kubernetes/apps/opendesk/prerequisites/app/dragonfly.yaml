@@ -1,0 +1,40 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/dragonflydb.io/dragonfly_v1alpha1.json
+apiVersion: dragonflydb.io/v1alpha1
+kind: Dragonfly
+metadata:
+  name: opendesk-dragonfly
+spec:
+  # Same operator/image the rest of the cluster runs, but not through
+  # components/dragonfly: openDesk needs a password (its consumers always send
+  # AUTH, and a password-less server rejects that) and it relies on numbered
+  # databases (0 for intercom/OX, 4/5 nextcloud cache+sessions, 7/8 notes).
+  image: ghcr.io/dragonflydb/dragonfly:v2.1.0@sha256:94891bb22ce2fb0f7a5a3ff1bb3b2fbbc5830e2523293e47723d87fa3e5b1184
+  replicas: 1
+  env:
+    - name: MAX_MEMORY
+      valueFrom:
+        resourceFieldRef:
+          resource: limits.memory
+          divisor: 1Mi
+    # Dragonfly reads flags from DFLY_<flag>; args cannot reference env.
+    - name: DFLY_requirepass
+      valueFrom:
+        secretKeyRef:
+          name: opendesk-credentials
+          key: redis_password
+  args:
+    - --dbfilename=dump
+    - --maxmemory=$(MAX_MEMORY)Mi
+    - --proactor_threads=2
+    # openDesk allocates up to DB 8; the default of 16 is kept explicit anyway
+    - --dbnum=16
+  snapshot:
+    cron: "*/15 * * * *"
+    existingPersistentVolumeClaimName: opendesk-dragonfly-snapshots
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 768Mi

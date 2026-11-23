@@ -1,0 +1,41 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/helm.toolkit.fluxcd.io/helmrelease_v2.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: haproxy-ingress
+spec:
+  chart:
+    spec:
+      chart: haproxy-ingress
+      version: 0.16.3
+      sourceRef:
+        kind: HelmRepository
+        name: haproxy-ingress
+  interval: 30m
+  values:
+    controller:
+      replicaCount: 2
+      ingressClass: haproxy
+      ingressClassResource:
+        enabled: true
+        # deliberate: Envoy Gateway stays the cluster default, haproxy is only
+        # picked up by Ingresses that ask for it (openDesk's charts do).
+        default: false
+      service:
+        type: LoadBalancer
+        annotations:
+          # Cilium LB IPAM; pool is 10.10.8.10-150, .10/.13/.15/.16 are taken by
+          # the API and the three Envoy gateways.
+          lbipam.cilium.io/ips: "10.10.8.20"
+      config:
+        # upstream recommendations for openDesk (UDM REST API hits default limits)
+        config-global: |
+          tune.bufsize 65536
+          tune.http.maxhdr 256
+      resources:
+        requests:
+          cpu: 25m
+          memory: 96Mi
+        limits:
+          memory: 512Mi

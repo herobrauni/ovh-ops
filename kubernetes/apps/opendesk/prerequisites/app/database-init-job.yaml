@@ -1,0 +1,89 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/batch/job_v1.json
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: database-init
+  annotations:
+    # re-run by deleting the Job; it is idempotent (ALTER on existing roles)
+    kustomize.toolkit.fluxcd.io/force: enabled
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: database-init
+    spec:
+      restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: init
+          image: docker.io/library/postgres:18-alpine@sha256:0115267ab5a509022df9319c77be365cef335adb71556c75f60f5360ee247e71
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              export PGHOST=postgres18-rw.dbms.svc.cluster.local
+              export PGUSER=postgres
+              export PGPASSWORD="$(cat /secrets/postgres_super_password)"
+              export PGDATABASE=postgres
+
+              # openDesk's charts expect the databases to exist when they start;
+              # CNPG only provides the cluster. Nothing here is destructive:
+              # existing roles get their password reset, existing databases are
+              # left alone.
+              i=0
+              until pg_isready -q -t 3; do
+                i=$((i+1)); [ "$i" -gt 40 ] && { echo "postgres unreachable"; exit 1; }
+                sleep 3
+              done
+
+              for pair in keycloak:keycloak_user keycloak_extensions:keycloak_extensions_user matrix_authentication:matrix_authentication_user nextcloud:nextcloud_user notes:notes_user openproject:openproject_user oxconnector:oxconnector_user matrix:matrix_user nubus_authsession:authsession_user guardianmanagementapi:guardianmanagementapi_user selfservice:selfservice_user xwiki:xwiki_user; do
+                db="${pair%%:*}"
+                user="${pair##*:}"
+                pw="$(cat "/secrets/${user}_password")"
+                if [ "$(psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${user}'")" = "1" ]; then
+                  psql -q -c "ALTER ROLE \"${user}\" WITH LOGIN PASSWORD '${pw}'"
+                else
+                  psql -q -c "CREATE ROLE \"${user}\" LOGIN PASSWORD '${pw}'"
+                fi
+                if [ "$(psql -tAc "SELECT 1 FROM pg_database WHERE datname='${db}'")" != "1" ]; then
+                  # owner, so XWiki can create sub-wiki schemas and OpenProject
+                  # can run its own migrations
+                  psql -q -c "CREATE DATABASE \"${db}\" OWNER \"${user}\""
+                fi
+                echo "ok ${db} / ${user}"
+              done
+          env:
+            - name: XDG_CACHE_HOME
+              value: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: credentials
+              mountPath: /secrets
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: credentials
+          secret:
+            secretName: opendesk-credentials
+        - name: tmp
+          emptyDir: {}

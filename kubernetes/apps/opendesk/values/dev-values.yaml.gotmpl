@@ -1,0 +1,215 @@
+# openDesk CE (v1.20.4) environment override — applied OUT OF BAND by helmfile, not by Flux.
+#
+#   git clone --depth 1 --branch v1.20.4 https://gitlab.opencode.de/bmi/opendesk/deployment/opendesk
+#   cp <this file> opendesk/helmfile/environments/dev/values.yaml.gotmpl
+#   cd opendesk && export MASTER_PASSWORD="$(openssl rand -hex 32)" && helmfile -e dev -n opendesk apply
+#
+# Secrets never live here: every credential is read from `opendesk-credentials`
+# (ExternalSecret) so this file stays safe in a public repo. MASTER_PASSWORD must
+# still be set because helmfile requires it even when nothing derives from it.
+#
+# Every key below exists in openDesk 1.20.4's helmfile/environments/default/*.
+# A minor bump can add components (and therefore new `databases.*` entries) —
+# diff against the new `database.yaml.gotmpl` when upgrading.
+
+global:
+  domain: "od.brauni.dev"
+
+ingress:
+  # openDesk supports haproxy-ingress and (deprecated) ingress-nginx only; the
+  # cluster's Envoy Gateway / Gateway API is not usable until openDesk moves to
+  # Gateway API (planned upstream for end of 2026).
+  controller: "haproxy"
+  ingressClassName: "haproxy"
+
+certificate:
+  issuerRef:
+    # upstream default is `letsencrypt-prod`; this cluster's issuer is
+    # `letsencrypt-production` (kubectl get clusterissuer)
+    name: "letsencrypt-production"
+
+cluster:
+  service:
+    # haproxy-ingress fronts every app; per-app LoadBalancers would each take an
+    # IP out of the 10.10.8.0/24 Cilium pool.
+    type: "ClusterIP"
+  container:
+    engine: "containerd"
+  networking:
+    domain: "cluster.local"
+  persistence:
+    readWriteMany:
+      enabled: false
+
+persistence:
+  storageClassNames:
+    RWO: "ceph-block"
+    # no RWX provisioner in this cluster (ceph-filesystem exists but is not used
+    # elsewhere); openDesk runs without it, only distribution/scaling suffers
+    RWX: ""
+
+apps:
+  # Disabled for the lab: disabled services still cost the most resources.
+  jitsi:
+    enabled: false          # media needs UDP 10000 on a public IP
+  oxAppSuite:
+    enabled: false          # mail is Stalwart's job; OX also forces MariaDB+root
+  postfix:
+    enabled: false
+  dovecot:
+    enabled: false
+  mariadb:
+    enabled: false          # only OX App Suite needed it
+  redis:
+    enabled: false          # replaced by opendesk-dragonfly (below)
+  # Kept bundled:
+  seaweedfs:
+    enabled: true           # see docs/agents/opendesk.md: RGW needs a
+                            # username+secret shaped Secret that Rook's
+                            # ObjectBucketClaim does not produce
+  memcached:
+    enabled: true           # OpenProject + UMS self-service; cluster has none
+
+databases:
+  keycloak:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: keycloak_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: keycloak_user_password
+  keycloakExtension:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: keycloak_extensions_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: keycloak_extensions_user_password
+  matrixAuthenticationService:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: matrix_authentication_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: matrix_authentication_user_password
+  nextcloud:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: nextcloud_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: nextcloud_user_password
+  notes:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: notes_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: notes_user_password
+  openproject:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: openproject_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: openproject_user_password
+  oxConnector:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: oxconnector_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: oxconnector_user_password
+  synapse:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: matrix_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: matrix_user_password
+  umsAuthSession:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: authsession_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: authsession_user_password
+  umsGuardianManagementApi:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: guardianmanagementapi_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: guardianmanagementapi_user_password
+  umsSelfservice:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: selfservice_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: selfservice_user_password
+  xwiki:
+    host: postgres18-rw.dbms.svc.cluster.local
+    port: 5432
+    ssl: "false"
+    username: xwiki_user
+    password:
+      create: false
+      name: opendesk-credentials
+      key: xwiki_user_password
+
+cache:
+  redis:
+    password:
+      create: false
+      name: opendesk-credentials
+      key: redis_password
+  intercomService:
+    host: opendesk-dragonfly.opendesk.svc.cluster.local
+    port: 6379
+    username: "default"
+    tls: false
+    password:
+      create: false
+      name: opendesk-credentials
+      key: redis_password
+  nextcloud:
+    host: opendesk-dragonfly.opendesk.svc.cluster.local
+    port: 6379
+    username: "default"
+    tls: false
+    password:
+      create: false
+      name: opendesk-credentials
+      key: redis_password
+  notes:
+    host: opendesk-dragonfly.opendesk.svc.cluster.local
+    port: 6379
+    username: "default"
+    tls: false
+    password:
+      create: false
+      name: opendesk-credentials
+      key: redis_password
