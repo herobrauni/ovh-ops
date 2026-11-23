@@ -1,7 +1,7 @@
 # Per-app & image notes — agent topic guide
 
 Part of the `AGENTS.md` topic guides (`docs/agents/`). Read when working on idlers,
-niks3, the descheduler, or when giving an s6-overlay image a security context.
+the descheduler, or when giving an s6-overlay image a security context.
 
 ## Image security-context rules
 
@@ -19,11 +19,6 @@ niks3, the descheduler, or when giving an s6-overlay image a security context.
 - The `chrome` controller runs Karakeep's own published browser image (`ghcr.io/karakeep-app/karakeep-chrome`), not a third-party headless-chrome image: those stopped shipping browser updates and Karakeep's docs call them unmaintained. The `release` tag follows the browser build promoted for stable Karakeep; pin a versioned tag + digest here and let Renovate move it.
 - Its entrypoint starts Chrome on an internal debugging port and forwards container port `9222` to it, and supplies `--no-sandbox` itself. So: pass extra flags as `args` only, never set `command`, and never re-add `--remote-debugging-port`/`--remote-debugging-address` — overriding the port fights the forwarding setup, and re-adding `--no-sandbox` is redundant. The sandbox genuinely cannot create its namespaces under this Talos profile, hence the Cilium policy isolating the container.
 - It runs unprivileged on the cluster-standard `1000:1000` with caps dropped (verified: Chrome answers `GET /json/version` on 9222 under that pod security context). Benign log noise to ignore: `Failed to adjust OOM score of renderer … Permission denied` and dbus connect errors.
-
-## `niks3`
-
-- Uses an in-cluster Rook Ceph ObjectBucketClaim plus `NIKS3_ENABLE_READ_PROXY=true` for public cache reads at `niks3.brauni.dev`; its write path still returns presigned URLs for `rook-ceph-rgw-proxmox-s3.rook-ceph.svc:80`, so `niks3 push` clients must run where that endpoint is reachable or the S3 endpoint must be changed/exposed.
-- While using `ghcr.io/mic92/niks3:v1.4.0`, keep the Gateway route's exact-root redirect to `/index.html`; upstream added the same read-proxy-aware root behavior after v1.4.0.
 
 ## Descheduler
 
