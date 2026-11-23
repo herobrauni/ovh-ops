@@ -150,38 +150,47 @@ Watch statistics for Jellyfin (`ghcr.io/fredrikburmester/streamystats-nextjs` +
 7. Image bumps are one-way: migrations are not reversible, so a rollback means restoring the postgres18 backup, not pinning the old tag.
 8. No Authentik `SecurityPolicy` — the app brings its own login (any Jellyfin user can sign in; admins get the full view). Revisit if the per-user stats ever need to be hidden from non-admins.
 
-## WatchSync (HD↔4K watch-state mirroring) — our fork
+## WatchSync (HD↔4K watch-state mirroring)
 
-`WatchSync` mirrors watched state between the HD and 4K libraries. It is **our fork**, not upstream:
-`herobrauni/jellyfin-plugins` → `WatchSync 1.1.0.0`, `targetAbi 12.1.0.0`, built for `net10.0`.
-Upstream (`Atilil/jellyfin-plugins`) is 10.11-only and development is paused, so the 10.11 build dies on
-Jellyfin 12 with `MissingMethodException: 'IUserManager.get_Users()'` — every weekly `WatchSync Full
-Synchronization` failed with status `Failed` from Nov 15 until the fork was installed.
+`WatchSync` mirrors watched state between the HD and 4K libraries. **Upstream is alive again but its builds do
+not load on this server**: the project moved to `Atilil/watchsync` (2.0.1, CI + tests), yet its CI resolves
+floating `Jellyfin.Controller 12.*` to **12.4** — a 12.1 server rejects the DLL with
+`Failed to load assembly … references an incompatible version of one of the shared libraries` and disables the
+plugin. So the install in use is our fork `herobrauni/jellyfin-plugins` → `WatchSync 1.1.0.0`,
+`targetAbi 12.1.0.0`, built against `Jellyfin.Controller 12.1.0`.
 
-1. **The whole fix is one call site**: `Tasks/FullSyncTask.cs` used `_userManager.Users`, which Jellyfin 12
+1. **The original break was one call site**: `Tasks/FullSyncTask.cs` used `_userManager.Users`, which Jellyfin 12
    removed; `_userManager.GetUsers()` replaces it. The events (`PlaybackStopped`, `UserDataSaved`) and the
    matcher were already 12-compatible — a "Found 0 match(es)" line in the log is correct for episodes whose
    series has no 4K twin (38 of 121 HD series have none).
-2. **Rebuild**: tag `watchsync-<version>` in the fork runs `.github/workflows/build-watchsync.yaml`
-   (.NET 10 SDK → publish → `tools/make-meta.py` → `tools/make-package.py` → GitHub release with the zip).
-   Locally: `dotnet publish -c Release -o out`, then the same two helper scripts.
-3. **`meta.json` must be JSON.** JPRM's `build.yaml` is YAML; copying it verbatim makes Jellyfin reject the
+2. **Check the ABI before blaming Jellyfin.** A plugin's referenced server assemblies must be ≤ the running
+   server: read them out of the DLL with a five-line metadata reader (`PEReader` + `MetadataReader`,
+   `md.GetAssemblyReference(h)` → `MediaBrowser.Controller <ver>`). A 12.4 reference on a 12.1 server fails the
+   load; an older reference (10.11) still binds. `/Plugins` then answers `NotSupported` for that GUID.
+3. **Do not enable the upstream repository on a 12.1 server.** The `Update Plugins` task auto-updated JellyTag
+   from 2.0.2.0 to a 12.4-built 3.3.1.0 and disabled it the same way. Current list: `Jellyfin Stable` + our fork
+   only, and `autoUpdate: false` is set in both installed `meta.json`. Re-add `Atilil/jellyfin-plugins` only once
+   their build targets 12.1.
+4. **`meta.json` must be JSON.** JPRM's `build.yaml` is YAML; copying it verbatim makes Jellyfin reject the
    plugin. `tools/make-meta.py` generates the JSON from it, and the package ships only the plugin assembly
    (the server provides `Jellyfin.*` and its transitive deps).
    **Set `<Version>` in the csproj too** — without it the assembly keeps `1.0.0.0` while `meta.json` says
    `1.1.0.0`, `/Plugins` reports 1.0.0.0, and the plugin manager keeps offering the same update. Deleting the
    plugin folder to force a reinstall also breaks `GET /Packages` until the folder exists again
    (`DirectoryNotFoundException: …/WatchSync_<ver>/meta.json`).
-4. **The plugin repository list is server-side state, not GitOps.** Jellyfin's `POST /Repositories` now carries
-   `herobrauni (WatchSync fork)` → `raw.githubusercontent.com/herobrauni/jellyfin-plugins/main/manifest.json`
-   (replacing Atilili's manifest, which only offers the incompatible 1.0.0.0). A rebuild from a fresh PVC needs
-   that repository re-added and the plugin installed again — the DLLs live on the `jellyfin` claim like any
-   other installed plugin.
-5. Verified on 12.1: full sync `1897 groups analyzed, 1897 pairs synced` (424 movie + ~1470 episode pairs), and
-   a manual played/unplayed toggle propagates to the twin in the other library in both directions.
-6. **Stale-read trap**: right after a sync writes the twin, `/Users/{id}/Items/{itemId}` can still answer the old
+5. **Installing by hand beats fighting the package manager.** The installer tracks the version it last installed;
+   if that folder is gone, every `GET /Packages` call 500s. Deterministic path: unpack the release zip into
+   `/config/plugins/<Name>_<version>/` (DLL + a JSON `meta.json`; JellyTag needs the same, its zip ships none)
+   and restart — the startup scan reconciles the folders.
+6. **The plugin repository list is server-side state, not GitOps.** `POST /Repositories` holds it; a rebuild from
+   a fresh PVC needs the fork's manifest re-added and the plugin re-installed — the DLLs live on the `jellyfin`
+   claim like any other installed plugin.
+7. Verified on 12.1 (fork 1.1.0.0): full sync `1897 groups analyzed, 1897 pairs synced` (424 movie + ~1470
+   episode pairs), and a manual played/unplayed toggle propagates to the twin in the other library in both
+   directions.
+8. **Stale-read trap**: right after a sync writes the twin, `/Users/{id}/Items/{itemId}` can still answer the old
    `UserData`. Read `/Users/{id}/Items?Ids=<a>,<b>&Fields=UserData` (or the DB) instead of the single-item route.
-7. Native alternative, tested and rejected: `POST /Videos/MergeVersions?ids=a,b` links two items as versions
+9. Native alternative, tested and rejected: `POST /Videos/MergeVersions?ids=a,b` links two items as versions
    (shared `PresentationUniqueKey` = one card, watched flag propagates, survives rescans) but needs one merge
    call per pair (~1891) and leaves a script to re-run after every library change — that is the custom-solution
    maintenance burden we chose against.
