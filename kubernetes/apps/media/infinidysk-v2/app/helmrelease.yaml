@@ -90,12 +90,14 @@ spec:
               # Health checks on, and let 2.x ask the Arr for a replacement. There
               # is no PAR2 gap repair in 2.x: `auto_repair` = recheck + Arr search,
               # which is why the re-grab rate is a Phase C metric.
-              # `unowned_action: action_needed` instead of 2.x's `delete` default —
-              # files no Arr owns (manual NZBs) must never be deleted silently.
+              # `unowned_action: delete` (2.x's default) instead of `action_needed`:
+              # broken files no Arr owns (manual NZBs) are cleaned up rather than
+              # queued for manual review. Reverting to `action_needed` is a one-line
+              # change here if that turns out to delete wanted data.
               INFINIDYSK__HEALTH__ENABLED: "true"
               INFINIDYSK__HEALTH__AUTO_REPAIR: "true"
               INFINIDYSK__HEALTH__DEGRADED_TOLERANCE: "true"
-              INFINIDYSK__HEALTH__UNOWNED_ACTION: action_needed
+              INFINIDYSK__HEALTH__UNOWNED_ACTION: delete
               # 1.x sampled each file's head and tail per category
               # (`article-existence-check-mode: sampled`); 2.x has one global
               # percentage, 5 % by default and applied to imports and checks.
