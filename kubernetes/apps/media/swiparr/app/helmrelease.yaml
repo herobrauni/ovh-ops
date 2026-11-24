@@ -3,7 +3,7 @@
 apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
-  name: &app messer-swipe
+  name: &app swiparr
 spec:
   chartRef:
     kind: OCIRepository
@@ -11,7 +11,7 @@ spec:
   interval: 30m
   values:
     controllers:
-      messer-swipe:
+      swiparr:
         annotations:
           reloader.stakater.com/auto: "true"
         pod:
@@ -96,7 +96,7 @@ spec:
       # SQLite database (swiparr.db) plus whatever the app caches under
       # /app/data. kopiur snapshots this claim every 6h.
       data:
-        existingClaim: messer-swipe
+        existingClaim: swiparr
         globalMounts:
           - path: /app/data
       # Read-only root filesystem: Next.js writes image-optimizer output here.
@@ -112,7 +112,7 @@ spec:
           - path: /tmp
     service:
       app:
-        controller: messer-swipe
+        controller: swiparr
         ports:
           http:
             port: *port
@@ -122,7 +122,7 @@ spec:
           gethomepage.dev/enabled: "true"
           gethomepage.dev/group: Media
           gethomepage.dev/name: Messer Swipe
-          gethomepage.dev/pod-selector: app.kubernetes.io/name=messer-swipe
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=swiparr
           gethomepage.dev/icon: mdi-swipe
         hostnames:
           - swiparr.480p.com

@@ -3,16 +3,16 @@
 apiVersion: externaldns.k8s.io/v1alpha1
 kind: DNSEndpoint
 metadata:
-  name: messer-swipe
+  name: swiparr
   labels:
     dns.scope: all
   annotations:
     dns.scope: all
 spec:
   endpoints:
-    # Hostname is the product's own name (swiparr), not the repository/app
-    # name — hence a hand-written record instead of `components/dnsendpoint`,
-    # which derives `<APP>.<DOMAIN>`.
+    # Upstream repository is messer-swipe; the app, claim and hostname all use
+    # the product name instead. Explicit record (same shape as jellyfin/seerr)
+    # rather than `components/dnsendpoint`, which derives `<APP>.<DOMAIN>`.
     - dnsName: swiparr.480p.com
       recordType: CNAME
       targets:
