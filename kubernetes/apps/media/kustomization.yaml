@@ -33,9 +33,12 @@ resources:
   - ./infinidysk-sync-helper/ks.yaml
   - ./clonarr/ks.yaml
   - ./jellyfin/ks.yaml
-  # Copy of prod (config volume + database) to rehearse Jellyfin upgrades —
-  # not exposed, no media mounts, no backups. docs/agents/media.md §jellyfin-staging
-  - ./jellyfin-staging/ks.yaml
+  # Jellyfin upgrade rehearsal copy (own config volume + database
+  # `jellyfin_staging`). TORN DOWN 2026-11-24 after prod moved to 12.4 — the
+  # manifests stay for the next rehearsal, see docs/agents/media.md
+  # §jellyfin-staging for the data copy and the recreation steps. The database
+  # and role are NOT Flux-owned: recreate them before re-enabling this line.
+  # - ./jellyfin-staging/ks.yaml
   - ./silo/ks.yaml
   - ./media-debug/ks.yaml
   - ./prowlarr/ks.yaml
