@@ -61,3 +61,4 @@ spec:
     - apiVersion: external-secrets.io/v1
       kind: ExternalSecret
       name: kopiur-repository
+      namespace: kopiur-system
