@@ -45,4 +45,13 @@ spec:
     kind: GitRepository
     name: flux-system
     namespace: flux-system
-  wait: true
+  # Gate on the database itself, not on everything the path applies. `wait:
+  # true` also waited for the kopiur SnapshotPolicy CRs, whose Ready condition
+  # tracks the *external* backup repository — when that backend stalls
+  # (2026-11-24, hostypanel sftp) every app in the cluster stops reconciling.
+  # Backup health belongs on the CRs and an alert, not on the deploy path.
+  healthChecks:
+    - apiVersion: postgresql.cnpg.io/v1
+      kind: Cluster
+      name: postgres18
+      namespace: dbms
