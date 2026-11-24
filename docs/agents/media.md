@@ -152,14 +152,14 @@ Watch statistics for Jellyfin (`ghcr.io/fredrikburmester/streamystats-nextjs` +
 7. Image bumps are one-way: migrations are not reversible, so a rollback means restoring the postgres18 backup, not pinning the old tag.
 8. No Authentik `SecurityPolicy` — the app brings its own login (any Jellyfin user can sign in; admins get the full view). Revisit if the per-user stats ever need to be hidden from non-admins.
 
-## Messer Swipe (`media/messer-swipe`)
+## Messer Swipe / Swiparr (`media/swiparr`)
 
 Swipe-to-match "what should we watch" UI for the household
 (`ghcr.io/jakobbjelver/messer-swipe`, Next.js 16 standalone, digest-pinned). Users sign in with
 their **Jellyfin** account — the app has no user store of its own — and matches can be written back
 to the Jellyfin favorites/watchlist.
 
-1. State is a single SQLite file, `/app/data/swiparr.db`, on the `messer-swipe` claim
+1. State is a single SQLite file, `/app/data/swiparr.db`, on the `swiparr` claim
    (kopiur `SnapshotPolicy`/`SnapshotSchedule`, 6-hourly). There is **no secret in Infisical**:
    `AUTH_SECRET` (session-cookie signing) is generated on first boot and stored *in that DB*, so a
    kopiur restore brings sessions back with the data. Losing the volume only costs the secret.
