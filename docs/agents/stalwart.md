@@ -22,7 +22,7 @@ and coordinator, `postgres18` as the data store, and Ceph RGW (S3) for message b
 ```
 
 - **One public IPv4 per PVE host already exists** (`vmbr0` on each), and each worker already egresses
-  through its *own* host (`w-ovhsbg1 -> PVE1`, `w-ovhsbg2 -> PVE2`, `w-ovhsbg3 -> PVE3`, verified with
+  through its _own_ host (`w-ovhsbg1 -> PVE1`, `w-ovhsbg2 -> PVE2`, `w-ovhsbg3 -> PVE3`, verified with
   pinned probe pods). That symmetry is what 1:1 DNAT needs. Never point a worker's default route at
   another host's gateway.
 - `externalTrafficPolicy: Local` on `stalwart-mail` is load-bearing: the public IP that accepted a
@@ -52,6 +52,9 @@ Choices and their costs:
   the store has to be beyond reproach.
 - **Dragonfly** reuses the operator and component the cluster already runs for five other apps
   (`${APP}-dragonfly`, snapshot PVC, PodMonitor, CiliumNetworkPolicy). Zero new moving parts.
+  Runs as a single replica because the shared component snapshot PVC is `ReadWriteOnce` (`ceph-block`);
+  multiple replicas would hit Multi-Attach errors on the volume across nodes. With 5-minute snapshots,
+  recovery on pod restart takes seconds.
 
 Known Dragonfly gaps that could bite (`--default_lua_flags=allow-undeclared-keys` is already set by the
 component, which removes the most common one): no `MODULE LOAD`, no `FUNCTION`/`FCALL`, `CLIENT TRACKING`
@@ -68,8 +71,8 @@ nodes after a settings change.
 3. Change something visible (e.g. a mailbox quota) against node A, re-read via node B - a stale cache
    shows up as the old value persisting.
 4. Delete `stalwart-0`, confirm `stalwart-1` keeps serving and the queue drains.
-5. `kubectl -n stalwart delete pod stalwart-dragonfly-0`, confirm the operator promotes the replica and
-   the Stalwart nodes reattach (a brief store outage; expect log noise, not lost mail).
+5. `kubectl -n stalwart rollout restart deploy/stalwart-dragonfly`, confirm the single pod restarts,
+   loads snapshot from PVC, and the Stalwart nodes reattach (a brief store outage; expect log noise, not lost mail).
 
 ## Traps in this deployment
 
@@ -91,9 +94,9 @@ nodes after a settings change.
 
 ## Secrets (all under Infisical `/stalwart/`)
 
-| Key | What |
-| --- | --- |
-| `STALWART_RECOVERY_ADMIN_USER` / `_PASSWORD` | bootstrap administrator (`admin`) - delete after first login |
+| Key                                                        | What                                                                                                             |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `STALWART_RECOVERY_ADMIN_USER` / `_PASSWORD`               | bootstrap administrator (`admin`) - delete after first login                                                     |
 | `/cloudnative-pg/stalwart_postgres_username` / `_password` | DB role, already created: username must be `stalwart` because it is hardcoded as `authUsername` in `config.json` |
 
 All four exist in Infisical (`prod`, project `ovh-ops-u1ua`). The database and role themselves are created
@@ -115,21 +118,23 @@ rejected while the in-memory store is still the local default.
 1. Secrets already exist (see table). If they are rotated, the ExternalSecrets pick the change up within
    their 12h refresh; a missing key leaves them in `SecretSyncedError` and nothing starts.
 2. Let Flux apply. `stalwart-0` starts (`replicas: 1`) with `STALWART_RECOVERY_ADMIN` set; confirm
-   `/healthz/ready` is 200 and the two `stalwart-dragonfly` pods are Running.
+   `/healthz/ready` is 200 and the `stalwart-dragonfly` pod is Running.
 3. `kubectl -n stalwart port-forward svc/stalwart-mgmt 8080:8080`, sign in as the recovery admin.
 4. Create a permanent administrator account + API key and sign in with it.
 5. Set, in this exact order, verifying each applies:
-   - **Blob Store**: S3, region `us-east-1`, bucket `${STALWART_S3_BUCKET}`, endpoint `${STALWART_S3_URL}`,
-     access/secret via `EnvironmentVariable` refs `STALWART_S3_ACCESS_KEY` / `STALWART_S3_SECRET_KEY`.
-   - **Search Store**: the shared Postgres data store.
-   - **In-Memory Store**: Redis variant, `redis://stalwart-dragonfly.stalwart.svc.cluster.local:6379`
-     (that is `STALWART_REDIS_URL`), no password.
-   - **Coordinator**: `Default` (reuses the in-memory store connection).
+    - **Blob Store**: S3, region `us-east-1`, bucket `${STALWART_S3_BUCKET}`, endpoint `${STALWART_S3_URL}`,
+      access/secret via `EnvironmentVariable` refs `STALWART_S3_ACCESS_KEY` / `STALWART_S3_SECRET_KEY`.
+    - **Search Store**: the shared Postgres data store.
+    - **In-Memory Store**: Redis variant, `redis://stalwart-dragonfly.stalwart.svc.cluster.local:6379`
+      (that is `STALWART_REDIS_URL`), no password.
+    - **Coordinator**: `Default` (reuses the in-memory store connection).
 6. Restart `stalwart-0`, confirm it is still ready and that logs show Postgres + S3 + the store with no
-   fallback to local stores. Then drop `STALWART_RECOVERY_ADMIN` from the ExternalSecret **and** flip
-   `controllers.stalwart.replicas` to `3` in the same change.
-7. Verify the three pods are on three distinct nodes (`kubectl -n stalwart get pods -o wide`), all three
-   appear under *Settings > Cluster*, and run the cross-node checks above.
+   fallback to local stores. Then drop `STALWART_RECOVERY_ADMIN` from Infisical. Since `stalwart-secrets`
+   only carried this bootstrap credential, remove `kubernetes/apps/stalwart/stalwart/app/externalsecret.yaml`
+   (and its `envFrom` in `helmrelease.yaml` and reference in `kustomization.yaml`) so no empty Secret
+   remains. Flip `controllers.stalwart.replicas` to `3` in the same change.
+7. Verify the three pods are on three distinct nodes (`kubectl -n stalwart get pods -o wide`, enforced by
+   `topologySpreadConstraints`), all three appear under _Settings > Cluster_, and run the cross-node checks above.
 
 ## Proxmox side (not in this repo)
 
@@ -151,14 +156,13 @@ Cloudflare: `external-dns` runs with `--cloudflare-proxied` and cannot emit unpr
 
 ## Known gaps
 
-- **No database backup.** `components/cnpg/pgdump.yaml` (pg_dumpall + kopia) exists but is referenced by
-  no app, and the component itself only ships the two credential ExternalSecrets - so Stalwart has no
-  dump pipeline here. The data store holds accounts, config and metadata; wire the backup (copy the
-  pattern into an app-local manifest rather than adding it to the shared component, which would change
-  every consumer) before real mail.
+- **Blob storage backups.** The PostgreSQL data store is already backed up cluster-wide via CNPG continuous
+  WAL archiving/Barman scheduled backups and the nightly `postgres18-pgdumpall` CronJob in `dbms` (into Kopiur).
+  However, the Ceph RGW S3 bucket (`stalwart-blobs`) holds mail bodies and attachments and currently lacks an
+  automated off-cluster backup. Wire an S3 backup/replication pipeline before real mail lands.
 - Dragonfly is not a supported store (see above). The cluster is a lab until the checks in
   "Verifying the store actually works across nodes" pass repeatedly.
-- The store is a master/replica pair, not a quorum: promotion is a short outage, and a full store loss
+- The store is a single pod with PVC snapshots, not a quorum: restart is a brief outage, and a full store loss
   means empty locks/counters, which is recoverable-but-visible (retries, re-greylisting).
 - No PDB (3 pods on 3 nodes leaves no slack during a worker drain), no antivirus (Stalwart has none
   built in - Rspamd/ClamAV is a separate decision).

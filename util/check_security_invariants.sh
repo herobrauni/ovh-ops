@@ -48,10 +48,6 @@ declare -A fuse_allowlist=(
 
 declare -A host_network_allowlist=(
     [kubernetes/apps/rook-ceph/ceph-csi-drivers/app/helmrelease.yaml]=1
-    # Stalwart Keep: its `members` are IP literals, so each member must own its
-    # node address. Upstream offers hostNetwork or a CNI with static pod IPs;
-    # Cilium cannot do the latter. See docs/agents/stalwart.md.
-    [kubernetes/apps/stalwart/keep/app/statefulset.yaml]=1
 )
 
 mapfile -d '' yaml_files < <(find kubernetes -type f -name '*.yaml' -print0)

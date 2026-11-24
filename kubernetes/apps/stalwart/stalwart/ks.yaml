@@ -12,9 +12,8 @@ spec:
   components:
     # Shared postgres18 cluster: ${APP}-initdb-secret bootstraps DB+role and
     # ${APP}-pguser-secret carries the credentials the server needs.
-    # NOTE: the component's pgdump/VolSync objects (components/cnpg/pgdump.yaml)
-    # are referenced by no app today, so this PR ships no database backup for
-    # Stalwart. Wire one before real mail lands - see docs/agents/stalwart.md.
+    # Note: postgres18 is backed up cluster-wide via continuous WAL archiving/
+    # Barman backups and the nightly postgres18-pgdumpall CronJob in dbms.
     - ../../../../components/cnpg
     # In-memory store + coordinator: a Redis-protocol instance from the operator
     # the cluster already runs (${APP}-dragonfly, its snapshot PVC, PodMonitor
@@ -35,12 +34,11 @@ spec:
   postBuild:
     substitute:
       APP: *app
-      # 2 gives the operator a master/replica pair with automatic promotion and a
-      # Service that selects whichever pod currently carries `role: master`. Not
-      # a quorum: during promotion the store is briefly unavailable, and Stalwart
-      # responds to a gap in the event stream by discarding caches and
-      # re-checking its queues, so the failure mode is delay rather than loss.
-      DRAGONFLY_REPLICAS: "2"
+      # 1 replica: components/dragonfly uses a single ReadWriteOnce ceph-block
+      # snapshot PVC. A multi-replica Dragonfly would hit Multi-Attach errors on
+      # the shared RWO volume across nodes. With 5-minute snapshots, recovery on
+      # restart is near-instant.
+      DRAGONFLY_REPLICAS: "1"
       DRAGONFLY_SNAPSHOT_CAPACITY: 256Mi
   prune: true
   sourceRef:

@@ -20,6 +20,14 @@ spec:
         replicas: 1
         annotations:
           reloader.stakater.com/auto: "true"
+        pod:
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: *app
         initContainers:
           # components/cnpg only ships the credential ExternalSecrets; creating
           # the database and role is the consuming app's job. Without this the
@@ -31,6 +39,11 @@ spec:
             envFrom:
               - secretRef:
                   name: stalwart-initdb-secret
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop: [ALL]
         containers:
           app:
             image:
@@ -152,6 +165,7 @@ spec:
             nodePort: 30419
           https:
             port: 8443
+            targetPort: 443
             nodePort: 30443
       mgmt:
         controller: stalwart
