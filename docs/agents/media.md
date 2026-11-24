@@ -152,48 +152,44 @@ Watch statistics for Jellyfin (`ghcr.io/fredrikburmester/streamystats-nextjs` +
 
 ## WatchSync (HD↔4K watch-state mirroring)
 
-`WatchSync` mirrors watched state between the HD and 4K libraries. **Upstream is alive again but its builds do
-not load on this server**: the project moved to `Atilil/watchsync` (2.0.1, CI + tests), yet its CI resolves
-floating `Jellyfin.Controller 12.*` to **12.4** — a 12.1 server rejects the DLL with
-`Failed to load assembly … references an incompatible version of one of the shared libraries` and disables the
-plugin. So the install in use is our fork `herobrauni/jellyfin-plugins` → `WatchSync 1.1.0.0`,
-`targetAbi 12.1.0.0`, built against `Jellyfin.Controller 12.1.0`.
+`WatchSync` keeps watched state, resume position, play count and last-played date in sync between the HD and
+4K copies of a title, matched by identity (TMDB/IMDb, series TVDB/IMDb + season/episode), never by path.
+The code is **upstream 2.0.1** (`Atilil/watchsync`), but the running build is ours: upstream compiles against
+`Jellyfin.Controller 12.4` and this server is **12.1**, which refuses to load a plugin referencing newer server
+assemblies (`Failed to load assembly … references an incompatible version of one of the shared libraries`,
+`/Plugins` → `NotSupported`).
 
-1. **The original break was one call site**: `Tasks/FullSyncTask.cs` used `_userManager.Users`, which Jellyfin 12
-   removed; `_userManager.GetUsers()` replaces it. The events (`PlaybackStopped`, `UserDataSaved`) and the
-   matcher were already 12-compatible — a "Found 0 match(es)" line in the log is correct for episodes whose
-   series has no 4K twin (38 of 121 HD series have none).
-2. **Check the ABI before blaming Jellyfin.** A plugin's referenced server assemblies must be ≤ the running
-   server: read them out of the DLL with a five-line metadata reader (`PEReader` + `MetadataReader`,
-   `md.GetAssemblyReference(h)` → `MediaBrowser.Controller <ver>`). A 12.4 reference on a 12.1 server fails the
-   load; an older reference (10.11) still binds. `/Plugins` then answers `NotSupported` for that GUID.
-3. **Do not enable the upstream repository on a 12.1 server.** The `Update Plugins` task auto-updated JellyTag
-   from 2.0.2.0 to a 12.4-built 3.3.1.0 and disabled it the same way. Current list: `Jellyfin Stable` + our fork
-   only, and `autoUpdate: false` is set in both installed `meta.json`. Re-add `Atilil/jellyfin-plugins` only once
-   their build targets 12.1.
-4. **`meta.json` must be JSON.** JPRM's `build.yaml` is YAML; copying it verbatim makes Jellyfin reject the
-   plugin. `tools/make-meta.py` generates the JSON from it, and the package ships only the plugin assembly
-   (the server provides `Jellyfin.*` and its transitive deps).
-   **Set `<Version>` in the csproj too** — without it the assembly keeps `1.0.0.0` while `meta.json` says
-   `1.1.0.0`, `/Plugins` reports 1.0.0.0, and the plugin manager keeps offering the same update. Deleting the
-   plugin folder to force a reinstall also breaks `GET /Packages` until the folder exists again
-   (`DirectoryNotFoundException: …/WatchSync_<ver>/meta.json`).
-5. **Installing by hand beats fighting the package manager.** The installer tracks the version it last installed;
-   if that folder is gone, every `GET /Packages` call 500s. Deterministic path: unpack the release zip into
-   `/config/plugins/<Name>_<version>/` (DLL + a JSON `meta.json`; JellyTag needs the same, its zip ships none)
-   and restart — the startup scan reconciles the folders.
-6. **The plugin repository list is server-side state, not GitOps.** `POST /Repositories` holds it; a rebuild from
-   a fresh PVC needs the fork's manifest re-added and the plugin re-installed — the DLLs live on the `jellyfin`
-   claim like any other installed plugin.
-7. Verified on 12.1 (fork 1.1.0.0): full sync `1897 groups analyzed, 1897 pairs synced` (424 movie + ~1470
-   episode pairs), and a manual played/unplayed toggle propagates to the twin in the other library in both
-   directions.
+1. **We cannot move to 12.4 to satisfy it.** Our Jellyfin runs the `JPVenson/Jellyfin.Pgsql` fork (upstream
+   ships SQLite only), and that fork publishes **12.1-1 and 12.1-2 and nothing newer** (repo last pushed
+   2026-09-29). So the plugin has to come down to 12.1, not the server up to 12.4.
+2. **The rebuild is a package pin, no code change.** Fork `herobrauni/watchsync`, branch `jellyfin-12.1` from tag
+   `v2.0.1`: set `Jellyfin.Controller`/`Model`/`Database.Implementations` to `12.1.0`, add
+   `<Version>2.1.0.0</Version>`, and allow a newer SDK patch (`global.json` → `rollForward: latestPatch`).
+   `dotnet build -c Release` then succeeds with 0 warnings; verify by reading the assembly references back
+   (`MediaBrowser.Controller 12.1.0.0`, not 12.4). Release `v2.1.0` carries `watchsync-2.1.0.0.zip`.
+3. **`targetAbi` in upstream's `build.yaml` lies** — it says `12.0.0.0` while the packages are 12.4. Read the
+   assembly references, not the manifest, when a load fails.
+4. **Jellyfin reports the assembly version, not `meta.json`.** Upstream takes the version from the release tag
+   only, so the DLL kept `1.0.0.0` while `meta.json` said `2.1.0.0` → `/Plugins` showed 1.0.0.0 and the update
+   was offered again every day. `<Version>` in the csproj fixes it; keep it in step with the meta.
+5. **Plugin repository** (`POST /Repositories`, server-side state, not GitOps): `Jellyfin Stable` +
+   `herobrauni (WatchSync 12.1)` → `raw.githubusercontent.com/herobrauni/watchsync/jellyfin-12.1/manifest.json`.
+   The Atilil repository stays **out** — it offers only 12.4-built packages, and the `Update Plugins` task once
+   auto-updated JellyTag 2.0.2.0 to a 12.4-built 3.3.1.0 and disabled it. `autoUpdate: false` is set in the
+   installed metas as a second guard.
+6. **Same-version swaps: copy files, don't fight the installer.** After replacing the asset the installer still
+   tracks the old checksum; unpacking the zip into `/config/plugins/WatchSync_<ver>/` (DLL + JSON `meta.json` +
+   png) and restarting is deterministic. The startup scan reconciles the folders.
+7. Verified on 12.1 (2.1.0.0): full sync `Completed` over 1897 pairs (424 movie + ~1470 episode), toggling a
+   copy's played state propagates to the twin in the other library in both directions, and the 2.0.x code no
+   longer exports manual toggles to Trakt (it scrobbles real playback only).
 8. **Stale-read trap**: right after a sync writes the twin, `/Users/{id}/Items/{itemId}` can still answer the old
-   `UserData`. Read `/Users/{id}/Items?Ids=<a>,<b>&Fields=UserData` (or the DB) instead of the single-item route.
-9. Native alternative, tested and rejected: `POST /Videos/MergeVersions?ids=a,b` links two items as versions
-   (shared `PresentationUniqueKey` = one card, watched flag propagates, survives rescans) but needs one merge
-   call per pair (~1891) and leaves a script to re-run after every library change — that is the custom-solution
-   maintenance burden we chose against.
+   `UserData`. Read `/Users/{id}/Items?Ids=<a>,<b>&Fields=UserData` (or the DB).
+9. The old `herobrauni/jellyfin-plugins` fork (WatchSync 1.1.0.0, the original `Users` → `GetUsers()` port) is
+   the fallback if the 12.1 rebuild ever misbehaves; it is not in Jellyfin's repository list any more.
+10. Native alternative, tested and rejected: `POST /Videos/MergeVersions?ids=a,b` links two items as versions
+    (shared `PresentationUniqueKey` = one card, watched flag propagates, survives rescans) but needs one merge
+    call per pair (~1891) and a re-run after every library change.
 
 ## Plex
 
