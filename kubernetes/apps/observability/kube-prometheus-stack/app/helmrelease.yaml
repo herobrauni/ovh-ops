@@ -79,6 +79,37 @@ spec:
               - source_labels:
                   - node
                 target_label: instance
+          # smartctl_exporter runs as a systemd unit on each PVE host (binary +
+          # unit are out-of-band, see docs/agents/proxmox-hosts.md); the PVE
+          # firewall only opens 9633 to 10.10.8.0/24. Feeds the smartctl-exporter
+          # Grafana dashboard (kubernetes/apps/observability/proxmox-exporter).
+          - job_name: proxmox-smartctl
+            scrape_interval: 60s
+            scrape_timeout: 30s
+            metrics_path: /metrics
+            static_configs:
+              - targets:
+                  - 54.38.92.92:9633
+                labels:
+                  node: ovhsbg1
+                  role: proxmox
+                  site: riki
+              - targets:
+                  - 54.38.94.158:9633
+                labels:
+                  node: ovhsbg2
+                  role: proxmox
+                  site: riki
+              - targets:
+                  - 54.38.94.150:9633
+                labels:
+                  node: ovhsbg3
+                  role: proxmox
+                  site: riki
+            relabel_configs:
+              - source_labels:
+                  - node
+                target_label: instance
         retention: 14d
         retentionSize: 50GB
         resources:
