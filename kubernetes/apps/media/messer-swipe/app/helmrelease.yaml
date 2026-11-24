@@ -1,0 +1,132 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app messer-swipe
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  interval: 30m
+  values:
+    controllers:
+      messer-swipe:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        pod:
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            fsGroup: 1000
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile:
+              type: RuntimeDefault
+        containers:
+          app:
+            image:
+              repository: ghcr.io/jakobbjelver/messer-swipe
+              # v2.6.0. SQLite schema: src/db/migrate.js runs on every start
+              # (before the server listens), so the startup probe covers it.
+              tag: v2.6.0@sha256:556e3e8d0c7eb5afbc763c23f541ffae34bad2320167a2717647a21101062162
+            env:
+              HOSTNAME: 0.0.0.0
+              PORT: &port 4321
+              # Users sign in with their Jellyfin account; the app's own sessions
+              # live in the SQLite file below. AUTH_SECRET is generated on first
+              # boot and stored in that DB, so it survives restarts/restores.
+              APP_PUBLIC_URL: https://messer-swipe.480p.com
+              USE_SECURE_COOKIES: "true"
+              PROVIDER: jellyfin
+              # Cluster-internal Service of media/jellyfin (8096); the public URL
+              # is what the browser is told to deep-link to.
+              JELLYFIN_URL: http://jellyfin.media.svc.cluster.local:8096
+              JELLYFIN_PUBLIC_URL: https://jellyfin.480p.com
+              # Library queries are made against JELLYFIN_URL from inside the
+              # pod, which is a private/RFC1918 address — that guard only gates
+              # user-supplied (BYOP) URLs, but it must stay off regardless.
+              ALLOW_PRIVATE_PROVIDER_URLS: "true"
+              DATABASE_URL: file:/app/data/swiparr.db
+              HOME: /tmp
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: *port
+                  periodSeconds: 30
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: *port
+                  periodSeconds: 10
+                  timeoutSeconds: 5
+                  failureThreshold: 5
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  httpGet:
+                    path: /api/health
+                    port: *port
+                  # node src/db/migrate.js + Next standalone boot.
+                  failureThreshold: 30
+                  periodSeconds: 10
+            resources:
+              requests:
+                cpu: 25m
+                memory: 256Mi
+              limits:
+                memory: 1Gi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    persistence:
+      # SQLite database (swiparr.db) plus whatever the app caches under
+      # /app/data. kopiur snapshots this claim every 6h.
+      data:
+        existingClaim: messer-swipe
+        globalMounts:
+          - path: /app/data
+      # Read-only root filesystem: Next.js writes image-optimizer output here.
+      next-cache:
+        type: emptyDir
+        sizeLimit: 1Gi
+        globalMounts:
+          - path: /app/.next/cache
+      tmp:
+        type: emptyDir
+        sizeLimit: 512Mi
+        globalMounts:
+          - path: /tmp
+    service:
+      app:
+        controller: messer-swipe
+        ports:
+          http:
+            port: *port
+    route:
+      app:
+        annotations:
+          gethomepage.dev/enabled: "true"
+          gethomepage.dev/group: Media
+          gethomepage.dev/name: Messer Swipe
+          gethomepage.dev/pod-selector: app.kubernetes.io/name=messer-swipe
+          gethomepage.dev/icon: mdi-swipe
+        hostnames:
+          - messer-swipe.480p.com
+        parentRefs:
+          - name: envoy-480p-com-public
+            namespace: network
+            sectionName: https
