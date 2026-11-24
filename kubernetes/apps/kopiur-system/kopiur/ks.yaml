@@ -50,4 +50,14 @@ spec:
     substituteFrom:
       - kind: Secret
         name: kopiur-sftp-config
-  wait: true
+  # NOT `wait: true`: that gated every consumer app on the *external* SFTP
+  # backend. When hostypanel's sftp stalls (2026-11-24: TCP accepts, banner
+  # never arrives) the ClusterRepository goes Degraded, this Kustomization
+  # never becomes Ready, and ~20 app Kustomizations stop reconciling — a
+  # data-plane outage taking the control plane with it. Gate on the
+  # credentials instead; backup jobs keep retrying on their own and the repo
+  # status is visible on the ClusterRepository.
+  healthChecks:
+    - apiVersion: external-secrets.io/v1
+      kind: ExternalSecret
+      name: kopiur-repository
