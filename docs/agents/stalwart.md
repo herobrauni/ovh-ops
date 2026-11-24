@@ -5,7 +5,7 @@ Part of the `AGENTS.md` topic guides (`docs/agents/`). Read when touching
 
 Stalwart v1 is a single binary with all its state in shared stores. This namespace runs it as an
 active-active cluster: three `stalwart` pods (one per worker), a Dragonfly instance as in-memory store
-and coordinator, `postgres18` as the data store, and Ceph RGW (S3) for message blobs.
+and coordinator, and `postgres18` as the data, blob, and search store.
 
 ## Topology and why it looks like this
 
@@ -18,7 +18,7 @@ and coordinator, `postgres18` as the data store, and Ceph RGW (S3) for message b
         v                        v                        v
    stalwart-0                stalwart-1                stalwart-2
         \________________________|________________________/
-                    Postgres + RGW S3 + Dragonfly
+                    Postgres + Dragonfly
 ```
 
 - **One public IPv4 per PVE host already exists** (`vmbr0` on each), and each worker already egresses
@@ -76,12 +76,9 @@ nodes after a settings change.
 
 ## Traps in this deployment
 
-- **`replicas: 1` is deliberate** (`helmrelease.yaml`). Raising replicas alone does not create a cluster:
+- **`replicas: 1` during bootstrap** (`helmrelease.yaml`). Raising replicas alone does not create a cluster:
   three pods would share the database but have no coordinator, so caches would never invalidate across
   nodes. The bootstrap sequence below is what turns one server into a cluster.
-- **`STALWART_S3_URL` must sort after `STALWART_S3_HOST`/`_PORT`.** app-template emits env variables
-  alphabetically and `$(VAR)` references only resolve to variables defined earlier in the list. That is
-  why the composed endpoint is named `*_URL` and not `*_ENDPOINT`.
 - **`capabilities.drop: [ALL]` + `add: [NET_BIND_SERVICE]`** is mandatory, not cargo cult: the image
   carries `setcap cap_net_bind_service` on the binary, and exec of a file-capability binary needs that
   capability in the bounding set even when every listener is high-numbered. Dropping it yields
@@ -96,19 +93,16 @@ nodes after a settings change.
 
 | Key                                                        | What                                                                                                             |
 | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `STALWART_RECOVERY_ADMIN_USER` / `_PASSWORD`               | bootstrap administrator (`admin`) - delete after first login                                                     |
 | `/cloudnative-pg/stalwart_postgres_username` / `_password` | DB role, already created: username must be `stalwart` because it is hardcoded as `authUsername` in `config.json` |
 
-All four exist in Infisical (`prod`, project `ovh-ops-u1ua`). The database and role themselves are created
+All database credentials exist in Infisical (`prod`, project `ovh-ops-u1ua`). The database and role themselves are created
 by the `01-init-db` init container on first start - `components/cnpg` ships only the credential
 ExternalSecrets, so an app that forgets the init container fails readiness against a missing database.
 Writes to the Infisical API need `projectSlug`; reads need `workspaceSlug`, and a new secret path needs a
 folder first (`POST /api/v1/folders` with `workspaceId`).
 
-S3 credentials come from the `ObjectBucketClaim` (`stalwart-blobs`), not from Infisical: Rook writes
-`BUCKET_HOST`, `BUCKET_PORT`, `BUCKET_NAME` into a ConfigMap and `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
-into a Secret of the same name, and the StatefulSet exposes them as env vars so the blob store can be configured
-with `EnvironmentVariable` references instead of pasted keys.
+Blobs and search indexes live directly in PostgreSQL (`Default` store backend), avoiding any S3/RGW dependency
+or separate object credentials.
 
 ## Bootstrap (the only part that is not declarative)
 
@@ -120,21 +114,19 @@ rejected while the in-memory store is still the local default.
 2. Let Flux apply. `stalwart-0` starts (`replicas: 1`) with `STALWART_RECOVERY_ADMIN` set and
    `STALWART_RECOVERY_MODE: "true"` enabled so the WebUI accepts plain HTTP over port-forward
    without throwing `Unknown client id`; confirm `/healthz/ready` is 200 and `stalwart-dragonfly` is Running.
-3. `kubectl -n stalwart port-forward svc/stalwart-mgmt 8080:8080`, sign in as the recovery admin.
-4. Create a permanent administrator account + API key and sign in with it.
+3. `kubectl -n stalwart port-forward svc/stalwart-mgmt 8081:8080`, sign in as the recovery admin.
+4. Add the mail domain under _Directory > Domains_ (e.g. `brauni.dev`), then create a permanent administrator
+   account under _Directory > Accounts_ and sign in with it.
 5. Set, in this exact order, verifying each applies:
-    - **Blob Store**: S3, region `us-east-1`, bucket `${STALWART_S3_BUCKET}`, endpoint `${STALWART_S3_URL}`,
-      access/secret via `EnvironmentVariable` refs `STALWART_S3_ACCESS_KEY` / `STALWART_S3_SECRET_KEY`.
-    - **Search Store**: the shared Postgres data store.
+    - **Blob Store**: `Default` (or PostgreSQL store `postgres18-rw.dbms.svc.cluster.local:5432/stalwart`).
+    - **Search Store**: `Default` (the shared Postgres data store).
     - **In-Memory Store**: Redis variant, `redis://stalwart-dragonfly.stalwart.svc.cluster.local:6379`
       (that is `STALWART_REDIS_URL`), no password.
     - **Coordinator**: `Default` (reuses the in-memory store connection).
-6. Restart `stalwart-0`, confirm it is still ready and that logs show Postgres + S3 + the store with no
-   fallback to local stores. Then drop `STALWART_RECOVERY_ADMIN` from Infisical and remove
-   `STALWART_RECOVERY_MODE` from `helmrelease.yaml`. Since `stalwart-secrets` only carried this bootstrap credential,
-   remove `kubernetes/apps/stalwart/stalwart/app/externalsecret.yaml` (and its `envFrom` in `helmrelease.yaml` and
-   reference in `kustomization.yaml`) so no empty Secret remains. Flip `controllers.stalwart.replicas` to `3` in the
-   same change.
+6. Drop `STALWART_RECOVERY_ADMIN` from Infisical and remove `STALWART_RECOVERY_MODE` from `helmrelease.yaml`.
+   Since `stalwart-secrets` only carried this bootstrap credential, remove `kubernetes/apps/stalwart/stalwart/app/externalsecret.yaml`
+   (and its `envFrom` in `helmrelease.yaml` and reference in `kustomization.yaml`) so no empty Secret remains.
+   Flip `controllers.stalwart.replicas` to `3` in the same change.
 7. Verify the three pods are on three distinct nodes (`kubectl -n stalwart get pods -o wide`, enforced by
    `topologySpreadConstraints`), all three appear under _Settings > Cluster_, and run the cross-node checks above.
 
@@ -158,10 +150,6 @@ Cloudflare: `external-dns` runs with `--cloudflare-proxied` and cannot emit unpr
 
 ## Known gaps
 
-- **Blob storage backups.** The PostgreSQL data store is already backed up cluster-wide via CNPG continuous
-  WAL archiving/Barman scheduled backups and the nightly `postgres18-pgdumpall` CronJob in `dbms` (into Kopiur).
-  However, the Ceph RGW S3 bucket (`stalwart-blobs`) holds mail bodies and attachments and currently lacks an
-  automated off-cluster backup. Wire an S3 backup/replication pipeline before real mail lands.
 - Dragonfly is not a supported store (see above). The cluster is a lab until the checks in
   "Verifying the store actually works across nodes" pass repeatedly.
 - The store is a single pod with PVC snapshots, not a quorum: restart is a brief outage, and a full store loss

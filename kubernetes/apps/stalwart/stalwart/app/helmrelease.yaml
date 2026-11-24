@@ -13,11 +13,7 @@ spec:
     controllers:
       stalwart:
         type: statefulset
-        # BOOTSTRAP: stay at 1 until the shared stores and the coordinator are
-        # configured (docs/agents/stalwart.md). Raising replicas alone does not
-        # create a cluster: the pods would share the database but have no
-        # coordinator, so caches would never be invalidated across nodes.
-        replicas: 1
+        replicas: 3
         annotations:
           reloader.stakater.com/auto: "true"
         pod:
@@ -53,52 +49,14 @@ spec:
               - --config
               - /etc/stalwart/config.json
             env:
-              # Bootstrap: enable recovery mode so WebUI accepts plain HTTP over port-forward
-              # without requiring HTTPS or public domain client metadata (avoids "Unknown client id").
-              STALWART_RECOVERY_MODE: "true"
               STALWART_DB_PASSWORD:
                 valueFrom:
                   secretKeyRef:
                     name: stalwart-pguser-secret
                     key: password
-              # Blob store wiring, so the S3 backend can be configured in the
-              # WebUI with EnvironmentVariable references instead of pasted keys.
-              STALWART_S3_HOST:
-                valueFrom:
-                  configMapKeyRef:
-                    name: stalwart-blobs
-                    key: BUCKET_HOST
-              STALWART_S3_PORT:
-                valueFrom:
-                  configMapKeyRef:
-                    name: stalwart-blobs
-                    key: BUCKET_PORT
-              STALWART_S3_BUCKET:
-                valueFrom:
-                  configMapKeyRef:
-                    name: stalwart-blobs
-                    key: BUCKET_NAME
-              STALWART_S3_ACCESS_KEY:
-                valueFrom:
-                  secretKeyRef:
-                    name: stalwart-blobs
-                    key: AWS_ACCESS_KEY_ID
-              STALWART_S3_SECRET_KEY:
-                valueFrom:
-                  secretKeyRef:
-                    name: stalwart-blobs
-                    key: AWS_SECRET_ACCESS_KEY
-              # Named *_URL rather than *_ENDPOINT on purpose: app-template sorts env
-              # alphabetically and $(VAR) expansion only sees variables defined
-              # earlier, so the composed value has to sort last.
-              STALWART_S3_URL: "http://$(STALWART_S3_HOST):$(STALWART_S3_PORT)"
               # In-memory store + coordinator (Dragonfly, master-selected
-              # Service in this namespace). Referenced from the store config with
-              # an EnvironmentVariable so the endpoint is not retyped in the WebUI.
+              # Service in this namespace).
               STALWART_REDIS_URL: redis://stalwart-dragonfly.stalwart.svc.cluster.local:6379
-            envFrom:
-              - secretRef:
-                  name: stalwart-secrets
             probes:
               liveness:
                 enabled: true
@@ -185,7 +143,7 @@ spec:
         globalMounts:
           - path: /etc/stalwart
             readOnly: true
-      # No PVC anywhere: mail bodies live in S3 and everything else in Postgres.
+      # No PVC anywhere: mail bodies, state and search index live in Postgres.
       data:
         type: emptyDir
         globalMounts:
