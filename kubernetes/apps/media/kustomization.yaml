@@ -33,6 +33,7 @@ resources:
   - ./infinidysk-sync-helper/ks.yaml
   - ./clonarr/ks.yaml
   - ./jellyfin/ks.yaml
+  - ./messer-swipe/ks.yaml
   # Jellyfin upgrade rehearsal copy (own config volume + database
   # `jellyfin_staging`). TORN DOWN 2026-11-24 after prod moved to 12.4 — the
   # manifests stay for the next rehearsal, see docs/agents/media.md
