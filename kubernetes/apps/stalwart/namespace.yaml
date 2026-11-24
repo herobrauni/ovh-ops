@@ -1,0 +1,21 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/namespace_v1.json
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: _
+  labels:
+    # Same posture as `selfhosted`: enforce baseline, audit/warn restricted. The
+    # Stalwart pods satisfy `restricted` on their own (runAsNonRoot, no privilege
+    # escalation, readOnlyRootFilesystem, capabilities dropped plus the
+    # NET_BIND_SERVICE re-add the image's setcap requires); `enforce` stays at
+    # baseline so an upstream image detail cannot take mail down, while the
+    # audit/warn labels still surface any regression.
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: v1.35
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/audit-version: v1.35
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/warn-version: v1.35
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled

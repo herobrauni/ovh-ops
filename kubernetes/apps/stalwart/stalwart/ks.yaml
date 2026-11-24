@@ -1,0 +1,48 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/kustomize.toolkit.fluxcd.io/kustomization_v1.json
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: &app stalwart
+spec:
+  targetNamespace: &namespace stalwart
+  commonMetadata:
+    labels:
+      app.kubernetes.io/name: *app
+  components:
+    # Shared postgres18 cluster: ${APP}-initdb-secret bootstraps DB+role and
+    # ${APP}-pguser-secret carries the credentials the server needs.
+    # Note: postgres18 is backed up cluster-wide via continuous WAL archiving/
+    # Barman backups and the nightly postgres18-pgdumpall CronJob in dbms.
+    - ../../../../components/cnpg
+    # In-memory store + coordinator: a Redis-protocol instance from the operator
+    # the cluster already runs (${APP}-dragonfly, its snapshot PVC, PodMonitor
+    # and CiliumNetworkPolicy). docs/agents/stalwart.md covers why this is
+    # Dragonfly instead of Keep/Valkey, and what to watch for.
+    - ../../../../components/dragonfly
+  dependsOn:
+    - name: infisical
+      namespace: external-secrets
+    - name: cloudnative-pg-cluster
+      namespace: dbms
+    - name: dragonfly
+      namespace: dbms
+    - name: rook-ceph-cluster
+      namespace: rook-ceph
+  interval: 1h
+  path: ./kubernetes/apps/stalwart/stalwart/app
+  postBuild:
+    substitute:
+      APP: *app
+      # 1 replica: components/dragonfly uses a single ReadWriteOnce ceph-block
+      # snapshot PVC. A multi-replica Dragonfly would hit Multi-Attach errors on
+      # the shared RWO volume across nodes. With 5-minute snapshots, recovery on
+      # restart is near-instant.
+      DRAGONFLY_REPLICAS: "1"
+      DRAGONFLY_SNAPSHOT_CAPACITY: 256Mi
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+    namespace: flux-system
+  wait: false

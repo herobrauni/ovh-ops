@@ -1,0 +1,22 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/configmap_v1.json
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stalwart-config
+# config.json deliberately holds only the DataStore. The blob store, search
+# store, in-memory store and coordinator live in the database and are set after
+# first start, in the order docs/agents/stalwart.md describes.
+data:
+  config.json: |
+    {
+      "@type": "PostgreSql",
+      "host": "${CNPG_NAME:=postgres18}-rw.dbms.svc.cluster.local",
+      "port": 5432,
+      "database": "stalwart",
+      "authUsername": "stalwart",
+      "authSecret": {
+        "@type": "EnvironmentVariable",
+        "variableName": "STALWART_DB_PASSWORD"
+      }
+    }
