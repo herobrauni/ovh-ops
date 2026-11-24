@@ -38,12 +38,32 @@ spec:
               capabilities:
                 drop:
                   - ALL
+          02-pg-tools:
+            image:
+              repository: docker.io/library/postgres
+              tag: 18@sha256:eece53c7c4410fb9c6556a19b8e0f2d61708a5893e2aa0a1e3c716661374ab18
+            command:
+              - sh
+              - -c
+              - |
+                cp /usr/lib/postgresql/18/bin/pg_dump /pg-tools/
+                cp /usr/lib/postgresql/18/bin/psql /pg-tools/
+                cp -a /lib/x86_64-linux-gnu/libpq.so* /lib/x86_64-linux-gnu/libreadline.so* /pg-tools/
+                chmod 755 /pg-tools/*
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
         containers:
           app:
             image:
               repository: docker.io/jellyfin/jellyfin
               tag: 12.4@sha256:fea863d0cd9ec445985d9c75fc6ed64e38a1d2766cf0c250a33d553f4fc1b771
             env:
+              PATH: /pg-tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+              LD_LIBRARY_PATH: /pg-tools
               POSTGRES_HOST:
                 valueFrom:
                   secretKeyRef:
@@ -130,6 +150,14 @@ spec:
               - path: /cache
       logs:
         type: emptyDir
+      pg-tools:
+        type: emptyDir
+        advancedMounts:
+          jellyfin:
+            02-pg-tools:
+              - path: /pg-tools
+            app:
+              - path: /pg-tools
       transcode:
         type: emptyDir
         sizeLimit: 10Gi
