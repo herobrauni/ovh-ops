@@ -62,17 +62,17 @@ spec:
               # WebUI with EnvironmentVariable references instead of pasted keys.
               STALWART_S3_HOST:
                 valueFrom:
-                  secretKeyRef:
+                  configMapKeyRef:
                     name: stalwart-blobs
                     key: BUCKET_HOST
               STALWART_S3_PORT:
                 valueFrom:
-                  secretKeyRef:
+                  configMapKeyRef:
                     name: stalwart-blobs
                     key: BUCKET_PORT
               STALWART_S3_BUCKET:
                 valueFrom:
-                  secretKeyRef:
+                  configMapKeyRef:
                     name: stalwart-blobs
                     key: BUCKET_NAME
               STALWART_S3_ACCESS_KEY:

@@ -106,9 +106,9 @@ Writes to the Infisical API need `projectSlug`; reads need `workspaceSlug`, and 
 folder first (`POST /api/v1/folders` with `workspaceId`).
 
 S3 credentials come from the `ObjectBucketClaim` (`stalwart-blobs`), not from Infisical: Rook writes
-`BUCKET_HOST`, `BUCKET_PORT`, `BUCKET_NAME`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` into a Secret of
-the same name, and the StatefulSet exposes them as env vars so the blob store can be configured with
-`EnvironmentVariable` references instead of pasted keys.
+`BUCKET_HOST`, `BUCKET_PORT`, `BUCKET_NAME` into a ConfigMap and `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+into a Secret of the same name, and the StatefulSet exposes them as env vars so the blob store can be configured
+with `EnvironmentVariable` references instead of pasted keys.
 
 ## Bootstrap (the only part that is not declarative)
 
