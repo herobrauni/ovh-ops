@@ -33,6 +33,9 @@ resources:
   - ./infinidysk-sync-helper/ks.yaml
   - ./clonarr/ks.yaml
   - ./jellyfin/ks.yaml
+  # Copy of prod (config volume + database) to rehearse Jellyfin upgrades —
+  # not exposed, no media mounts, no backups. docs/agents/media.md §jellyfin-staging
+  - ./jellyfin-staging/ks.yaml
   - ./silo/ks.yaml
   - ./media-debug/ks.yaml
   - ./prowlarr/ks.yaml

@@ -1,0 +1,140 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: jellyfin-staging
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  interval: 1h
+  values:
+    defaultPodOptions:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+        supplementalGroups:
+          - 44
+    controllers:
+      jellyfin:
+        annotations:
+          reloader.stakater.com/auto: "true"
+          secret.reloader.stakater.com/reload: jellyfin-staging-pguser-secret
+        initContainers:
+          01-init-db:
+            image:
+              repository: ghcr.io/home-operations/postgres-init
+              tag: 18.6@sha256:87627baaddb0cabed4ebe033e75038e5c7b6b081c18e86514c99067179a90719
+            envFrom:
+              - secretRef:
+                  name: jellyfin-staging-initdb-secret
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+        containers:
+          app:
+            image:
+              repository: ghcr.io/jpvenson/jellyfin.pgsql
+              # Same digest as prod on purpose: this environment exists to test
+              # the NEXT image (12.2/12.3/12.4) against a copy of the real
+              # database and config before prod moves.
+              tag: 12.1-2@sha256:b1cafefc4732895b9bece7da1787690aa462ee2e46e968b99c735754d95c785d
+            env:
+              POSTGRES_HOST:
+                valueFrom:
+                  secretKeyRef:
+                    name: &pguser jellyfin-staging-pguser-secret
+                    key: host
+              POSTGRES_PORT:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: port
+              POSTGRES_DB:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: db
+              POSTGRES_USER:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: user
+              POSTGRES_PASSWORD:
+                valueFrom:
+                  secretKeyRef:
+                    name: *pguser
+                    key: password
+            probes:
+              liveness: &probes
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: &port 8096
+                  initialDelaySeconds: 30
+                  periodSeconds: 30
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              readiness:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: *port
+                  initialDelaySeconds: 30
+                  periodSeconds: 15
+                  timeoutSeconds: 10
+                  failureThreshold: 6
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: *port
+                  # Migration rehearsals legitimately take 20-100 min (prod needed
+                  # 11 min for the v12 pass, 45 min in the worst case).
+                  failureThreshold: 600
+                  periodSeconds: 10
+            resources:
+              requests:
+                cpu: 100m
+                memory: 512Mi
+              limits:
+                memory: 2Gi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+    service:
+      app:
+        controller: jellyfin
+        ports:
+          http:
+            port: *port
+    persistence:
+      config:
+        existingClaim: jellyfin-staging
+      cache:
+        type: emptyDir
+        sizeLimit: 5Gi
+        advancedMounts:
+          jellyfin:
+            app:
+              - path: /cache
+      logs:
+        type: emptyDir
+      transcode:
+        type: emptyDir
+        sizeLimit: 10Gi
+      tmp:
+        type: emptyDir
