@@ -36,7 +36,7 @@ spec:
               # Users sign in with their Jellyfin account; the app's own sessions
               # live in the SQLite file below. AUTH_SECRET is generated on first
               # boot and stored in that DB, so it survives restarts/restores.
-              APP_PUBLIC_URL: https://messer-swipe.480p.com
+              APP_PUBLIC_URL: https://swiparr.480p.com
               USE_SECURE_COOKIES: "true"
               PROVIDER: jellyfin
               # Cluster-internal Service of media/jellyfin (8096); the public URL
@@ -125,7 +125,7 @@ spec:
           gethomepage.dev/pod-selector: app.kubernetes.io/name=messer-swipe
           gethomepage.dev/icon: mdi-swipe
         hostnames:
-          - messer-swipe.480p.com
+          - swiparr.480p.com
         parentRefs:
           - name: envoy-480p-com-public
             namespace: network
