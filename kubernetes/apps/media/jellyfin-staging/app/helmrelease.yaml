@@ -41,11 +41,8 @@ spec:
         containers:
           app:
             image:
-              repository: ghcr.io/jpvenson/jellyfin.pgsql
-              # Same digest as prod on purpose: this environment exists to test
-              # the NEXT image (12.2/12.3/12.4) against a copy of the real
-              # database and config before prod moves.
-              tag: 12.1-2@sha256:b1cafefc4732895b9bece7da1787690aa462ee2e46e968b99c735754d95c785d
+              repository: docker.io/jellyfin/jellyfin
+              tag: 12.1@sha256:78d3ea1207d1322471fcac39a614f004f2ccf7e878f95ab2977d752f07e4dd7e
             env:
               POSTGRES_HOST:
                 valueFrom:
