@@ -152,6 +152,34 @@ Watch statistics for Jellyfin (`ghcr.io/fredrikburmester/streamystats-nextjs` +
 7. Image bumps are one-way: migrations are not reversible, so a rollback means restoring the postgres18 backup, not pinning the old tag.
 8. No Authentik `SecurityPolicy` — the app brings its own login (any Jellyfin user can sign in; admins get the full view). Revisit if the per-user stats ever need to be hidden from non-admins.
 
+## Messer Swipe (`media/messer-swipe`)
+
+Swipe-to-match "what should we watch" UI for the household
+(`ghcr.io/jakobbjelver/messer-swipe`, Next.js 16 standalone, digest-pinned). Users sign in with
+their **Jellyfin** account — the app has no user store of its own — and matches can be written back
+to the Jellyfin favorites/watchlist.
+
+1. State is a single SQLite file, `/app/data/swiparr.db`, on the `messer-swipe` claim
+   (kopiur `SnapshotPolicy`/`SnapshotSchedule`, 6-hourly). There is **no secret in Infisical**:
+   `AUTH_SECRET` (session-cookie signing) is generated on first boot and stored *in that DB*, so a
+   kopiur restore brings sessions back with the data. Losing the volume only costs the secret.
+2. `ALLOW_PRIVATE_PROVIDER_URLS=true` is required even though `PROVIDER_LOCK` stays on. That guard
+   is documented as a BYOP-only switch, but library queries go to
+   `http://jellyfin.media.svc.cluster.local:8096` — an RFC1918 address — so leaving it off makes the
+   provider look unreachable. `JELLYFIN_PUBLIC_URL` (`https://jellyfin.480p.com`) is what the browser
+   gets for deep links/images.
+3. No `ADMIN_USERNAME` is set on purpose: upstream makes the **first user of the provider that logs
+   in** the admin. Adding the variable would put a personal username in a public repo, so the first
+   real login claims the role instead.
+4. First boot runs `node src/db/migrate.js` before the server listens (startup probe budget 30 × 10 s).
+   The entrypoint only repairs volume ownership when it runs as root; here it does not, so the claim
+   relies on `fsGroup: 1000` for the `swiparr.db` write. The image's own user is 1001 — the pod's
+   1000 works because everything shipped in the image is world-readable.
+5. `readOnlyRootFilesystem` with emptyDirs at `/tmp` and `/app/.next/cache` (Next image optimizer).
+   No Authentik `SecurityPolicy`: the app's login *is* the Jellyfin login, same reasoning as
+   Streamystats. Route is auto-probed by the gatus sidecar; `/` answers 307 → `/login`, which gatus
+   follows.
+
 ## WatchSync (HD↔4K watch-state mirroring)
 
 `WatchSync` keeps watched state, resume position, play count and last-played date in sync between the HD and
