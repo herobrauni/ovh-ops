@@ -1,0 +1,16 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/core/persistentvolumeclaim_v1.json
+# Throwaway copy of the production config volume (`jellyfin`), used to rehearse
+# Jellyfin upgrades before they touch prod (docs/agents/media.md §jellyfin-staging).
+# `metadata/` is not copied — it is re-fetchable and would triple the volume.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyfin-staging
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 25Gi
+  storageClassName: ceph-block
