@@ -183,6 +183,11 @@ database (`jellyfin_staging`, role `jellyfin_staging`, secrets in Infisical
 the _next_ image (12.2/12.3/12.4 — whatever the PG fork ships) against a copy of the real data before prod
 moves. Access is `kubectl port-forward svc/jellyfin-staging 8096` only: no route, no DNS, no Authentik.
 
+**Status: torn down 2026-11-24** after the 12.4 cutover (the Kustomization is commented out in
+`media/kustomization.yaml`; the manifests and the Infisical keys stay). To bring it back: uncomment the line,
+let Flux apply it — `postgres-init` creates database and role — then run the refresh below to fill it with prod
+data. Rehearse the next bump (12.5 plus a new `Jellyfin.Plugin.Pgsql` build) here before touching prod.
+
 1. **Deliberately not a second prod**: no media mounts, no rclone sidecar, no `symlinks` claim, no kopiur
    snapshots. Nothing can be played, so nothing can be scanned, transcoded or scrobbled to Trakt — the copy
    carries prod's plugin config including the Trakt token, which is only harmless because there is no media.
