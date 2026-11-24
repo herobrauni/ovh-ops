@@ -139,6 +139,7 @@ Durable repo-specific findings live in `docs/agents/`, split by topic — read o
 - `docs/agents/media.md` — InfiniDysk + sync-helper, *arr/Bazarr/Jellyfin/Silo/Plex facts, rclone sidecar pattern. _When working in `kubernetes/apps/media/`._
 - `docs/agents/networking.md` — external-dns label-filter, Envoy Gateway tuning, plex traffic policies, tailnet exposure. _When touching DNS, Gateway/Envoy or tailnet apps._
 - `docs/agents/talos.md` — topf, machine-config gotchas, etcd metrics, `upgrade-k8s`/tuppr traps. _When touching `talos/` or upgrading the cluster._
+- `docs/agents/proxmox-hosts.md` — PVE hypervisors, out-of-band node/zfs/smartctl exporters (ports 9100/9134/9633), PVE firewall + scrape-config wiring, SMART data limits. _When adding/breaking a PVE-sourced metric or alert._
 - `docs/agents/ceph.md` — external Ceph topology, CephX rotation, Rook keyrings, emergency-readonly volume runbook. _When working on storage/Rook or debugging volume I/O._
 - `docs/agents/kubevirt-vms.md` — VM layout, `firmware.uuid`, vendored KubeVirt/CDI operators, Hermes. _When working in `kubernetes/apps/vms/`._
 - `docs/agents/renovate.md` — datasources/cooldowns, blocked-update diagnosis, GHCR credentials. _When an expected update doesn't happen or when changing Renovate config._

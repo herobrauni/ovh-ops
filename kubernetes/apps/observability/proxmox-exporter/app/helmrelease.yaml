@@ -27,7 +27,14 @@ spec:
               repository: docker.io/prompve/prometheus-pve-exporter
               tag: 3.12.0@sha256:e49466559449074596e762dd09c9a76c9be9b6a1ffacf7bc8ceb827169cb180e
             env:
+              # The exporter authenticates with the token from the secret and
+              # takes the API host from the scrape URL (/pve?target=<pve-ip>),
+              # NOT from an env var - see docs/agents/proxmox-hosts.md.
               PVE_VERIFY_SSL: "true"
+              # PVE node certs are signed by the cluster CA, which is not in the
+              # image trust store. REQUESTS_CA_BUNDLE is honoured by the
+              # `requests` calls proxmoxer makes when verify=True.
+              REQUESTS_CA_BUNDLE: /etc/pve-ca/pve-root-ca.pem
             envFrom:
               - secretRef:
                   name: proxmox-exporter-secret
@@ -50,6 +57,14 @@ spec:
                 memory: 64Mi
               limits:
                 memory: 256Mi
+    persistence:
+      pve-ca:
+        type: configMap
+        name: proxmox-exporter-ca
+        globalMounts:
+          - path: /etc/pve-ca/pve-root-ca.pem
+            subPath: pve-root-ca.pem
+            readOnly: true
     service:
       app:
         ports:

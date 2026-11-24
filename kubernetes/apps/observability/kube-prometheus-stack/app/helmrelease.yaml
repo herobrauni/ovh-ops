@@ -79,6 +79,95 @@ spec:
               - source_labels:
                   - node
                 target_label: instance
+          # smartctl_exporter runs as a systemd unit on each PVE host (binary +
+          # unit are out-of-band, see docs/agents/proxmox-hosts.md); the PVE
+          # firewall only opens 9633 to 10.10.8.0/24. Feeds the smartctl-exporter
+          # Grafana dashboard (kubernetes/apps/observability/proxmox-exporter).
+          - job_name: proxmox-smartctl
+            scrape_interval: 60s
+            scrape_timeout: 30s
+            metrics_path: /metrics
+            static_configs:
+              - targets:
+                  - 54.38.92.92:9633
+                labels:
+                  node: ovhsbg1
+                  role: proxmox
+                  site: riki
+              - targets:
+                  - 54.38.94.158:9633
+                labels:
+                  node: ovhsbg2
+                  role: proxmox
+                  site: riki
+              - targets:
+                  - 54.38.94.150:9633
+                labels:
+                  node: ovhsbg3
+                  role: proxmox
+                  site: riki
+            relabel_configs:
+              - source_labels:
+                  - node
+                target_label: instance
+          # zfs_exporter runs as a systemd unit on each PVE host (out-of-band,
+          # see docs/agents/proxmox-hosts.md); the PVE firewall only opens 9134
+          # to 10.10.8.0/24. Per-node ZFS pools: health, readonly flag, free
+          # space.
+          - job_name: proxmox-zfs
+            scrape_interval: 60s
+            scrape_timeout: 30s
+            metrics_path: /metrics
+            static_configs:
+              - targets:
+                  - 54.38.92.92:9134
+                labels:
+                  node: ovhsbg1
+                  role: proxmox
+                  site: riki
+              - targets:
+                  - 54.38.94.158:9134
+                labels:
+                  node: ovhsbg2
+                  role: proxmox
+                  site: riki
+              - targets:
+                  - 54.38.94.150:9134
+                labels:
+                  node: ovhsbg3
+                  role: proxmox
+                  site: riki
+            relabel_configs:
+              - source_labels:
+                  - node
+                target_label: instance
+          # prometheus-pve-exporter (observability/proxmox-exporter) is a
+          # multi-target exporter: /metrics only serves its own process metrics,
+          # the PVE data is behind /pve?target=<api-host>, and the target is
+          # mandatory (it defaults to localhost). Any node's API serves
+          # cluster-wide data, so exactly one target is scraped - three targets
+          # would duplicate every cluster/storage series once per node. Node-only
+          # collectors (subscription/onboot/replication) therefore cover ovhsbg1
+          # alone; all per-node status comes from the cluster collectors.
+          # `instance` is the PVE host, not the exporter pod.
+          - job_name: proxmox-pve
+            scrape_interval: 60s
+            scrape_timeout: 30s
+            metrics_path: /pve
+            params:
+              target:
+                - 54.38.92.92
+            static_configs:
+              - targets:
+                  - proxmox-exporter.observability.svc.cluster.local:9221
+                labels:
+                  node: ovhsbg1
+                  role: proxmox
+                  site: riki
+            relabel_configs:
+              - source_labels:
+                  - node
+                target_label: instance
         retention: 14d
         retentionSize: 50GB
         resources:
