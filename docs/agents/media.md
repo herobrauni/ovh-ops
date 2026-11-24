@@ -116,13 +116,15 @@ English-only profiles writing `.en.srt` sidecars into the farm via their own pri
 
 ## Jellyfin (`media/jellyfin`)
 
-Runs the **JPVenson/Jellyfin.Pgsql fork** (upstream has the pluggable `IJellyfinDatabaseProvider` layer but ships only SQLite; the fork author only supports latest→latest upgrades). Runbook: `docs/jellyfin-v12-upgrade.md`. Durable facts:
+Runs **official upstream `docker.io/jellyfin/jellyfin:12.4`** with PostgreSQL backend via the pluggable provider architecture (switched from `jpvenson/jellyfin.pgsql` wrapper image on 2026-11-24). Runbook: `docs/jellyfin-v12-upgrade.md`. Durable facts:
 
-1. Two code migrations are PostgreSQL-incompatible and get skipped via pre-inserted `__EFMigrationsHistory` rows: `20260910120000_MigrateRatingLevels` (iterates a deferred `IQueryable` while `ExecuteUpdate`-ing on the same connection — Npgsql rejects it; the `release-12.z` rename `20260915120000` has the SAME bug, so every future fork bump that adds a new RatingLevels copy needs its history row re-checked) and `20260911120000_StripEmbeddedLinkedChildren` (uses SQLite `json_valid()` in raw SQL). If a boot loops with `Attempt to rollback JellyfinDb` → `PostgreSQL restore from PgsqlBackups/...`, a migration failed and the fork restored its own pre-migration dump — skip the routine; the restored DB is not lost data.
-2. Migration passes can take 20–45 min (path-based cleanup stats every item over the mount), so the startup probe needs a huge budget while on a new major (`failureThreshold: 600`; revert after the post-upgrade scans). Probe kills keep committed removal batches; failure→restore cycles discard them.
-3. Jellyfin 12 serves a styled 503 startup page (`server: Kestrel`) on web routes while `/System/Info/Public` already answers 200 — don't debug the gateway when the server is just mid-startup.
-4. 12.1 rejects `<EncoderPreset xsi:nil="true" />` in `encoding.xml` (XML parse error per boot); set a concrete value (`veryfast`).
-5. Library locations are the farm (`/aio/symlinks/{plex_hd,plex_4k,other}`); only the `rclone-infinidysk` sidecar is active.
+1. **Pluggable DB provider**: Upstream Jellyfin 12.0+ core supports `DatabaseType: PLUGIN_PROVIDER` and `CustomProviderOptions` loading `Jellyfin.Plugin.Pgsql.dll` via `Assembly.LoadFrom` in `/config/plugins/PostgreSQL/`. No wrapper image needed.
+2. **The `pg_dump` requirement**: On upgrade, `JellyfinMigrationService` calls `_jellyfinDatabaseProvider.MigrationBackupFast()`, which invokes `pg_dump`. Official Jellyfin images lack `postgresql-client`. Provided via `02-pg-tools` initContainer (from `docker.io/library/postgres:18`) copying `pg_dump`, `psql`, `libpq.so*`, and `libreadline.so*` to an `emptyDir` mounted at `/pg-tools`, added to `PATH` and `LD_LIBRARY_PATH`.
+3. Two code migrations are PostgreSQL-incompatible and get skipped via pre-inserted `__EFMigrationsHistory` rows: `20260910120000_MigrateRatingLevels` (iterates a deferred `IQueryable` while `ExecuteUpdate`-ing on the same connection — Npgsql rejects it; the `release-12.z` rename `20260915120000_MigrateRatingLevels` has the SAME bug, so every future bump that adds a new RatingLevels copy needs its history row inserted/re-checked) and `20260911120000_StripEmbeddedLinkedChildren` (uses SQLite `json_valid()` in raw SQL). If a boot loops with `Attempt to rollback JellyfinDb` → `PostgreSQL restore from PgsqlBackups/...`, a migration failed and the provider restored its own pre-migration dump — skip the routine; the restored DB is not lost data.
+4. Migration passes can take 20–45 min (path-based cleanup stats every item over the mount), so the startup probe needs a huge budget while on a new major (`failureThreshold: 600`; revert after the post-upgrade scans). Probe kills keep committed removal batches; failure→restore cycles discard them.
+5. Jellyfin 12 serves a styled 503 startup page (`server: Kestrel`) on web routes while `/System/Info/Public` already answers 200 — don't debug the gateway when the server is just mid-startup.
+6. 12.1 rejects `<EncoderPreset xsi:nil="true" />` in `encoding.xml` (XML parse error per boot); set a concrete value (`veryfast`).
+7. Library locations are the farm (`/aio/symlinks/{plex_hd,plex_4k,other}`); only the `rclone-infinidysk` sidecar is active.
 
 ## Silo (`media/silo`)
 
@@ -154,42 +156,24 @@ Watch statistics for Jellyfin (`ghcr.io/fredrikburmester/streamystats-nextjs` +
 
 `WatchSync` keeps watched state, resume position, play count and last-played date in sync between the HD and
 4K copies of a title, matched by identity (TMDB/IMDb, series TVDB/IMDb + season/episode), never by path.
-The code is **upstream 2.0.1** (`Atilil/watchsync`), but the running build is ours: upstream compiles against
-`Jellyfin.Controller 12.4` and this server is **12.1**, which refuses to load a plugin referencing newer server
-assemblies (`Failed to load assembly … references an incompatible version of one of the shared libraries`,
-`/Plugins` → `NotSupported`).
+Runs **official upstream 2.0.1** (`Atilil/watchsync`) directly (the custom `herobrauni/watchsync` fork was retired
+when Jellyfin upgraded to 12.4).
 
-1. **We cannot move to 12.4 to satisfy it.** Our Jellyfin runs the `JPVenson/Jellyfin.Pgsql` fork (upstream
-   ships SQLite only), and that fork publishes **12.1-1 and 12.1-2 and nothing newer** (repo last pushed
-   2026-09-29). So the plugin has to come down to 12.1, not the server up to 12.4.
-2. **The rebuild is a package pin, no code change.** Fork `herobrauni/watchsync`, branch `jellyfin-12.1` from tag
-   `v2.0.1`: set `Jellyfin.Controller`/`Model`/`Database.Implementations` to `12.1.0`, add
-   `<Version>2.1.0.0</Version>`, and allow a newer SDK patch (`global.json` → `rollForward: latestPatch`).
-   `dotnet build -c Release` then succeeds with 0 warnings; verify by reading the assembly references back
-   (`MediaBrowser.Controller 12.1.0.0`, not 12.4). Release `v2.1.0` carries `watchsync-2.1.0.0.zip`.
-3. **`targetAbi` in upstream's `build.yaml` lies** — it says `12.0.0.0` while the packages are 12.4. Read the
-   assembly references, not the manifest, when a load fails.
-4. **Jellyfin reports the assembly version, not `meta.json`.** Upstream takes the version from the release tag
-   only, so the DLL kept `1.0.0.0` while `meta.json` said `2.1.0.0` → `/Plugins` showed 1.0.0.0 and the update
-   was offered again every day. `<Version>` in the csproj fixes it; keep it in step with the meta.
-5. **Plugin repository** (`POST /Repositories`, server-side state, not GitOps): `Jellyfin Stable` +
-   `herobrauni (WatchSync 12.1)` → `raw.githubusercontent.com/herobrauni/watchsync/jellyfin-12.1/manifest.json`.
-   The Atilil repository stays **out** — it offers only 12.4-built packages, and the `Update Plugins` task once
-   auto-updated JellyTag 2.0.2.0 to a 12.4-built 3.3.1.0 and disabled it. `autoUpdate: false` is set in the
-   installed metas as a second guard.
-6. **Same-version swaps: copy files, don't fight the installer.** After replacing the asset the installer still
+1. **Upstream compatibility**: Upstream `Atilil/watchsync` 2.0.1 compiles against `Jellyfin.Controller 12.4`.
+   With Jellyfin on 12.4, official binaries load cleanly without assembly version mismatch.
+2. **Plugin repository** (`POST /Repositories` / `/config/config/system.xml`, server-side state):
+   `Jellyfin Stable` + `Atilili Plugins` (`https://raw.githubusercontent.com/Atilil/jellyfin-plugins/main/manifest.json`).
+   The old `herobrauni (WatchSync 12.1)` repo is retired.
+3. **Same-version swaps: copy files, don't fight the installer.** After replacing the asset the installer still
    tracks the old checksum; unpacking the zip into `/config/plugins/WatchSync_<ver>/` (DLL + JSON `meta.json` +
    png) and restarting is deterministic. The startup scan reconciles the folders.
-7. Verified on 12.1 (2.1.0.0): full sync `Completed` over 1897 pairs (424 movie + ~1470 episode), toggling a
-   copy's played state propagates to the twin in the other library in both directions, and the 2.0.x code no
-   longer exports manual toggles to Trakt (it scrobbles real playback only).
-8. **Stale-read trap**: right after a sync writes the twin, `/Users/{id}/Items/{itemId}` can still answer the old
+4. Verified on 12.4 (2.0.1.0): full sync `Completed` over paired items, toggling a copy's played state propagates
+   to the twin in the other library in both directions, and the 2.0.x code scrobbles real playback only.
+5. **Stale-read trap**: right after a sync writes the twin, `/Users/{id}/Items/{itemId}` can still answer the old
    `UserData`. Read `/Users/{id}/Items?Ids=<a>,<b>&Fields=UserData` (or the DB).
-9. The old `herobrauni/jellyfin-plugins` fork (WatchSync 1.1.0.0, the original `Users` → `GetUsers()` port) is
-   the fallback if the 12.1 rebuild ever misbehaves; it is not in Jellyfin's repository list any more.
-10. Native alternative, tested and rejected: `POST /Videos/MergeVersions?ids=a,b` links two items as versions
-    (shared `PresentationUniqueKey` = one card, watched flag propagates, survives rescans) but needs one merge
-    call per pair (~1891) and a re-run after every library change.
+6. Native alternative, tested and rejected: `POST /Videos/MergeVersions?ids=a,b` links two items as versions
+   (shared `PresentationUniqueKey` = one card, watched flag propagates, survives rescans) but needs one merge
+   call per pair (~1891) and a re-run after every library change.
 
 ## jellyfin-staging (upgrade rehearsal)
 
