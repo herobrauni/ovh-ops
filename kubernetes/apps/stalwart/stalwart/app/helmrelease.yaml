@@ -53,6 +53,9 @@ spec:
               - --config
               - /etc/stalwart/config.json
             env:
+              # Bootstrap: enable recovery mode so WebUI accepts plain HTTP over port-forward
+              # without requiring HTTPS or public domain client metadata (avoids "Unknown client id").
+              STALWART_RECOVERY_MODE: "true"
               STALWART_DB_PASSWORD:
                 valueFrom:
                   secretKeyRef:

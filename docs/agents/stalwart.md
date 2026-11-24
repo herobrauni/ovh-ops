@@ -117,8 +117,9 @@ rejected while the in-memory store is still the local default.
 
 1. Secrets already exist (see table). If they are rotated, the ExternalSecrets pick the change up within
    their 12h refresh; a missing key leaves them in `SecretSyncedError` and nothing starts.
-2. Let Flux apply. `stalwart-0` starts (`replicas: 1`) with `STALWART_RECOVERY_ADMIN` set; confirm
-   `/healthz/ready` is 200 and the `stalwart-dragonfly` pod is Running.
+2. Let Flux apply. `stalwart-0` starts (`replicas: 1`) with `STALWART_RECOVERY_ADMIN` set and
+   `STALWART_RECOVERY_MODE: "true"` enabled so the WebUI accepts plain HTTP over port-forward
+   without throwing `Unknown client id`; confirm `/healthz/ready` is 200 and `stalwart-dragonfly` is Running.
 3. `kubectl -n stalwart port-forward svc/stalwart-mgmt 8080:8080`, sign in as the recovery admin.
 4. Create a permanent administrator account + API key and sign in with it.
 5. Set, in this exact order, verifying each applies:
@@ -129,10 +130,11 @@ rejected while the in-memory store is still the local default.
       (that is `STALWART_REDIS_URL`), no password.
     - **Coordinator**: `Default` (reuses the in-memory store connection).
 6. Restart `stalwart-0`, confirm it is still ready and that logs show Postgres + S3 + the store with no
-   fallback to local stores. Then drop `STALWART_RECOVERY_ADMIN` from Infisical. Since `stalwart-secrets`
-   only carried this bootstrap credential, remove `kubernetes/apps/stalwart/stalwart/app/externalsecret.yaml`
-   (and its `envFrom` in `helmrelease.yaml` and reference in `kustomization.yaml`) so no empty Secret
-   remains. Flip `controllers.stalwart.replicas` to `3` in the same change.
+   fallback to local stores. Then drop `STALWART_RECOVERY_ADMIN` from Infisical and remove
+   `STALWART_RECOVERY_MODE` from `helmrelease.yaml`. Since `stalwart-secrets` only carried this bootstrap credential,
+   remove `kubernetes/apps/stalwart/stalwart/app/externalsecret.yaml` (and its `envFrom` in `helmrelease.yaml` and
+   reference in `kustomization.yaml`) so no empty Secret remains. Flip `controllers.stalwart.replicas` to `3` in the
+   same change.
 7. Verify the three pods are on three distinct nodes (`kubectl -n stalwart get pods -o wide`, enforced by
    `topologySpreadConstraints`), all three appear under _Settings > Cluster_, and run the cross-node checks above.
 
