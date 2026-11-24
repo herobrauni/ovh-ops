@@ -8,83 +8,125 @@ spec:
   groups:
     - name: proxmox-exporter.rules
       rules:
+        # One alert for all four PVE-source scrape jobs: node-exporter, zfs and
+        # smartctl exporters on the hosts (ports 9100/9134/9633) plus the
+        # in-cluster pve-exporter (/pve). A non-2xx /pve response - bad token,
+        # failed TLS verification, PVE API down - also lands here as up=0.
         - alert: ProxmoxExporterDown
           expr: |-
-            absent(up{job="proxmox-exporter"}) or up{job="proxmox-exporter"} == 0
+            up{job=~"proxmox-(node-exporter|zfs|smartctl|pve)"} == 0
+          for: 15m
+          annotations:
+            summary: >-
+              Prometheus cannot scrape {{ $labels.job }} (PVE source {{ $labels.instance }})
+          labels:
+            severity: warning
+
+        - alert: ProxmoxClusterNotQuorate
+          expr: |-
+            pve_cluster_info{quorate="0"} == 1
           for: 5m
           annotations:
             summary: >-
-              Proxmox exporter target {{ $labels.instance }} is down
+              PVE cluster {{ $labels.id }} has lost quorum
           labels:
             severity: critical
 
         - alert: ProxmoxHostUnreachable
           expr: |-
-            proxmox_node_up == 0
+            pve_up{id=~"node/.+"} == 0
           for: 5m
           annotations:
             summary: >-
-              Proxmox node {{ $labels.node }} is unreachable
+              Proxmox node {{ $labels.id }} is reported offline by the PVE API
           labels:
             severity: critical
 
         - alert: ProxmoxHostCpuHigh
           expr: |-
-            proxmox_node_cpu_usage_ratio > 0.9
+            pve_cpu_usage_ratio{id=~"node/.+"} > 0.9
           for: 15m
           annotations:
             summary: >-
-              Proxmox node {{ $labels.node }} has sustained high CPU usage ({{ $value | humanizePercentage }})
+              Proxmox node {{ $labels.id }} has sustained high CPU usage ({{ $value | humanizePercentage }})
           labels:
             severity: warning
 
+        # PVE reports node memory including the (reclaimable) ZFS ARC, so these
+        # hosts sit at ~0.85 by design; 14d of node_memory_MemAvailable never
+        # crossed 0.90 on any host, hence the deliberately loose threshold.
         - alert: ProxmoxHostMemoryPressure
           expr: |-
-            (proxmox_node_memory_usage_bytes / proxmox_node_memory_size_bytes) > 0.9
-          for: 15m
+            (pve_memory_usage_bytes{id=~"node/.+"} / pve_memory_size_bytes{id=~"node/.+"}) > 0.95
+          for: 30m
           annotations:
             summary: >-
-              Proxmox node {{ $labels.node }} has high memory pressure ({{ $value | humanizePercentage }})
+              Proxmox node {{ $labels.id }} has high memory pressure ({{ $value | humanizePercentage }})
           labels:
             severity: warning
 
+        # The PVE API repeats cluster-wide (shared) storages - ceph_block,
+        # ceph_fs, pbshostc - once per node, so collapse the node prefix out of
+        # the id label and take the worst instance per storage name.
         - alert: ProxmoxStoragePoolLowFreeSpace
           expr: |-
-            (proxmox_node_storage_avail_bytes / proxmox_node_storage_size_bytes) < 0.1
+            min by (storage) (
+              label_replace(
+                (1 - pve_disk_usage_bytes{id=~"storage/.+"} / pve_disk_size_bytes{id=~"storage/.+"}),
+                "storage", "$1", "id", "storage/[^/]+/(.+)"
+              )
+            ) < 0.1
           for: 15m
           annotations:
             summary: >-
-              Proxmox storage {{ $labels.storage }} on node {{ $labels.node }} is low on free space ({{ $value | humanizePercentage }})
+              Proxmox storage {{ $labels.storage }} is low on free space ({{ $value | humanizePercentage }} free)
           labels:
             severity: warning
 
         - alert: ProxmoxStoragePoolCriticalFreeSpace
           expr: |-
-            (proxmox_node_storage_avail_bytes / proxmox_node_storage_size_bytes) < 0.05
+            min by (storage) (
+              label_replace(
+                (1 - pve_disk_usage_bytes{id=~"storage/.+"} / pve_disk_size_bytes{id=~"storage/.+"}),
+                "storage", "$1", "id", "storage/[^/]+/(.+)"
+              )
+            ) < 0.05
           for: 10m
           annotations:
             summary: >-
-              Proxmox storage {{ $labels.storage }} on node {{ $labels.node }} is critically low on free space ({{ $value | humanizePercentage }})
+              Proxmox storage {{ $labels.storage }} is critically low on free space ({{ $value | humanizePercentage }} free)
           labels:
             severity: critical
 
+        # pdf/zfs_exporter zfs_pool_health codes: 0 ONLINE, 1 DEGRADED,
+        # 2 FAULTED, 3 OFFLINE, 4 UNAVAIL, 5 REMOVED, 6 SUSPENDED.
         - alert: ProxmoxZfsPoolDegraded
           expr: |-
-            max by (instance, pool, role, site) (zfs_pool_state{state=~"DEGRADED|FAULTED"}) > 0
+            zfs_pool_health == 1
           for: 5m
           annotations:
             summary: >-
-              ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is degraded
+              ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is DEGRADED (redundancy lost, scrub it)
           labels:
             severity: warning
 
-        - alert: ProxmoxZfsPoolOffline
+        - alert: ProxmoxZfsPoolUnavailable
           expr: |-
-            max by (instance, pool, role, site) (zfs_pool_state{state=~"OFFLINE|UNAVAIL|REMOVED|SUSPENDED"}) > 0
+            zfs_pool_health >= 2
           for: 2m
           annotations:
             summary: >-
-              ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is offline or unavailable
+              ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is not usable (health code {{ $value }}, see zpool status)
+          labels:
+            severity: critical
+
+        - alert: ProxmoxZfsPoolReadOnly
+          expr: |-
+            zfs_pool_readonly == 1
+          for: 5m
+          annotations:
+            summary: >-
+              ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is mounted read-only
           labels:
             severity: critical
 
@@ -94,17 +136,7 @@ spec:
           for: 15m
           annotations:
             summary: >-
-              ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is low on free space ({{ $value | humanizePercentage }})
-          labels:
-            severity: warning
-
-        - alert: ProxmoxSmartctlExporterDown
-          expr: |-
-            absent(up{job="proxmox-smartctl"}) or up{job="proxmox-smartctl"} == 0
-          for: 15m
-          annotations:
-            summary: >-
-              smartctl_exporter on PVE host {{ $labels.instance }} is not being scraped - SMART health for its disks is unmonitored
+              ZFS pool {{ $labels.pool }} on {{ $labels.instance }} is low on free space ({{ $value | humanizePercentage }} free)
           labels:
             severity: warning
 
