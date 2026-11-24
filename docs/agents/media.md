@@ -191,6 +191,54 @@ assemblies (`Failed to load assembly … references an incompatible version of o
     (shared `PresentationUniqueKey` = one card, watched flag propagates, survives rescans) but needs one merge
     call per pair (~1891) and a re-run after every library change.
 
+## jellyfin-staging (upgrade rehearsal)
+
+A second Jellyfin in `media` on its **own** config volume (`jellyfin-staging`, 25Gi ceph-block) and its **own**
+database (`jellyfin_staging`, role `jellyfin_staging`, secrets in Infisical
+`/cloudnative-pg/jellyfin-staging_postgres_{username,password}`), same image digest as prod. It exists to run
+the _next_ image (12.2/12.3/12.4 — whatever the PG fork ships) against a copy of the real data before prod
+moves. Access is `kubectl port-forward svc/jellyfin-staging 8096` only: no route, no DNS, no Authentik.
+
+1. **Deliberately not a second prod**: no media mounts, no rclone sidecar, no `symlinks` claim, no kopiur
+   snapshots. Nothing can be played, so nothing can be scanned, transcoded or scrobbled to Trakt — the copy
+   carries prod's plugin config including the Trakt token, which is only harmless because there is no media.
+2. **Refresh = three commands** (DB first, config second, restart last):
+    ```sh
+    POD=$(kubectl -n dbms get pods -l cnpg.io/cluster=postgres18,cnpg.io/instanceRole=primary -o jsonpath='{.items[0].metadata.name}')
+    kubectl -n dbms exec $POD -c postgres -- psql -U postgres -q \
+      -c "select pg_terminate_backend(pid) from pg_stat_activity where datname='jellyfin_staging';" \
+      -c "drop database if exists jellyfin_staging;" -c "create database jellyfin_staging owner jellyfin_staging;"
+    kubectl -n dbms exec -i $POD -c postgres -- sh -c 'pg_dump -U postgres jellyfin | psql -U postgres -q -d jellyfin_staging'
+    kubectl -n media exec deploy/jellyfin -c app -- tar cf - -C /config --exclude=./metadata --exclude=./log . \
+      | kubectl -n media exec -i deploy/jellyfin-staging -c app -- sh -c 'rm -rf /config/*; tar xf - -C /config --no-same-owner'
+    kubectl -n media rollout restart deploy/jellyfin-staging
+    ```
+    234 MB DB restores in ~7 s; the config copy is only ~310 MB because `metadata/` is 11G of 11.3G and is
+    re-fetchable (Jellyfin rebuilds images on demand). `log/` is excluded as well.
+3. **Two tar traps.** Extraction as uid 1000 into `/config` ends with `tar: .: Cannot change mode to rwxr-sr-x`
+   / `Cannot utime` (the volume root is root-owned, setgid) and **exit code 2** — the payload is complete, but
+   `set -e` pipelines abort. `--no-overwrite-dir` does not help; either ignore the exit code or extract into
+   `/config/.incoming` and move afterwards.
+4. **Restore ownership explicitly.** `pg_dump | psql` runs as `postgres`, and Jellyfin's EF migrations later
+   `ALTER` tables, so the app role must own them. `REASSIGN OWNED BY postgres` fails
+   (_objects required by the database system_ — extension objects); loop instead:
+    ```sql
+    DO $$ DECLARE r record; BEGIN
+      FOR r IN SELECT tablename FROM pg_tables WHERE schemaname='public' LOOP
+        EXECUTE format('ALTER TABLE public.%I OWNER TO jellyfin_staging', r.tablename); END LOOP;
+      FOR r IN SELECT sequencename FROM pg_sequences WHERE schemaname='public' LOOP
+        EXECUTE format('ALTER SEQUENCE public.%I OWNER TO jellyfin_staging', r.sequencename); END LOOP;
+    END $$;
+    ```
+5. **Same ServerId and API keys as prod** (it is a copy of `config.xml`) — fine while it stays unexposed, and
+   it means prod's API key authenticates against staging, which is handy for scripted verification.
+6. **Cost** (measured 2026-11-24): 305 MB on the config PVC (thin, ceph-block 3× replication), 154 MB database,
+   `145Mi` RSS and `2m` CPU idle versus `567Mi` for prod (no rclone sidecar, no metadata cache). No backups, no
+   route. Deleting the Kustomization from `media/kustomization.yaml` removes all of it.
+7. **Verification after a refresh**: `/System/Info` → `jelly 12.1.0`, `/Users` → 5 users, `/Plugins` → the same
+   10 plugins Active (incl. `PostgreSQL Database` and our `WatchSync 2.1.0.0`), and
+   `BaseItems`/`Users`/`UserData` counts equal to prod (27,865 / 5 / 5,805 on 2026-11-24).
+
 ## Plex
 
 - The plex HTTPRoute uses named rules with `X-Plex-Http-Pipeline: infinite` set on **every** rule plus two route-level BackendTrafficPolicies — see `docs/agents/networking.md` for the Envoy-side details.
