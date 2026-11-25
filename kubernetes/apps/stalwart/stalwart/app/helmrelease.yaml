@@ -58,9 +58,6 @@ spec:
               # In-memory store + coordinator (Dragonfly, master-selected
               # Service in this namespace).
               STALWART_REDIS_URL: redis://stalwart-dragonfly.stalwart.svc.cluster.local:6379
-            envFrom:
-              - secretRef:
-                  name: stalwart-secrets
             probes:
               liveness:
                 enabled: true
