@@ -75,6 +75,10 @@ entries:
     model: authentik_core.group
     identifiers:
       name: Silo
+  - id: group-mail
+    model: authentik_core.group
+    identifiers:
+      name: Mail
 
   # ---------------------------------------------------------------------------
   # Users. No passwords or email addresses here - see the header.
@@ -94,6 +98,7 @@ entries:
         - !KeyOf group-media
         - !KeyOf group-platform
         - !KeyOf group-silo
+        - !KeyOf group-mail
   - id: user-authentik-testuser1
     model: authentik_core.user
     identifiers:
