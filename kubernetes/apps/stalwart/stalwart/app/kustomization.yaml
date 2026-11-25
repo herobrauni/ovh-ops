@@ -5,5 +5,6 @@ kind: Kustomization
 resources:
   - ./configmap.yaml
   - ./dnsendpoints.yaml
+  - ./externalsecret.yaml
   - ./helmrelease.yaml
   - ./httproute.yaml
