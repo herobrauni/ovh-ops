@@ -28,3 +28,9 @@ generatorOptions:
   disableNameSuffixHash: true
   annotations:
     kustomize.toolkit.fluxcd.io/substitute: disabled
+  # The operator only watches ConfigMaps carrying this label; without it an edit to
+  # a dashboard's JSON waits for the scheduled resync (and in practice does not land
+  # at all — the CR's own content hash does not change). With the label, rewriting a
+  # panel here re-pushes the dashboard on the next reconcile.
+  labels:
+    app.kubernetes.io/managed-by: grafana-operator
