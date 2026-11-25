@@ -7,6 +7,7 @@ namespace: stalwart
 components:
   - ../../components/alerts
   - ../../components/app-template
+  - ../../components/gateway-route-access
 
 resources:
   - ./namespace.yaml
