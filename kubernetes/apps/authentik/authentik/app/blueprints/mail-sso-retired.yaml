@@ -1,0 +1,51 @@
+---
+# yayamlls-disable-file (embedded blueprint ConfigMap; the goauthentik.io schema now mismatches the ConfigMap wrapper)
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# Retires the mail SSO clients (webmail + Stalwart WebUI).
+#
+# Stalwart and Bulwark run without SSO again: Bulwark authenticates against Stalwart's internal directory
+# and the WebUI uses Stalwart's own OAuth server (Client ID Metadata Document). The authentik side is
+# retired rather than left dangling, so there is no app tile and no client that silently half-works.
+# docs/stalwart-sso.md has the full setup, the traps, and what re-enabling takes (revert this commit).
+#
+# Blueprints never delete objects whose entry they stop managing, hence the explicit `state: absent`.
+# Order matters: the Application goes before its provider, and the provider before the scope mapping it
+# references (deleting a provider that an Application still points at cascades into the Application).
+version: 1
+metadata:
+  name: ovh-ops - Mail SSO (retired)
+  labels:
+    blueprints.goauthentik.io/description: Retires the Bulwark webmail and Stalwart WebUI OAuth2 clients.
+entries:
+  - model: authentik_core.application
+    state: absent
+    identifiers:
+      slug: bulwark
+
+  - model: authentik_policies.policybinding
+    state: absent
+    identifiers:
+      target: !Find [authentik_core.application, [slug, bulwark]]
+      group: !Find [authentik_core.group, [name, Mail]]
+      order: 0
+
+  - model: authentik_providers_oauth2.oauth2provider
+    state: absent
+    identifiers:
+      name: Bulwark OIDC
+
+  - model: authentik_providers_oauth2.scopemapping
+    state: absent
+    identifiers:
+      name: Bulwark Email Mapping
+
+  # Already gone since the shared-client rework; kept as a no-op so a revert restores a clean state.
+  - model: authentik_core.application
+    state: absent
+    identifiers:
+      slug: stalwart
+
+  - model: authentik_providers_oauth2.oauth2provider
+    state: absent
+    identifiers:
+      name: Stalwart WebUI OIDC

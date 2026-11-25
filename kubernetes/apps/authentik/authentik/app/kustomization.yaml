@@ -14,11 +14,10 @@ configMapGenerator:
   - name: authentik-blueprints
     files:
       - forward-auth.yaml=./blueprints/forward-auth.yaml
-      - bulwark-oidc.yaml=./blueprints/bulwark-oidc.yaml
       - infinidysk-oidc.yaml=./blueprints/infinidysk-oidc.yaml
       - infinidysk-v2-oidc.yaml=./blueprints/infinidysk-v2-oidc.yaml
       - silo-oidc.yaml=./blueprints/silo-oidc.yaml
-      - stalwart-webui-retired.yaml=./blueprints/stalwart-webui-retired.yaml
+      - mail-sso-retired.yaml=./blueprints/mail-sso-retired.yaml
 generatorOptions:
   disableNameSuffixHash: true
   annotations:
