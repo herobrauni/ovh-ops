@@ -125,6 +125,65 @@ spec:
                   - CHOWN
                   - DAC_OVERRIDE
                   - FOWNER
+          # Prowlarr serves no Prometheus endpoint (/metrics on 9696 is the SPA),
+          # so the indexer numbers are re-exported from its own API by exportarr
+          # in this pod. Reads `indexer`, `indexerstats` and `system/health`, and
+          # keeps the cumulative sums in memory: with PROWLARR__BACKFILL the first
+          # scrape after a restart re-seeds them from Prowlarr's history instead of
+          # starting at zero. Talk to it over the Service name, not 127.0.0.1 —
+          # PROWLARR__SERVER__ALLOWEDHOSTS above only accepts the cluster DNS names.
+          exportarr:
+            image:
+              repository: ghcr.io/onedr0p/exportarr
+              tag: v2.3.0@sha256:af535d94061cf97a52e1661945ffba78c03f9443eae7c0da1a80a5a4be56b520
+            args:
+              - prowlarr
+            env:
+              PORT: "9707"
+              URL: http://prowlarr.media.svc.cluster.local:80
+              LOG_LEVEL: info
+              PROWLARR__BACKFILL: "true"
+              API_KEY:
+                valueFrom:
+                  secretKeyRef:
+                    name: servarr-secret
+                    key: API_KEY
+            probes:
+              # tcpSocket on purpose: /metrics runs the whole API walk, so probing it
+              # would poll Prowlarr four times a minute on top of the scrape.
+              liveness: &exportarrProbes
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 9707
+                  periodSeconds: 30
+                  timeoutSeconds: 1
+                  failureThreshold: 3
+              readiness: *exportarrProbes
+              startup:
+                enabled: true
+                custom: true
+                spec:
+                  tcpSocket:
+                    port: 9707
+                  failureThreshold: 10
+                  periodSeconds: 5
+            resources:
+              requests:
+                cpu: 10m
+                memory: 32Mi
+              limits:
+                memory: 128Mi
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              runAsNonRoot: true
+              runAsUser: 65534
+              runAsGroup: 65534
+              capabilities:
+                drop:
+                  - ALL
     service:
       app:
         controller: prowlarr
@@ -132,6 +191,8 @@ spec:
           http:
             port: 80
             targetPort: *targetPort
+          metrics:
+            port: 9707
     persistence:
       config:
         existingClaim: prowlarr

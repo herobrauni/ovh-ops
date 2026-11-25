@@ -1,0 +1,28 @@
+---
+# yaml-language-server: $schema=https://k8s-schemas.home-operations.com/monitoring.coreos.com/servicemonitor_v1.json
+# Prowlarr has no Prometheus endpoint of its own — `/metrics` on 9696 answers with
+# the web UI — so the scraped series come from the `exportarr` sidecar in the same
+# pod (:9707), which reads Prowlarr's `indexer`, `indexerstats` and `system/health`
+# endpoints. The API key is the app's own (`servarr-secret` → `API_KEY`), passed to
+# the sidecar as an env var; nothing extra is needed here.
+#
+# Shape of the numbers: the `*_total` series are cumulative sums that exportarr
+# keeps in memory and re-seeds from Prowlarr's history on start (PROWLARR__BACKFILL),
+# so they rise by the interval's activity on every scrape — `rate()` is meaningful,
+# `increase()` across a restart is not.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prowlarr
+spec:
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      honorLabels: true
+  namespaceSelector:
+    matchNames:
+      - media
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prowlarr
