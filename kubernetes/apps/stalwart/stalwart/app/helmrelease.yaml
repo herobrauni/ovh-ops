@@ -144,6 +144,12 @@ spec:
         globalMounts:
           - path: /etc/stalwart
             readOnly: true
+      tls:
+        type: secret
+        name: stalwart-tls
+        globalMounts:
+          - path: /etc/stalwart/tls
+            readOnly: true
       # No PVC anywhere: mail bodies, state and search index live in Postgres.
       data:
         type: emptyDir
