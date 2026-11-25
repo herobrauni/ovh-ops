@@ -21,6 +21,25 @@ spec:
       namespace: network
       sectionName: https
   rules:
-    - backendRefs:
+    - filters:
+        - type: CORS
+          cors:
+            allowOrigins:
+              - https://webmail.480p.com
+            allowMethods:
+              - POST
+              - GET
+              - PATCH
+              - PUT
+              - DELETE
+              - HEAD
+              - OPTIONS
+            allowHeaders:
+              - Authorization
+              - Content-Type
+              - Accept
+              - X-Requested-With
+            maxAge: 3600
+      backendRefs:
         - name: stalwart-mgmt
           port: 8080
