@@ -13,6 +13,8 @@ spec:
     - ../../../../components/kopiur
     - ../../../../components/kopiur-verify-deep
   dependsOn:
+    - name: infisical
+      namespace: external-secrets
     - name: kopiur-repository
       namespace: kopiur-system
     - name: rook-ceph-cluster

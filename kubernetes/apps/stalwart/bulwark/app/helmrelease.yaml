@@ -33,6 +33,14 @@ spec:
               tag: 1.21.3@sha256:54e914a229529fe90fd8f0ae3e9e97d671806ac09fbfe3f421a1c4fb14495a74
             env:
               JMAP_SERVER_URL: https://stalwart.480p.com
+              OAUTH_ENABLED: "true"
+              OAUTH_CLIENT_ID: bulwark
+              OAUTH_ISSUER_URL: https://sso.brauni.dev/application/o/bulwark/
+              OAUTH_SCOPES: openid email profile offline_access
+              OAUTH_END_SESSION: "false"
+            envFrom:
+              - secretRef:
+                  name: bulwark-secret
             probes:
               liveness:
                 enabled: true
