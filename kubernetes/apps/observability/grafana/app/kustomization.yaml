@@ -7,6 +7,7 @@ resources:
   - ./externalsecret.yaml
   - ./grafanadashboard.yaml
   - ./infinidysk-v2-grafanadashboard.yaml
+  - ./prowlarr-grafanadashboard.yaml
   - ./proxmox-grafanadashboard.yaml
   - ./helmrelease.yaml
   - ./ocirepository.yaml
@@ -14,6 +15,9 @@ configMapGenerator:
   - name: infinidysk-v2-dashboard
     files:
       - infinidysk-v2.json=./resources/infinidysk-v2.json
+  - name: prowlarr-dashboard
+    files:
+      - prowlarr.json=./resources/prowlarr.json
   - name: proxmox-observability-dashboard
     files:
       - proxmox-observability.json=./resources/proxmox-observability.json

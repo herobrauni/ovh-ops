@@ -685,6 +685,556 @@
           "legendFormat": "%"
         }
       ]
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Open reads (playback)",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 36
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "infinidysk_open_reads",
+          "refId": "A",
+          "legendFormat": "open reads"
+        }
+      ],
+      "description": "Concurrent reads the app is serving right now — playback, imports and health checks all count here."
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "Free download permits",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 36
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "infinidysk_download_permits_free",
+          "refId": "A",
+          "legendFormat": "free"
+        }
+      ],
+      "description": "Headroom on the download-concurrency gate. 0 for a whole range means queue work is waiting on permits."
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Cache share of served bytes",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 36
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "100 * sum(increase(infinidysk_cache_bytes_served_total[$__range])) / clamp_min(sum(increase(infinidysk_served_bytes_total[$__range])), 1)",
+          "refId": "A",
+          "legendFormat": "cache share"
+        }
+      ],
+      "description": "Share of served bytes that came from the local segment cache instead of provider fetches."
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "Circuits open / busy providers",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 36
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "expr": "sum(infinidysk_provider_circuit_open)",
+          "refId": "A",
+          "legendFormat": "circuits open"
+        },
+        {
+          "expr": "sum(infinidysk_provider_busy)",
+          "refId": "B",
+          "legendFormat": "busy"
+        }
+      ],
+      "description": "Providers whose circuit breaker is open right now, and how many report themselves busy."
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Throughput by workload (stream / queue / health)",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto"
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (workload) (rate(infinidysk_provider_bytes_total{provider=~\"$provider\"}[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{workload}}"
+        }
+      ],
+      "description": "Where the provider bytes go: playback streams vs download queue vs health/repair checks. Health and queue cost is what a re-grab or a repair pass actually spends."
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Latency p50 / p99 by provider",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto"
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le, provider) (rate(infinidysk_provider_latency_seconds_bucket{provider=~\"$provider\"}[$__rate_interval])))",
+          "refId": "A",
+          "legendFormat": "{{provider}} p50"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum by (le, provider) (rate(infinidysk_provider_latency_seconds_bucket{provider=~\"$provider\"}[$__rate_interval])))",
+          "refId": "B",
+          "legendFormat": "{{provider}} p99"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Open reads vs free download permits",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "infinidysk_open_reads",
+          "refId": "A",
+          "legendFormat": "open reads"
+        },
+        {
+          "expr": "infinidysk_download_permits_free",
+          "refId": "B",
+          "legendFormat": "free permits"
+        }
+      ],
+      "description": "Reads climbing while permits stay at 0 is the classic playback-vs-queue contention."
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Rescues/s by reason",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 48
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto"
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (reason) (rate(infinidysk_provider_rescues_total[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{reason}}"
+        }
+      ],
+      "description": "Article fetches that had to be retried on a different provider, split by the reason the first one failed."
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Cache bytes served/s",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 56
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto"
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(infinidysk_cache_bytes_served_total[$__rate_interval])",
+          "refId": "A",
+          "legendFormat": "from cache"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "timeseries",
+      "title": "Health repairs/s",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 56
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto"
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(infinidysk_health_repairs_total[$__rate_interval])",
+          "refId": "A",
+          "legendFormat": "repairs"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "Imports by result (range)",
+      "datasource": "${DS_PROMETHEUS}",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 56
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisPlacement": "auto"
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "mean",
+            "max"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (increase(infinidysk_imports_total[$__range]))",
+          "refId": "A",
+          "legendFormat": "{{result}}"
+        }
+      ]
     }
   ],
   "refresh": "1m",
