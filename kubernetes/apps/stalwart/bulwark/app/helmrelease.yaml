@@ -34,13 +34,15 @@ spec:
             env:
               JMAP_SERVER_URL: https://stalwart.480p.com
               OAUTH_ENABLED: "true"
+              # Stalwart's directory is OIDC-only, so the password form can never authenticate:
+              # hide it, and start the SSO redirect on page load so the authentik app tile
+              # (`sso.brauni.dev` -> Bulwark) lands in the inbox instead of on a login screen.
+              OAUTH_ONLY: "true"
+              AUTO_SSO_ENABLED: "true"
               OAUTH_CLIENT_ID: bulwark
               OAUTH_ISSUER_URL: https://sso.brauni.dev/application/o/bulwark/
               OAUTH_SCOPES: openid email profile offline_access
               OAUTH_END_SESSION: "false"
-            envFrom:
-              - secretRef:
-                  name: bulwark-secret
             probes:
               liveness:
                 enabled: true
