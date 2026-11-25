@@ -18,6 +18,7 @@ configMapGenerator:
       - infinidysk-oidc.yaml=./blueprints/infinidysk-oidc.yaml
       - infinidysk-v2-oidc.yaml=./blueprints/infinidysk-v2-oidc.yaml
       - silo-oidc.yaml=./blueprints/silo-oidc.yaml
+      - stalwart-webui-retired.yaml=./blueprints/stalwart-webui-retired.yaml
 generatorOptions:
   disableNameSuffixHash: true
   annotations:
