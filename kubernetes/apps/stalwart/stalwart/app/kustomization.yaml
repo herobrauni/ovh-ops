@@ -6,5 +6,6 @@ resources:
   - ./certificate.yaml
   - ./configmap.yaml
   - ./dnsendpoints.yaml
+  - ./grafanadashboard.yaml
   - ./helmrelease.yaml
   - ./httproute.yaml
