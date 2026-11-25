@@ -153,30 +153,31 @@ runbook (Stalwart's objects are API/WebUI-managed, not in Git).
 
 ## Proxmox side (not in this repo)
 
-Inbound mail ports are **DROPped by `pve-firewall` today** (`cluster.fw`, `policy_in: DROP`; only SSH and
-a few exporter ports are open) and nothing DNATs. On each host, parameterised:
+Inbound mail ports `{25, 465, 587, 993, 4190}` are DNATed 1:1 on all three PVE hosts via
+`~/Repos/ovhsbg-pve/playbooks/pve/stalwart-mail-nat.yaml` (`/usr/local/sbin/stalwart-dnat.sh` +
+`stalwart-dnat.service`), which maintains a dedicated `STALWART_DNAT` chain in `iptables -t nat`
+(`PREROUTING -i vmbr0 -d <PVE_PUB>`) targeting each host's local worker (`10.10.8.182/184/186` ->
+NodePorts `30025/30465/30587/30993/30419`).
 
-```
-nft add rule ip nat PREROUTING iifname "<WAN_IF>" ip daddr <PVE_PUB> tcp dport {25,465,587,993,4190,443} dnat to <LOCAL_WORKER_IP>:<nodeport>
-nft add rule ip nat POSTROUTING ip saddr <LOCAL_WORKER_IP> oifname "<WAN_IF>" snat to <PVE_PUB>
-```
-
-plus a `cluster.fw` accept for FORWARDed traffic (DNAT to a VM traverses FORWARD, not INPUT);
-`nf_conntrack_allow_invalid: 1` is already set on all three hosts. The hosts are byte-identical in
-`cluster.fw`, `host.fw`, listeners and package sets - keep it that way; `ovhsbg1` currently trails one
-kernel behind (7.0.14-28 vs -29), unrelated to mail but a bad A/B baseline.
-
-PTR per public IP must point at `mail.<domain>`, and every A record must stay **grey-cloud** in
-Cloudflare: `external-dns` runs with `--cloudflare-proxied` and cannot emit unproxied records.
+- Proxmox SDN (`/etc/network/interfaces.d/sdn`) already manages `POSTROUTING` SNAT for
+  `10.10.8.0/24 -> vmbr0`; `pve-firewall` `FORWARD` defaults to `ACCEPT` and `host.fw` sets
+  `nf_conntrack_allow_invalid: 1`.
+- OVH PTRs for `54.38.92.92`, `54.38.94.158`, and `54.38.94.150` all point to `mail.480p.com`,
+  matching the three grey-cloud `A` records (`mail.480p.com`) and Stalwart's `defaultHostname` (FCrDNS).
+- Every `mail.480p.com` `A` record must stay **grey-cloud** in Cloudflare: `external-dns` runs with
+  `--cloudflare-proxied` and cannot emit unproxied records, so the three `A` records (plus `MX`,
+  `SPF`, `DKIM`, `DMARC`) are managed directly in Cloudflare rather than via `DNSEndpoint`.
+- WebUI (`stalwart.480p.com`, with Envoy `HTTPRoute` CORS scoped to `https://webmail.480p.com`) and
+  Bulwark webmail (`webmail.480p.com`) are exposed behind the `480p-com` Cloudflare Tunnel — port
+  `443` is not DNATed on the PVE hosts.
 
 ## Known gaps
 
-- Dragonfly is not a supported store (see above). The cluster is a lab until the checks in
-  "Verifying the store actually works across nodes" pass repeatedly.
+- Dragonfly is not a supported store (see above). Cross-node cache invalidation, `stalwart-0` failover,
+  and Dragonfly snapshot-reload recovery have all been verified; keep watching for `store.not-supported`
+  or `Failed to lock` over time.
 - The store is a single pod with PVC snapshots, not a quorum: restart is a brief outage, and a full store loss
   means empty locks/counters, which is recoverable-but-visible (retries, re-greylisting).
 - No PDB (3 pods on 3 nodes leaves no slack during a worker drain), no antivirus (Stalwart has none
   built in - Rspamd/ClamAV is a separate decision).
 - Inbound capacity drops by a third when a worker is cordoned, until DNS steering reacts.
-- HTTP/443 is DNATed for JMAP/DAV; keeping it public vs moving it behind the Cloudflare tunnel is still
-  an open decision.
