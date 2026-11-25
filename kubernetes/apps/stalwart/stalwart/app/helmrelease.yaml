@@ -49,7 +49,7 @@ spec:
               - --config
               - /etc/stalwart/config.json
             env:
-              STALWART_PUBLIC_URL: https://mail.480p.com
+              STALWART_PUBLIC_URL: https://stalwart.480p.com
               STALWART_DB_PASSWORD:
                 valueFrom:
                   secretKeyRef:

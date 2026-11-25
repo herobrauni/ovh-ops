@@ -6,7 +6,7 @@ metadata:
   name: stalwart-480p-com
   annotations:
     gatus.home-operations.com/endpoint: |-
-      url: https://mail.480p.com/healthz/ready
+      url: https://stalwart.480p.com/healthz/ready
     gethomepage.dev/enabled: "true"
     gethomepage.dev/group: Selfhosted
     gethomepage.dev/name: Stalwart
@@ -15,7 +15,7 @@ metadata:
     gethomepage.dev/icon: mdi-email
 spec:
   hostnames:
-    - mail.480p.com
+    - stalwart.480p.com
   parentRefs:
     - name: envoy-480p-com-public
       namespace: network
