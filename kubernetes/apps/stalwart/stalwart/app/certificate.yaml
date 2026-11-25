@@ -8,6 +8,8 @@ spec:
   dnsNames:
     - 480p.com
     - "*.480p.com"
+    - herobrauni.de
+    - "*.herobrauni.de"
   duration: 160h
   issuerRef:
     kind: ClusterIssuer
