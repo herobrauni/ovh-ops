@@ -30,7 +30,7 @@ spec:
           app:
             image:
               repository: ghcr.io/bulwarkmail/webmail
-              tag: 1.21.3@sha256:54e914a229529fe90fd8f0ae3e9e97d671806ac09fbfe3f421a1c4fb14495a74
+              tag: 1.22.0@sha256:d02b77b4dea0607dafcd2592a6d89d481b8dd400e4b2b72f5a4466972dc4c5a8
             env:
               # No OIDC: Bulwark signs in with the account name and password of the Stalwart
               # account (Stalwart's internal directory). SSO through authentik was tried and
