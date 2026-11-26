@@ -8,6 +8,19 @@ resources:
   - ./helmrelease.yaml
   - ./prometheusrule.yaml
 configMapGenerator:
+  # Fork of grafana.com dashboard 22604 rev 4 + two "Data Written" panels (lifetime
+  # bytes written and write rate/day, keyed on serial_number).
+  # The grafana-operator only watches ConfigMaps carrying the managed-by label;
+  # without it a dashboard JSON edit waits for the scheduled resync. Substitution
+  # is disabled so Prometheus `$node`/`$disk` template vars survive.
+  - name: smartctl-dashboard
+    files:
+      - smartctl.json=./resources/smartctl.json
+    options:
+      annotations:
+        kustomize.toolkit.fluxcd.io/substitute: disabled
+      labels:
+        app.kubernetes.io/managed-by: grafana-operator
   # PVE cluster CA (CN=Proxmox Virtual Environment, /etc/pve/pve-root-ca.pem on
   # the hosts, identical on all three). Lets PVE_VERIFY_SSL stay "true" while
   # scraping https://<pve-public-ip>:8006. Public cert only, no key material.

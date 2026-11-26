@@ -64,14 +64,26 @@ All PVE jobs live in `kubernetes/apps/observability/kube-prometheus-stack/app/he
 ## SMART data
 
 - Hosts are 2× NVMe each (`INTEL SSDPF2KX019T1O`, the Ceph OSD devices); there are **no SATA/SAS
-  spinners**, so ATA-only series (`smartctl_device_attribute`, `smartctl_device_bytes_written`,
-  `smartctl_device_power_on_seconds`) are absent — the "Total Data Written on SSDs" and "Wear
-  Leveling Over Time" panels of dashboard 22604 are legitimately empty. Use
-  `smartctl_device_percentage_used` / `smartctl_device_available_spare` instead.
-- Dashboards: `GrafanaDashboard/smartctl-exporter` (grafana.com 22604) and
-  `GrafanaDashboard/proxmox-pve-exporter` (grafana.com 10347), both in
-  `proxmox-exporter/app/grafanadashboard.yaml`. 10347's `instance` variable is the PVE source host,
-  so every panel resolves through the single `proxmox-pve` target.
+  spinners**, so ATA-only series (`smartctl_device_attribute`, i.e. no `Wear_Leveling_Count`
+  attribute) are absent — the attribute-based target of 22604's "Wear Leveling Over Time" panel is
+  legitimately empty (the `smartctl_device_percentage_used` target is not). NVMe _does_ expose
+  `smartctl_device_bytes_written` / `smartctl_device_bytes_read` (log page 0x02 "Data Units
+  Written"; currently 160–425 TB per drive) — an earlier version of this note wrongly called them
+  ATA-only, which is why the dashboard's "Total Data Written on SSDs" table looked empty before
+  the scrape job existed.
+- **`device` labels are not stable.** On 2026-11-26 ~07:39 the exporter swapped `nvme0` ↔ `nvme1`
+  on `ovhsbg1` and `ovhsbg2` (smartctl's scan/`/dev/nvmeX` numbering reordered; serials stayed put).
+  Any panel or rule keyed on `device` sees a bogus counter "reset" (that day: 166.9 TB → 162.7 TB).
+  Key on `serial_number` (joined via `smartctl_device`) instead, and aggregate to
+  `by (instance, serial_number)` **before** `deriv`/`rate` so the discontinuity is not a spike.
+- Dashboards: `GrafanaDashboard/smartctl-exporter` is a **local fork** of grafana.com 22604 rev 4
+  (`proxmox-exporter/app/resources/smartctl.json`, wired via `configMapRef`) because two panels were
+  added: "Data Written (lifetime)" and "Write Rate (per day, 6h avg)" — both keyed on
+  `serial_number`. Upstream updates to 22604 no longer arrive automatically; re-fork if wanted.
+  `GrafanaDashboard/proxmox-pve-exporter` still pulls grafana.com 10347 rev 5; its `instance`
+  variable is the PVE source host, so every panel resolves through the single `proxmox-pve` target.
+  Baseline write rate with an idle cluster is ~330–450 GB/day/drive (ovhsbg3 runs higher, ~780),
+  which at 1.92 TB/drive and 1–2% wear used is the number to watch for endurance burn.
 - Alert rules (`proxmox-exporter/app/prometheusrule.yaml`) are written against the real series:
   `smartctl_device_smart_status` (1 = PASSED — do **not** reintroduce
   `smartctl_device_smart_healthy`, the exporter never exposes it), `zfs_pool_health`,

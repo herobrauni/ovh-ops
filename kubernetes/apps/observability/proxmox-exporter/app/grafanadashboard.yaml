@@ -12,7 +12,13 @@ spec:
   datasources:
     - datasourceName: prometheus
       inputName: DS_PROMETHEUS
-  url: https://grafana.com/api/dashboards/22604/revisions/4/download
+  # Forked from grafana.com 22604 rev 4 (no longer pulled from the URL) so the two
+  # "Data Written" panels can live on the upstream layout. Keyed on serial_number:
+  # the exporter's /dev/nvmeX device labels swap between scrapes (see
+  # docs/agents/proxmox-hosts.md, "SMART data").
+  configMapRef:
+    name: smartctl-dashboard
+    key: smartctl.json
 ---
 # yaml-language-server: $schema=https://k8s-schemas.home-operations.com/grafana.integreatly.org/grafanadashboard_v1beta1.json
 apiVersion: grafana.integreatly.org/v1beta1
