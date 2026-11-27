@@ -11,7 +11,13 @@ helmDefaults:
 releases:
   - name: envoy-gateway
     namespace: network
-    chart: oci://mirror.gcr.io/envoyproxy/gateway-helm
+    # docker.io, not mirror.gcr.io: the mirror is only a Docker Hub alias for
+    # image pulls (registryAliases in .renovaterc.json5), so a chart ref to it
+    # makes Renovate's helmfile manager see depName docker.io/... but the literal
+    # mirror.gcr.io/... in the file and abort with "depName mismatch" ->
+    # "Error updating branch: update failure". This also matches the app-layer
+    # OCIRepository url, so one branch updates both layers together.
+    chart: oci://docker.io/envoyproxy/gateway-helm
     version: v1.9.2
 
   - name: cloudflare-dns
