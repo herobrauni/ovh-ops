@@ -103,6 +103,8 @@ A busybox poller with a **read-only** `rclone-infinidysk` sidecar (`--links`, `-
 
 English-only profiles writing `.en.srt` sidecars into the farm via their own privileged rclone sidecars. Hard requirements:
 
+0. `bazarr4k` used to pull `ghcr.io/home-operations/bazarr4k`, a repository that upstream **retired** (`NAME_UNKNOWN` on `/tags/list`, 404 by digest as of 2026-11-27) — the pods only kept running from cached containerd layers, so a reschedule onto a fresh node was an `ImagePullBackOff`. It now runs `ghcr.io/home-operations/bazarr` like the HD instance; the 4K split lives in the seeded `config.yaml` (sonarr4k/radarr4k endpoints), never in the image. Do not reintroduce a `bazarr4k` image reference.
+
 1. The rclone sidecar needs **both** the persistence scaffolding AND its container definition — a missing container silently yields an empty `/aio/remote/infinidysk` (hostPath `DirectoryOrCreate`): `system/health` "root directory not accessible" + wanted-search jobs dying on unhashable files.
 2. The backend CNP gates ingress per app label — a pod not on the allowlist gets FUSE mounts that serve an empty tree and block every lookup (the `version.txt` sidecar probe hangs), stalling the rollout past the helm-controller 5m timeout → rollback.
 3. A rollback AFTER the app already ran DB migrations breaks the older image with alembic `Can't locate revision '<new>'` — always roll forward (`flux reconcile helmrelease --force`).
@@ -161,7 +163,7 @@ to the Jellyfin favorites/watchlist.
 
 1. State is a single SQLite file, `/app/data/swiparr.db`, on the `swiparr` claim
    (kopiur `SnapshotPolicy`/`SnapshotSchedule`, 6-hourly). There is **no secret in Infisical**:
-   `AUTH_SECRET` (session-cookie signing) is generated on first boot and stored *in that DB*, so a
+   `AUTH_SECRET` (session-cookie signing) is generated on first boot and stored _in that DB_, so a
    kopiur restore brings sessions back with the data. Losing the volume only costs the secret.
 2. `ALLOW_PRIVATE_PROVIDER_URLS=true` is required even though `PROVIDER_LOCK` stays on. That guard
    is documented as a BYOP-only switch, but library queries go to
@@ -176,7 +178,7 @@ to the Jellyfin favorites/watchlist.
    relies on `fsGroup: 1000` for the `swiparr.db` write. The image's own user is 1001 — the pod's
    1000 works because everything shipped in the image is world-readable.
 5. `readOnlyRootFilesystem` with emptyDirs at `/tmp` and `/app/.next/cache` (Next image optimizer).
-   No Authentik `SecurityPolicy`: the app's login *is* the Jellyfin login, same reasoning as
+   No Authentik `SecurityPolicy`: the app's login _is_ the Jellyfin login, same reasoning as
    Streamystats. Route is auto-probed by the gatus sidecar; `/` answers 307 → `/login`, which gatus
    follows.
 
