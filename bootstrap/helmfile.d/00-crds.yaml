@@ -18,7 +18,7 @@ releases:
     # "Error updating branch: update failure". This also matches the app-layer
     # OCIRepository url, so one branch updates both layers together.
     chart: oci://docker.io/envoyproxy/gateway-helm
-    version: v1.9.2
+    version: 1.10.0
 
   - name: cloudflare-dns
     namespace: network
