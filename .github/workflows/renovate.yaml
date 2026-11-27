@@ -50,6 +50,21 @@ jobs:
         with:
           app-id: ${{ secrets.BOT_APP_ID }}
           private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          # zizmor: the token would otherwise inherit the whole installation's
+          # permissions. Hold it to what Renovate actually does here
+          # (https://docs.renovatebot.com/modules/platform/github/#running-as-a-github-app):
+          # push branches/commits, open+update PRs, maintain the dependency
+          # dashboard issue, rewrite .github/workflows files (the
+          # github-actions manager), and read/refresh checks + commit statuses
+          # for automerge decisions. Every one of these must be granted on the
+          # app installation, otherwise this action fails loudly here.
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+          permission-workflows: write
+          permission-checks: write
+          permission-statuses: write
+          permission-metadata: read
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -63,6 +78,10 @@ jobs:
           LOG_LEVEL: ${{ inputs.logLevel || 'debug' }}
           RENOVATE_AUTODISCOVER: true
           RENOVATE_AUTODISCOVER_FILTER: ${{ github.repository }}
+          # postUpgradeTasks (the immich-machine-learning pin sync) need shell
+          # binaries from the image rather than Renovate-managed toolchains.
+          RENOVATE_BINARY_SOURCE: global
+          RENOVATE_ALLOWED_POST_UPGRADE_COMMANDS: '["^bash util/"]'
           RENOVATE_DRY_RUN: ${{ inputs.dryRun }}
           # ghcr.io credentials for private packages (a retired private image used to need
           # them; kept while any private ghcr dependency remains). Same values as the

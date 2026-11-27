@@ -143,6 +143,27 @@
       matchManagers: ["flux"],
       pinDigests: true,
     },
+    // immich-machine-learning publishes >80k tags (one build per PR x backend
+    // variant), which the docker datasource cannot page through - Renovate
+    // reports "no-result" and would never bump it. immich-server *is* tracked,
+    // so the postUpgradeTask below rewrites the ML pin to the same release and
+    // the dep itself is switched off to keep it off the dashboard.
+    {
+      description: "immich-machine-learning is kept in lockstep with immich-server",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/immich-app/immich-machine-learning"],
+      enabled: false,
+    },
+    {
+      description: "Sync the immich-machine-learning pin whenever immich-server is upgraded",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/immich-app/immich-server"],
+      postUpgradeTasks: {
+        commands: ["bash util/sync_immich_ml_digest.sh"],
+        fileFilters: ["kubernetes/apps/selfhosted/immich/app/helmrelease.yaml"],
+        executionMode: "update",
+      },
+    },
     {
       description: "Pin digest on images referenced from Dockerfiles under images/",
       matchManagers: ["dockerfile"],

@@ -18,9 +18,16 @@ happening, or when changing Renovate config/workflow.
 ## Image pin pitfalls (audited 2026-11-27)
 
 - **Always pin `tag@sha256:…`.** A digest-only reference (`image: holmes@sha256:…`) has no `currentValue`, so Renovate logs `Could not determine new digest for update` and the pin never moves — holmesgpt's Holmes/holmes-operator images silently stayed at 0.45.0 while the chart went 0.47.0. Add the tag (found by matching the pinned digest against the registry's tag list) to restore tracking.
-- **Avoid `latest@sha256:…`.** Immutable but version-blind: Renovate can only do digest bumps, so the pin drifts with nothing to reason about (`bentopdf`, `firefly3`, `opencloudeu/radicale` still use it). Prefer the real release tag whose digest equals the pin — `GET /v2/<repo>/manifests/<tag>` returns `Docker-Content-Digest` for comparison.
+- **Avoid `latest@sha256:…`.** Immutable but version-blind: Renovate can only do digest bumps, so the pin drifts with nothing to reason about (bentopdf, firefly3 and opencloudeu/radicale all sat on untagged `latest` builds until 2026-11-27; only the self-built `stalwart-alias-bridge` still does, which is correct because its workflow publishes nothing else). Prefer the real release tag whose digest equals the pin — `GET /v2/<repo>/manifests/<tag>` returns `Docker-Content-Digest` for comparison.
 - **Verify the repository still exists** before trusting a green pod: `ghcr.io/home-operations/bazarr4k` answers `NAME_UNKNOWN` on `/tags/list` and 404s by digest, yet the pods keep running off cached containerd layers. An upstream rename/retirement looks identical to a healthy deployment until the pod reschedules.
 - `config:recommended` does not pin Dockerfile base images; `.renovaterc.json5` pins them explicitly for `images/**` (`matchManagers: ["dockerfile"]`, `pinDigests: true`), so keep `images/*/Dockerfile` refs fully qualified (`tag@sha256`).
+
+## Repos with too many tags (immich-machine-learning)
+
+- `ghcr.io/immich-app/immich-machine-learning` publishes a build per PR **and** per backend variant: >80,000 tags, still paginating after 80 pages of 1000. The release tags sit after all the `pr-*` ones, so the docker datasource gives up and reports `Failed to look up docker package …: no-result` — that dep can never be updated by Renovate, while `immich-server` (34k tags, ends at page 35) is fine.
+- Fix in place: the machine-learning pin is kept in lockstep with the server release by a `postUpgradeTask` — `.renovaterc.json5` runs `bash util/sync_immich_ml_digest.sh` when `ghcr.io/immich-app/immich-server` upgrades, with `fileFilters` limited to the immich HelmRelease, so the script's rewrite lands in the same PR. The script reads the new server tag, resolves the ML digest for it and rewrites `<tag>@sha256:…`; a registry hiccup leaves the pin untouched (warning, exit 0) so it never blocks the server update. Requires `RENOVATE_ALLOWED_POST_UPGRADE_COMMANDS` + `RENOVATE_BINARY_SOURCE: global` in `.github/workflows/renovate.yaml`.
+- The ML dependency itself is `enabled: false` in `.renovaterc.json5`; otherwise every run re-reports the lookup failure. Verify a candidate bump by hand with `util/sync_immich_ml_digest.sh --check` (exit 1 = the pins disagree).
+- Same trick applies to any other "Renovate cannot see this registry" case: track a sibling dep it _can_ see and derive the opaque one in a postUpgradeTask.
 
 ## `helm pull` against ghcr.io failing with 403
 
