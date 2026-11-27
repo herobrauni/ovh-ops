@@ -18,7 +18,7 @@ spec:
           01-init-nginx-dirs:
             image:
               repository: ghcr.io/alam00000/bentopdf-simple
-              tag: latest@sha256:ebea1678d2cdd500af57987f802d442931b46a73b12af788d1831f6204b8a477
+              tag: 2.8.12@sha256:f96da8c4a347880b891d66aa2ebfa6b63f76277dafcfcdfa40c8e6b92c59ef44
             command:
               - /bin/sh
               - -c
@@ -28,7 +28,7 @@ spec:
           app:
             image:
               repository: ghcr.io/alam00000/bentopdf-simple
-              tag: latest@sha256:ebea1678d2cdd500af57987f802d442931b46a73b12af788d1831f6204b8a477
+              tag: 2.8.12@sha256:f96da8c4a347880b891d66aa2ebfa6b63f76277dafcfcdfa40c8e6b92c59ef44
             probes:
               liveness:
                 enabled: true
