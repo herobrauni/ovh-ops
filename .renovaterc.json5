@@ -11,7 +11,7 @@
     {
       description: "Process digest-pinned operator image values",
       customType: "regex",
-      fileMatch: ["(^|/)operator/images\\.ya?ml$"],
+      managerFilePatterns: ["/(^|/)operator/images\\.ya?ml$/"],
       matchStrings: [
         "value: (?<depName>\\S+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})",
       ],
@@ -141,6 +141,12 @@
     {
       description: "Keep Flux OCI artifact digests pinned",
       matchManagers: ["flux"],
+      pinDigests: true,
+    },
+    {
+      description: "Pin digest on images referenced from Dockerfiles under images/",
+      matchManagers: ["dockerfile"],
+      matchFileNames: ["images/**"],
       pinDigests: true,
     },
     {
