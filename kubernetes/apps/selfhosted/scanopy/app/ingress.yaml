@@ -5,8 +5,9 @@ kind: Ingress
 metadata:
   name: scanopy
 spec:
-  # Tailnet-only, same pattern as holmesgpt: the tailscale-operator provisions
-  # scanopy.<tailnet>.ts.net plus a Let's Encrypt cert from spec.tls[].hosts.
+  # Tailnet-only, layer-7 pattern (see docs/agents/networking.md): the
+  # tailscale-operator provisions scanopy.<tailnet>.ts.net plus a Let's Encrypt
+  # cert from spec.tls[].hosts.
   # Deliberately not public and not behind authentik — the scan daemons authenticate
   # with their own API keys over DaemonPoll, and an SSO redirect would break that.
   ingressClassName: tailscale

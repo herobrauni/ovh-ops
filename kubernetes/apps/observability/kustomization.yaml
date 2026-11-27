@@ -18,4 +18,3 @@ resources:
   - ./gatus/ks.yaml
   - ./grafana/ks.yaml
   - ./beszel-hub/ks.yaml
-  - ./holmesgpt/ks.yaml
