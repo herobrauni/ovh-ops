@@ -128,6 +128,16 @@
       allowedVersions: "/^v?\\d+\\.2\\.\\d+$/",
     },
     {
+      // Pre-release tags (v2.0.0-beta.11) sort arbitrarily under the default
+      // "docker" versioning: it ignores the -beta.N suffix, so beta.11 is not
+      // greater than beta.10 and the release is dropped by the "only newer
+      // than current" filter, leaving the image on beta.10 forever.
+      description: "Compare the infinidysk v2 beta tags with semver, not docker versioning",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/infinidysk/infinidysk-next"],
+      versioning: "semver",
+    },
+    {
       description: "Vendored operator images (KubeVirt/CDI) need manual re-vendoring",
       groupName: "vendored-kubevirt-operators",
       matchDatasources: ["docker"],
