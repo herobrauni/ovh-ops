@@ -42,7 +42,7 @@ spec:
           app:
             image:
               repository: ghcr.io/infinidysk/infinidysk-next
-              tag: v2.0.0-beta.10@sha256:253ef9fa807f389f4058e2ec16342bc7be426d42570accf4afb68b2c01d9d059
+              tag: v2.0.0-beta.11@sha256:c6fe0f18bd32d2f43fdfc1c9d786e99ec15afef9e4abe4098a9ab8c36a9bfc5c
             env:
               # --- Settings: the durable 2.x surface (`INFINIDYSK__*`) --------
               # 2.x settings live in the database with this env overlay on top
