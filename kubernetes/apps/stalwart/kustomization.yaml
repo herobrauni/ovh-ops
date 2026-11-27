@@ -11,5 +11,6 @@ components:
 
 resources:
   - ./namespace.yaml
+  - ./alias-bridge/ks.yaml
   - ./bulwark/ks.yaml
   - ./stalwart/ks.yaml

@@ -1,0 +1,79 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/bjw-s-labs/helm-charts/main/charts/other/app-template/schemas/helmrelease-helm-v2.schema.json
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: &app stalwart-alias-bridge
+spec:
+  chartRef:
+    kind: OCIRepository
+    name: app-template
+  interval: 30m
+  values:
+    defaultPodOptions:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+
+    controllers:
+      stalwart-alias-bridge:
+        containers:
+          app:
+            image:
+              repository: ghcr.io/herobrauni/stalwart-alias-bridge
+              tag: latest@sha256:5cfe29990da95a9b06996d87773c231eb72866548b25b453660e81c3b8617816
+            env:
+              LISTEN_ADDR: ":8080"
+              STALWART_URL: http://stalwart-mgmt.stalwart.svc.cluster.local:8080
+            probes:
+              liveness:
+                enabled: true
+                type: HTTP
+                path: /healthz
+                port: &port 8080
+              readiness:
+                enabled: true
+                type: HTTP
+                path: /healthz
+                port: *port
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+            resources:
+              requests:
+                cpu: 5m
+                memory: 16Mi
+              limits:
+                memory: 64Mi
+
+    service:
+      app:
+        controller: stalwart-alias-bridge
+        primary: true
+        ports:
+          http:
+            port: *port
+
+    route:
+      app:
+        annotations:
+          gatus.home-operations.com/endpoint: |-
+            url: https://alias.480p.com/healthz
+        hostnames:
+          - alias.480p.com
+        parentRefs:
+          - name: envoy-480p-com-public
+            namespace: network
+            sectionName: https
+        rules:
+          - backendRefs:
+              - name: *app
+                port: *port
