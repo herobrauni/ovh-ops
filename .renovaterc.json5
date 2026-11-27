@@ -24,7 +24,7 @@
       description: "Auto-merge trusted OCI digests",
       matchDatasources: ["docker"],
       matchUpdateTypes: ["digest"],
-      matchPackageNames: ["/home-operations/"],
+      matchPackageNames: ["/home-operations/", "/herobrauni/stalwart-alias-bridge/"],
       automerge: true,
       automergeType: "pr",
       ignoreTests: false,
