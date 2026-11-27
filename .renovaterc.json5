@@ -171,6 +171,12 @@
       pinDigests: true,
     },
     {
+      description: "Leave the BuildKit syntax frontend on its floating tag (it is rebuilt constantly; pinning it is pure churn)",
+      matchManagers: ["dockerfile"],
+      matchPackageNames: ["docker/dockerfile"],
+      pinDigests: false,
+    },
+    {
       description: "Require review for Flux OCI digest changes",
       matchManagers: ["flux"],
       matchUpdateTypes: ["digest"],
