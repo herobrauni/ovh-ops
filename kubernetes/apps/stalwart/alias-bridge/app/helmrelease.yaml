@@ -26,7 +26,7 @@ spec:
           app:
             image:
               repository: ghcr.io/herobrauni/stalwart-alias-bridge
-              tag: latest@sha256:5cfe29990da95a9b06996d87773c231eb72866548b25b453660e81c3b8617816
+              tag: latest@sha256:c8589892975474ec15dd6c0d122b9acffde355f582193cea3287b634c4e2c07d
             env:
               LISTEN_ADDR: ":8080"
               STALWART_URL: http://stalwart-mgmt.stalwart.svc.cluster.local:8080
