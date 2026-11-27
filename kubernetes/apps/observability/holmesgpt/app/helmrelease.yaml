@@ -18,7 +18,7 @@ spec:
     # lives in the image string rather than a separate tag field.
     registry: robustadev
     # renovate: datasource=docker depName=robustadev/holmes
-    image: holmes@sha256:a6edc27204a8725d45419863474c41e2822333e938a8e79fafb99068131629c3
+    image: holmes:0.48.0@sha256:49cfe53bebee2d4c956846d00d448b11c37e47a661f0e12667abaf8529693eba
     logLevel: INFO
 
     # Default model + credentials, straight against OpenCode Go - no litellm hop.
@@ -142,7 +142,7 @@ spec:
       enabled: true
       registry: robustadev
       # renovate: datasource=docker depName=robustadev/holmes-operator
-      image: holmes-operator@sha256:fb9ed8389b6b5b92daa504478dff5c507ce610d036e04d81beb9fe66b91f720f
+      image: holmes-operator:0.48.0@sha256:060925865f7a9fd058e721f17927bf135101d565b3172c8422bbcf31514fd4ac
 
     # Remediation MCP (the "act on the cluster" half): restart/scale, drain,
     # patch, read files inside containers, launch netshoot/busybox diagnostic
@@ -155,4 +155,4 @@ spec:
       kubernetesRemediation:
         enabled: true
         # renovate: datasource=docker depName=us-central1-docker.pkg.dev/genuine-flight-317411/mcp/kubernetes-remediation-mcp
-        image: kubernetes-remediation-mcp@sha256:874820be9f6ad0b76d8065e312f8f889ae423f1c35f0ad5a5c9d09da9ed001dc
+        image: kubernetes-remediation-mcp:1.5.1@sha256:f044e551e1b3ed3a9b0c88fe21b97006d41163c8f3789f7669bf45910897bb46

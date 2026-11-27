@@ -33,6 +33,7 @@ Part of the `AGENTS.md` topic guides (`docs/agents/`). Read when touching
   "web UI" is the **Robusta Platform** (`docs/installation/ui-installation.md`,
   titled "3rd party"): SaaS is free to start, self-hosted is an Enterprise plan,
   and Robusta's own docs say standalone HolmesGPT is "CLI only — no web UI".
+- Image pins: `registry`/`image` are overridden only to add digests, so the ref **must** carry the chart's own version tag (`holmes:<chart version>@sha256:…`, same for `operator.image` and `mcpAddons.kubernetesRemediation.image`). A digest-only value freezes the app: Renovate logged `Could not determine new digest for update` and the pods ran Holmes/holmes-operator **0.45.0** under the 0.47/0.48 charts until the tags were added back (2026-11-27). Chart defaults: `values.yaml` `image: holmes:<version>` / `operator.image` / `mcpAddons.*.image`.
 - Operator mode is enabled but no `ScheduledHealthCheck` exists: every check is at
   least one LLM call, so add them sparingly.
 - **Remediation MCP** (`mcpAddons.kubernetesRemediation`) gives Holmes the write
