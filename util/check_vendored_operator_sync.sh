@@ -27,7 +27,9 @@ failures=0
 # operator_name|vendored_manifest|images_file|env_var_name
 checks=(
     "kubevirt|kubernetes/apps/kubevirt/kubevirt/operator/operator.yaml|kubernetes/apps/kubevirt/kubevirt/operator/images.yaml|VIRT_OPERATOR_IMAGE"
+    "kubevirt-network-policies|kubernetes/apps/kubevirt/kubevirt/operator/network-policies.yaml|kubernetes/apps/kubevirt/kubevirt/operator/images.yaml|VIRT_OPERATOR_IMAGE"
     "cdi|kubernetes/apps/cdi/cdi/operator/operator.yaml|kubernetes/apps/cdi/cdi/operator/images.yaml|CONTROLLER_IMAGE"
+    "cdi-network-policies|kubernetes/apps/cdi/cdi/operator/network-policies.yaml|kubernetes/apps/cdi/cdi/operator/images.yaml|CONTROLLER_IMAGE"
 )
 
 for entry in "${checks[@]}"; do
@@ -62,7 +64,7 @@ for entry in "${checks[@]}"; do
         echo "❌ ${name}: vendored manifest is ${vendored_version} but ${env_var} in images.yaml is ${images_version}"
         echo "   Re-vendor ${vendored} from the ${images_version} upstream release"
         echo "   (drop the leading Namespace doc, keep the vendored-from header,"
-        echo "   format with yamlfmt and the repo .yamlfmt.yaml), then commit"
+        echo "   format with oxfmt via lefthook), then commit"
         echo "   the re-vendored manifest together with the image bump."
         failures=$((failures + 1))
     fi

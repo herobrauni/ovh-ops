@@ -1,6 +1,6 @@
 ---
-# Vendored from the CDI v1.65.0 release.
-# Source: https://github.com/kubevirt/containerized-data-importer/releases/download/v1.65.0/network-policies.yaml
+# Vendored from the CDI v1.66.1 release.
+# Source: https://github.com/kubevirt/containerized-data-importer/releases/download/v1.66.1/network-policies.yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
