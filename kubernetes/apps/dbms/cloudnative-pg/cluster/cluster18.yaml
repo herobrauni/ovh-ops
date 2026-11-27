@@ -6,7 +6,7 @@ metadata:
   name: postgres18
 spec:
   instances: 3
-  imageName: ghcr.io/cloudnative-pg/postgresql:18@sha256:899d3ed526b659d77935dde0e6bf2d69dbbf17d3d8c6486ca8cfd04bd3c18533
+  imageName: ghcr.io/cloudnative-pg/postgresql:18.6@sha256:899d3ed526b659d77935dde0e6bf2d69dbbf17d3d8c6486ca8cfd04bd3c18533
   primaryUpdateStrategy: unsupervised
   primaryUpdateMethod: switchover
   storage:
